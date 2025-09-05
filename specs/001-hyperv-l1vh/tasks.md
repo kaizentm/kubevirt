@@ -33,98 +33,199 @@
 - [x] **No privileged capabilities**: Uses existing Kubernetes resource patterns
 - [x] **Choreography pattern**: Components act independently on observed state
 
+### ✅ Security by Design Gate (Article XI)
+- [x] **Trust model documented**: Clear boundaries between KubeVirt and underlying technologies
+- [x] **Integration points identified**: All KubeVirt-controlled security touchpoints analyzed
+- [x] **Security responsibilities scoped**: KubeVirt security limited to integration layer only
+- [x] **Threat model complete**: Comprehensive analysis focusing on KubeVirt integration security
+- [x] **Security testing strategy**: Security tests focused on integration points, not hypervisor security
+
+### ✅ Observability Gate (Article XII)
+- [x] **Metrics strategy defined**: Prometheus metrics for L1VH operations and performance
+- [x] **Logging standards compliance**: Structured logging with correlation IDs
+- [x] **Debug capabilities designed**: CLI tools and debug endpoints for troubleshooting
+- [x] **Alerting and SLA definitions**: Operational alerts and performance SLA monitoring
+
 **🚨 CONSTITUTIONAL COMPLIANCE VERIFIED - PROCEED TO IMPLEMENTATION**
 
 ---
 
 ## Phase 1: Alpha Implementation Tasks
 
+### Task Group 0: Environment and Infrastructure Setup (PARALLEL DEVELOPMENT)
+
+**Priority**: HIGH - CAN RUN IN PARALLEL WITH DEVELOPMENT  
+**Estimation**: 1-2 days  
+**Note**: Development can proceed with mocked L1VH environment while real environment is prepared
+
+#### Task 0.1: L1VH Test Environment Setup
+**Prerequisites**: Constitutional gates passed  
+**Definition of Done**: L1VH-capable test environment ready for integration testing
+
+**Deliverables**:
+- [ ] **Azure L1VH Test Cluster Setup**
+  - Environment: Azure VMs with L1VH capability enabled
+  - Requirements: `/dev/mshv` device available on all nodes
+  - Validation: `ls -la /dev/mshv` returns device file
+  - Networking: Standard Kubernetes networking configured
+
+- [ ] **Dependency Version Validation**
+  - Task: Validate minimum libvirt version supports mshv driver
+  - Task: Validate minimum QEMU version supports mshv backend  
+  - Task: Document tested version combinations
+  - Documentation: `docs/requirements/l1vh-dependencies.md`
+
+**Acceptance Criteria**:
+- [ ] L1VH test cluster deployed and accessible
+- [ ] All dependency versions validated and documented
+- [ ] Environment health checks automated
+- [ ] Ready for integration testing (Task 1.2)
+
+#### Task 0.2: Build System Integration
+**Prerequisites**: None - can start immediately  
+**Definition of Done**: Build system supports L1VH feature development
+
+**Deliverables**:
+- [ ] **Bazel Build Configuration**
+  - File: `BUILD.bazel` files updated for L1VH feature flag
+  - Configuration: Conditional compilation for L1VH-specific code
+  - Testing: Build works with and without L1VH feature enabled
+
+- [ ] **Container Image Validation** 
+  - Task: Validate no additional container dependencies required
+  - Task: Confirm L1VH works with existing virt-launcher images
+
+**Acceptance Criteria**:
+- [ ] Build system compiles L1VH feature correctly
+- [ ] Feature flag controls compilation appropriately
+- [ ] No additional container dependencies required
+
 ### Task Group 1: Test-First Development (CONSTITUTIONAL MANDATE)
 
 **Priority**: CRITICAL - MUST BE COMPLETED BEFORE ANY IMPLEMENTATION CODE  
 **Constitutional Requirement**: Article IV - Test-First Implementation  
-**Estimation**: 2-3 days  
+**Estimation**: 1-2 days  
+**Prerequisites**: None - can start immediately with mocked L1VH environment  
+
+**Compatibility Testing Strategy**:
+- **LEVERAGE EXISTING TESTS**: Since L1VH is transparent (no API changes), existing KubeVirt integration tests automatically validate L1VH compatibility when run on L1VH-enabled clusters
+- **Automatic Coverage**: Standard VM specifications work identically with L1VH vs QEMU - existing tests should prove this
 
 #### Task 1.1: Contract Tests 
-**Owner**: [Assignee]  
-**Status**: Not Started  
-**Prerequisites**: Constitutional gates passed  
+**Prerequisites**: None - can start immediately  
 **Definition of Done**: All contract tests written, reviewed, and failing (Red phase of TDD)
 
 **Deliverables**:
 - [ ] **Contract Test**: Transparent hypervisor selection with feature gate enabled
   - File: `pkg/virt-launcher/virtwrap/converter/converter_test.go`
   - Test: `TestL1VHTransparentSelection`
-  - Verifies: VM automatically uses `mshv` hypervisor when L1VH available + feature gate enabled
+  - Verifies: virt-launcher automatically uses `mshv` hypervisor when L1VH available + feature gate enabled
 
 - [ ] **Contract Test**: QEMU/KVM fallback behavior
   - File: `pkg/virt-launcher/virtwrap/converter/converter_test.go`
-  - Test: `TestL1VHFallbackToQEMU`  
-  - Verifies: VM uses `qemu` hypervisor when L1VH unavailable or feature gate disabled
-
-- [ ] **Contract Test**: Feature gate enforcement
-  - File: `pkg/virt-config/featuregate/featuregate_test.go`
-  - Test: `TestHyperVL1VHFeatureGate`
-  - Verifies: Feature gate controls L1VH behavior cluster-wide
+  - Test: `TestL1VHFallbackToKVM`  
+  - Verifies: virt-launcher uses `kvm` hypervisor when L1VH unavailable or feature gate disabled
 
 **Acceptance Criteria**:
 - [ ] Tests clearly express transparency requirements from specification
 - [ ] Tests validate fallback behavior without user intervention
-- [ ] Tests confirm feature gate controls all L1VH functionality
 - [ ] All tests are reviewed and approved by team
 - [ ] Tests FAIL (confirming they test real behavior, not implementation)
 
 #### Task 1.2: Integration Tests
-**Owner**: [Assignee]  
-**Status**: Not Started  
 **Prerequisites**: Contract tests approved  
-**Definition of Done**: Integration tests written covering component interactions
+**Definition of Done**: Validate existing integration tests work transparently with L1VH
+
+**Testing Approach**: **RUN EXISTING TESTS** on L1VH cluster rather than creating duplicate tests
 
 **Deliverables**:
-- [ ] **Integration Test**: End-to-end VM lifecycle with transparent L1VH
-  - File: `tests/hyperv_l1vh_test.go`
-  - Test: `TestTransparentL1VHVMLifecycle`
-  - Verifies: Standard VM creation results in L1VH optimization when available
+- [ ] **Validate Existing Integration Tests with L1VH**: Run existing integration test suite on L1VH cluster
+  - Tests: Existing VM lifecycle tests from `tests/`
+  - Behavior: Tests pass identically with L1VH feature gate enabled vs disabled  
+  - Validates: Standard VM specs work transparently with L1VH optimization
 
-- [ ] **Integration Test**: Feature gate enable/disable behavior
+- [ ] **L1VH-Specific Integration Test**: Hypervisor selection validation
   - File: `tests/hyperv_l1vh_test.go`
-  - Test: `TestL1VHFeatureGateToggle`
-  - Verifies: Feature gate changes affect hypervisor selection immediately
-
-- [ ] **Integration Test**: Mixed environment compatibility
-  - File: `tests/hyperv_l1vh_test.go`
-  - Test: `TestL1VHCompatibilityWithExistingFeatures`
-  - Verifies: L1VH works alongside existing KubeVirt features transparently
+  - Test: `TestL1VHTransparentHypervisorSelection`
+  - Validates: L1VH automatically selected when available, fallback to KVM when not
 
 **Acceptance Criteria**:
-- [ ] Tests use real L1VH environment (Azure VMs with `/dev/mshv`)
+- [ ] **All existing integration tests pass identically** with L1VH feature gate enabled vs disabled
 - [ ] Tests verify transparent operation - no user configuration required
-- [ ] Tests confirm existing VM specifications work without modification
-- [ ] Integration tests are reviewed and approved
+- [ ] Tests use mocked L1VH environment for initial development, validate against real environment when available
 - [ ] Tests FAIL initially (Red phase of TDD)
 
 #### Task 1.3: E2E Tests
-**Owner**: [Assignee]  
-**Status**: Not Started  
 **Prerequisites**: Integration tests approved  
-**Definition of Done**: Complete user workflow tests covering L1VH scenarios
+**Definition of Done**: Validate existing E2E workflows work transparently with L1VH
+
+**Testing Approach**: **RUN EXISTING E2E TESTS** on L1VH cluster to validate transparent operation
 
 **Deliverables**:
-- [ ] **E2E Test**: Complete VM deployment workflow with L1VH cluster
-  - File: `tests/e2e_hyperv_l1vh_test.go`
-  - Test: `TestCompleteVMWorkflowWithL1VH`
-  - Verifies: kubectl apply → VM creation → L1VH optimization → VM deletion
-
-- [ ] **E2E Test**: Performance validation test framework
-  - File: `tests/performance_l1vh_test.go`
-  - Test: `TestL1VHPerformanceOptimization`
-  - Verifies: L1VH provides measurable performance benefits
+- [ ] **Validate Existing E2E Tests with L1VH**: Run existing E2E test suite on L1VH cluster
+  - Tests: Existing VM workflow tests from `tests/`  
+  - Behavior: All E2E tests pass identically with L1VH feature gate enabled vs disabled
+  - Validates: Complete user workflows work transparently with L1VH optimization
 
 **Acceptance Criteria**:
-- [ ] Tests represent real user workflows with standard VM specifications
-- [ ] Tests validate performance improvements vs nested virtualization
-- [ ] Tests confirm transparent operation across complete lifecycle
-- [ ] E2E tests approved and initially failing
+- [ ] **All existing E2E tests pass identically** with L1VH feature gate enabled vs disabled
+- [ ] **User workflows unchanged** - kubectl apply → VM creation → VM deletion works transparently
+- [ ] Tests validate transparent operation across complete VM lifecycle
+- [ ] E2E tests initially failing (Red phase of TDD)
+
+#### Task 1.4: Unit Tests
+**Prerequisites**: Integration and E2E tests approved  
+**Definition of Done**: Comprehensive unit test coverage for all L1VH components
+
+**Deliverables**:
+- [ ] **Feature Gate Unit Tests**
+  - File: `pkg/virt-config/featuregate/feature-gates_test.go`
+  - Test: `TestHyperVL1VHFeatureGateRegistration`
+  - Verifies: Feature gate properly registered with correct default values
+  - Test: `TestHyperVL1VHFeatureGateEnableDisable`
+  - Verifies: Feature gate can be enabled/disabled programmatically
+
+- [ ] **L1VH Detection Unit Tests**
+  - File: `pkg/virt-launcher/virtwrap/converter/l1vh_test.go`
+  - Test: `TestHasL1VHSupport_DeviceExists`
+  - Verifies: Returns true when `/dev/mshv` device exists
+  - Test: `TestHasL1VHSupport_DeviceMissing`
+  - Verifies: Returns false when `/dev/mshv` device missing
+  - Test: `TestHasL1VHSupport_DevicePermissions`
+  - Verifies: Handles permission errors gracefully
+
+- [ ] **Converter Logic Unit Tests**
+  - File: `pkg/virt-launcher/virtwrap/converter/converter_test.go`
+  - Test: `TestConvertL1VHEnabled_DeviceAvailable`
+  - Verifies: Domain type configured for L1VH when feature gate enabled and device available
+  - Test: `TestConvertL1VHEnabled_DeviceUnavailable`
+  - Verifies: Fallback to KVM when feature gate enabled but device unavailable
+  - Test: `TestConvertL1VHDisabled`
+  - Verifies: Uses default KVM when feature gate disabled regardless of device availability
+
+- [ ] **Edge Case Unit Tests**
+  - File: `pkg/virt-launcher/virtwrap/converter/converter_test.go`
+  - Test: `TestL1VHWithExistingKVMOverrides`
+  - Verifies: L1VH detection respects existing KVM-specific configurations
+  - Test: `TestL1VHWithEmulationMode`
+  - Verifies: L1VH behavior when `AllowEmulation=true` is set
+
+- [ ] **Memory Overhead Unit Tests** (NEW - CRITICAL)
+  - File: `pkg/virt-controller/services/renderresources_test.go`
+  - Test: `TestGetMemoryOverheadL1VH`
+  - Verifies: Memory overhead calculations work correctly for mshv hypervisor type
+  - Test: `TestL1VHMemoryOverheadVsKVM`
+  - Verifies: L1VH overhead calculations vs KVM baseline (if different)
+  - Test: `TestL1VHVFIOOverhead`
+  - Verifies: Hardware passthrough overhead calculations for L1VH
+  - Location: Extends existing overhead test coverage for mshv scenarios
+
+**Acceptance Criteria**:
+- [ ] **>90% code coverage** for all L1VH-specific functions
+- [ ] Tests validate both positive and negative paths
+- [ ] Edge cases covered with clear expected behaviors
+- [ ] All tests FAIL initially (Red phase of TDD)
+- [ ] Tests follow existing KubeVirt unit testing patterns
 
 ### Task Group 2: Minimal Implementation (POST-TDD ONLY)
 
@@ -134,8 +235,6 @@
 **Constitutional Requirement**: Only after TDD Red phase completed
 
 #### Task 2.1: Feature Gate Registration
-**Owner**: [Assignee]  
-**Status**: Not Started  
 **Prerequisites**: Feature gate tests written and failing  
 **Definition of Done**: `HyperVL1VH` feature gate registered and functional
 
@@ -162,74 +261,180 @@ var defaultKubeVirtFeatureGates = map[featuregate.FeatureGate]featuregate.Featur
 - [ ] No existing functionality affected when feature gate disabled
 
 #### Task 2.2: Transparent Hypervisor Detection
-**Owner**: [Assignee]  
-**Status**: Not Started  
 **Prerequisites**: Converter tests written and failing  
 **Definition of Done**: virt-launcher automatically selects L1VH when available
 
+**Current System Analysis**:
+- **Domain Type**: Currently defaults to `"kvm"` (set by api/defaults.go)
+- **KVM Detection**: Converter checks `/dev/kvm` exists, sets `domain.Spec.Type = "qemu"` if missing and `AllowEmulation=true`
+- **No Function Called**: There is NO existing `detectHypervisorType` or `detectQEMUKVMType` function
+
 **Deliverables**:
-- [ ] **Hypervisor Detection Logic**
-  - File: `pkg/virt-launcher/virtwrap/converter/converter.go`
-  - Function: Extend existing `detectHypervisorType` or similar
-  - Behavior: Auto-detect L1VH capability and select optimal hypervisor
+- [ ] **L1VH Ensurer Logic**: Add L1VH Ensurer to existing converter flow
+  - File: `pkg/virt-launcher/virtwrap/converter/converter.go` 
+  - Location: In `Convert_v1_VirtualMachineInstance_To_api_Domain` function, after existing KVM check
+  - Behavior: Ensure L1VH capability and override default "kvm" type
 
 ```go
-func (c *ConverterContext) detectHypervisorType(vmi *v1.VirtualMachineInstance) (string, error) {
-    // L1VH Auto-Detection (when feature gate enabled)
-    if featuregate.DefaultFeatureGate.Enabled(featuregate.HyperVL1VH) {
-        if c.hasL1VHSupport() {
-            return "mshv", nil
-        }
+// In Convert_v1_VirtualMachineInstance_To_api_Domain function, AFTER existing kvmPath check:
+
+// Note: domain.Spec.Type remains "kvm" (default) if L1VH unavailable 
+if featuregate.DefaultFeatureGate.Enabled(featuregate.HyperVL1VH) {
+    if hasL1VHSupport() {
+        // Update domain spec accordingly
     }
-    // Existing QEMU/KVM detection (unchanged)
-    return c.detectQEMUKVMType(vmi)
 }
 
-func (c *ConverterContext) hasL1VHSupport() bool {
+// L1VH Ensurer (when feature gate enabled)
+func hasL1VHSupport() bool {
+    // Simple validation may look like:
     _, err := os.Stat("/dev/mshv")
     return err == nil
 }
 ```
 
 **Acceptance Criteria**:
-- [ ] L1VH automatically selected when feature gate enabled + `/dev/mshv` available
-- [ ] Graceful fallback to QEMU/KVM when L1VH unavailable
-- [ ] Zero impact on existing converter functionality
+- [ ] Ensure L1VH capability suport when feature gate enabled + `/dev/mshv` available
+- [ ] Graceful fallback to default "kvm" when L1VH unavailable  
+- [ ] Zero impact on existing converter functionality (preserves existing KVM logic)
 - [ ] Converter tests pass (Green phase of TDD)
 - [ ] Implementation follows constitutional anti-abstraction principles
 
 #### Task 2.3: Domain XML Integration
-**Owner**: [Assignee]  
-**Status**: Not Started  
 **Prerequisites**: Hypervisor detection implemented and tested  
-**Definition of Done**: libvirt domain XML properly configured for L1VH
+**Definition of Done**: libvirt domain XML properly configured for L1VH hypervisor operation
 
 **Deliverables**:
-- [ ] **Domain Configuration for L1VH**
+- [ ] **Research libvirt mshv Requirements**: Investigate actual domain XML requirements for mshv hypervisor
+  - Task: Analyze libvirt mshv driver documentation and examples
+  - Task: Identify required vs optional domain XML configurations for L1VH
+  - Task: Document domain XML differences between kvm and mshv types
+  - Output: `docs/l1vh-domain-xml-requirements.md`
+
+- [ ] **Implement L1VH Domain Configuration**
   - File: `pkg/virt-launcher/virtwrap/converter/converter.go`
-  - Function: Extend `Convert_v1_VirtualMachineInstance_To_api_Domain`
-  - Behavior: Configure domain for `mshv` hypervisor type
+  - Function: Add `configureL1VHDomain` function following existing hypervisor-specific patterns
+  - Integration: Call from `Convert_v1_VirtualMachineInstance_To_api_Domain` when `domain.Spec.Type = "mshv"`
+  - Validation: Ensure configurations follow libvirt mshv driver requirements
+  - Pattern: Follow existing HyperV feature configuration patterns in converter
 
 **Acceptance Criteria**:
-- [ ] Domain XML properly configured for L1VH hypervisor
-- [ ] Standard VM specifications work without modification
-- [ ] L1VH-specific optimizations applied when appropriate
-- [ ] All contract and integration tests pass
+- [ ] Domain XML with required L1VH configurations accepted by libvirt without errors
+- [ ] Standard VM specifications work with automatically applied L1VH domain configurations
+- [ ] All contract and integration tests pass with mshv domain type and configurations
 
-### Task Group 3: Documentation and Observability
+#### Task 2.4: Memory Overhead Research and Validation
+**Prerequisites**: Domain XML integration complete  
+**Definition of Done**: L1VH memory overhead characteristics researched and validated against existing KVM calculations
 
-**Priority**: MEDIUM  
-**Prerequisites**: Core implementation complete and tested  
-**Estimation**: 1 day  
-
-#### Task 3.1: User Documentation
-**Owner**: [Assignee]  
-**Status**: Not Started  
-**Prerequisites**: Implementation complete  
-**Definition of Done**: Complete user-facing documentation
+**Background**: Code analysis revealed extensive KVM-specific memory overhead calculations in `GetMemoryOverhead()` function that may need L1VH adaptation.
 
 **Deliverables**:
-- [ ] **L1VH Feature Documentation**
+- [ ] **L1VH Memory Overhead Research**
+  - Task: Research mshv hypervisor memory overhead characteristics vs QEMU/KVM
+  - Analysis: Compare process overhead for mshv vs virtqemud/qemu processes
+  - Documentation: Document findings in `docs/l1vh-memory-overhead-analysis.md`
+  - Key Questions: 
+    - Does mshv have different process overhead than 220Mi QEMU/KVM baseline?
+    - Are vCPU memory calculations (8Mi per vCPU) identical for mshv?
+    - Does L1VH hardware passthrough use different overhead than 1Gi VFIO baseline?
+
+- [ ] **Memory Overhead Validation Testing**
+  - Environment: Deploy test VMs with both KVM and mshv backends
+  - Measurement: Compare actual memory usage vs `GetMemoryOverhead()` calculations
+  - Location: `pkg/virt-controller/services/renderresources.go:393-490`
+  - Validation: Verify overhead accuracy for resource allocation
+
+- [ ] **Overhead Calculation Adaptation** (conditional on research findings)
+  - Implementation: Add L1VH-specific overhead logic if research shows differences
+  - Pattern: Follow existing architecture-specific patterns (ARM64 example at line 449-452)
+  - Integration: Modify `GetMemoryOverhead()` to account for hypervisor type when needed
+
+**Acceptance Criteria**:
+- [ ] L1VH memory overhead characteristics thoroughly researched and documented
+- [ ] Actual L1VH memory usage validated against calculated overhead
+- [ ] `GetMemoryOverhead()` function accuracy verified for mshv hypervisor
+- [ ] Resource allocation accuracy maintained for L1VH VMs
+- [ ] Any necessary overhead adaptations implemented and tested
+
+#### Task 2.5: Process Memory Management Validation
+**Prerequisites**: Memory overhead research complete  
+**Definition of Done**: QEMU/kvm process memory management validated for L1VH compatibility
+
+**Background**: Found QEMU/kvm-specific memory limit logic that may need mshv adaptation.
+
+**Deliverables**:
+- [ ] **QEMU/kvm Memory Limits Analysis**
+  - Location: `pkg/virt-handler/isolation/detector.go:141-165`
+  - Function: `AdjustQemuProcessMemoryLimits()` compatibility with mshv
+  - Research: Determine if mshv uses similar memory limit mechanisms as virtqemud
+
+- [ ] **L1VH Memory Management Testing**
+  - Test: Validate memory limit enforcement works correctly with mshv backend
+  - Integration: Ensure `AdjustQemuProcessMemoryLimits()` works or implement mshv equivalent
+  - Validation: Memory limits properly enforced for L1VH VMs
+
+**Acceptance Criteria**:
+- [ ] Memory limit mechanisms validated for mshv hypervisor
+- [ ] Process memory management works correctly with L1VH
+- [ ] Any necessary adaptations implemented for mshv compatibility
+
+### Task Group 3: Observability and Monitoring (CONSTITUTIONAL REQUIREMENT)
+
+**Priority**: MEDIUM  
+**Prerequisites**: Core implementation complete  
+**Estimation**: 0.5 days  
+**Constitutional Requirement**: Article XII - Observability Excellence
+
+**Analysis**: **MOST MONITORING ALREADY ABSTRACTED** - libvirt domain stats API provides hypervisor-agnostic metrics for CPU, memory, storage, network. Only hypervisor selection and fallback metrics needed.
+
+#### Task 3.1: Minimal L1VH-Specific Metrics
+**Prerequisites**: Core implementation complete  
+**Definition of Done**: Essential L1VH operational metrics implemented
+
+**Deliverables**:
+- [ ] **Hypervisor Selection Metrics** (ONLY metrics needed beyond existing monitoring)
+  - File: `pkg/virt-launcher/virtwrap/converter/converter.go`
+  - Metrics: 
+    ```go
+    kubevirt_vmi_hypervisor_type_total{hypervisor="mshv"}
+    kubevirt_vmi_hypervisor_type_total{hypervisor="kvm"} 
+    kubevirt_l1vh_fallback_total{reason="device_unavailable|feature_disabled"}
+    ```
+  - Integration: Add to existing hypervisor detection logic
+
+**Acceptance Criteria**:
+- [ ] Track hypervisor selection decisions for operational visibility
+- [ ] Track fallback events for troubleshooting
+
+#### Task 3.2: Enhanced Logging for L1VH Operations  
+**Prerequisites**: Core implementation complete  
+**Definition of Done**: Structured logging for L1VH hypervisor selection decisions
+
+**Deliverables**:
+- [ ] **L1VH Selection Decision Logging**
+  - File: `pkg/virt-launcher/virtwrap/converter/converter.go`  
+  - Enhancement: Log hypervisor selection decisions with structured fields
+  - Events: L1VH device detection, hypervisor type selection, fallback triggers
+
+**Acceptance Criteria**:
+- [ ] **Leverage existing logging patterns** - Follow established converter logging practices
+- [ ] JSON-structured logging with correlation IDs (existing pattern)
+- [ ] Clear remediation guidance for L1VH fallback scenarios  
+- [ ] **No duplicate logging** of existing domain creation events
+
+### Task Group 4: Release Preparation
+
+**Priority**: MEDIUM  
+**Prerequisites**: Implementation and testing complete  
+**Estimation**: 1 day  
+
+#### Task 4.1: Release Documentation
+**Prerequisites**: All implementation tasks complete  
+**Definition of Done**: Complete documentation for alpha release
+
+**Deliverables**:
+- [ ] **User Documentation**
   - File: `docs/hyperv-l1vh.md`
   - Content: User guide for L1VH clusters, transparent operation explanation
   
@@ -239,29 +444,8 @@ func (c *ConverterContext) hasL1VHSupport() bool {
 
 **Acceptance Criteria**:
 - [ ] Documentation clearly explains transparent operation
-- [ ] Setup requirements clearly documented
-- [ ] Troubleshooting guidance provided
+- [ ] Setup requirements clearly documented with validation steps
 - [ ] Examples show standard VM specifications (no L1VH-specific config)
-
-#### Task 3.2: Observability Integration
-**Owner**: [Assignee]  
-**Status**: Not Started  
-**Prerequisites**: Core implementation complete  
-**Definition of Done**: L1VH operation is observable
-
-**Deliverables**:
-- [ ] **Logging Integration**
-  - Location: virt-launcher converter
-  - Content: Log hypervisor selection decisions and L1VH availability
-
-- [ ] **Optional Status Field**
-  - Location: VM status conditions
-  - Content: Optional field indicating L1VH optimization (for debugging)
-
-**Acceptance Criteria**:
-- [ ] Clear log messages for hypervisor selection
-- [ ] Observable L1VH operation for troubleshooting
-- [ ] Status information helps with cluster validation
 
 ---
 
@@ -269,29 +453,24 @@ func (c *ConverterContext) hasL1VHSupport() bool {
 
 ```mermaid
 graph TD
-    A[Constitutional Gates ✅] --> B[Contract Tests]
-    B --> C[Integration Tests]
-    C --> D[E2E Tests]
-    D --> E[Feature Gate Implementation]
-    E --> F[Hypervisor Detection]
-    F --> G[Domain XML Integration]
-    G --> H[Documentation]
-    G --> I[Observability]
-    H --> J[Alpha Release Ready]
-    I --> J
+    A[Constitutional Gates ✅] --> B[1.1: Contract Tests]
+    A --> C[0.1: Environment Setup - PARALLEL]
+    A --> D[0.2: Build System Integration - PARALLEL]
+    B --> E[1.2: Integration Tests]
+    E --> F[1.3: E2E Tests]
+    F --> G[2.1: Feature Gate Implementation]
+    G --> H[2.2: Hypervisor Detection]
+    H --> I[2.3: Domain XML Integration]
+    I --> I2[2.4: Memory Overhead Research - CRITICAL]
+    I2 --> I3[2.5: Process Memory Management]
+    I3 --> J[3.1: L1VH Metrics]
+    J --> K[3.2: Enhanced Logging]
+    K --> L[4.1: Release Documentation]
+    L --> M[Alpha Release Ready]
+    
+    C --> E
+    D --> B
 ```
-
-## Task Assignments
-
-**To be filled in by team:**
-- **Contract Tests**: [Team Member 1]
-- **Integration Tests**: [Team Member 2]  
-- **E2E Tests**: [Team Member 3]
-- **Feature Gate**: [Team Member 1]
-- **Hypervisor Detection**: [Team Member 2]
-- **Domain XML**: [Team Member 2]
-- **Documentation**: [Team Member 3]
-- **Observability**: [Team Member 1]
 
 ## Definition of Done - Alpha Release
 
@@ -304,8 +483,12 @@ graph TD
 ### Quality Requirements ✅
 - [ ] **Test Coverage**: All tests written first and passing (TDD Green phase)
 - [ ] **Constitutional Compliance**: All constitutional gates verified
+- [ ] **Security Validation**: Security controls implemented and tested
 - [ ] **Performance**: L1VH performance benefits measured and documented
-- [ ] **Documentation**: Complete user and setup documentation
+- [ ] **Memory Accuracy**: L1VH memory overhead calculations validated and accurate (NEW)
+- [ ] **Resource Allocation**: Cluster resource planning validated for L1VH workloads (NEW)
+- [ ] **Observability**: Comprehensive metrics, logging, and alerting implemented
+- [ ] **Documentation**: Complete user, security, and operational documentation
 
 ### Non-Functional Requirements ✅
 - [ ] **Zero Breaking Changes**: Existing functionality unaffected
@@ -315,31 +498,53 @@ graph TD
 
 ## Risk Mitigation Tasks
 
-### Constitutional Compliance Risk
-- **Mitigation Task**: Regular constitutional review at each milestone
-- **Owner**: [Technical Lead]
-- **Frequency**: Before each task group completion
+### Environment Setup Risk
+- **Risk**: L1VH test environment delays integration testing
+- **Mitigation**: Start with mocked environment, validate with real environment when ready
+- **Fallback**: Alternative L1VH environment provision plan
 
-### L1VH Environment Availability
-- **Mitigation Task**: Azure L1VH test cluster setup and validation
-- **Owner**: [Infrastructure Team]
-- **Prerequisites**: Before integration testing begins
+### Dependency Validation Risk
+- **Risk**: Unknown libvirt/QEMU version compatibility issues
+- **Mitigation**: Task 0.2 validates dependencies in parallel with development
+- **Fallback**: Documented minimum version requirements
 
-### Performance Validation
-- **Mitigation Task**: Baseline performance benchmarking framework
-- **Owner**: [Performance Team]
-- **Prerequisites**: Before E2E testing begins
+### Memory Overhead Accuracy Risk (NEW - HIGH PRIORITY)
+- **Risk**: L1VH memory overhead differs from KVM calculations, causing resource allocation issues
+- **Impact**: Could cause VM scheduling failures, memory pressure, or cluster capacity miscalculation
+- **Mitigation**: Task 2.4 validates overhead accuracy early in implementation
+- **Fallback**: Conservative overhead estimation until accurate L1VH measurements available
+- **Timeline**: Must complete before scaling testing to avoid resource allocation problems
+
+### Process Memory Management Risk (NEW - MEDIUM PRIORITY)
+- **Risk**: QEMU memory limit logic incompatible with mshv, causing VM stability issues
+- **Impact**: Could cause memory-related VM crashes or poor performance
+- **Mitigation**: Task 2.5 validates memory management compatibility
+- **Fallback**: Implement mshv-specific memory management if needed
+
+### Timeline Risk
+- **Risk**: Sequential task dependencies could cause deadline slip
+- **Mitigation**: Maximum parallel development with environment setup running alongside coding
+- **Updated**: Memory research (2.4) can run in parallel with basic implementation
+- **Monitoring**: Daily progress tracking via GitHub Issues
+
+### Security Integration Risk
+- **Mitigation**: Security considerations built into all tasks, not separate review
+- **Frequency**: Continuous validation throughout development
+
+### Performance Validation Risk
+- **Mitigation**: Performance testing integrated into E2E tests
+- **Timeline**: No separate performance phase, validated continuously
+- **Updated**: Memory overhead validation ensures performance measurements are accurate
 
 ---
 
 ## Next Steps
 
-1. **Assign Tasks**: Fill in task assignments with team members
-2. **Constitutional Review**: Validate all constitutional gates are met
-3. **Test Environment**: Set up Azure L1VH test cluster
-4. **Begin TDD**: Start with contract tests (Task 1.1)
-
-**⚠️ CRITICAL**: No implementation code may be written until ALL tests are written, reviewed, and approved per KubeVirt Constitution Article IV.
+1. **Create GitHub Issues**: Convert each task into a GitHub Issue for tracking and assignment
+2. **Environment Setup**: Start Task 0.1 (L1VH environment) in parallel with development  
+3. **Begin TDD**: Start Task 1.1 (Contract Tests) immediately with mocked L1VH environment
+4. **Parallel Development**: Execute Tasks 0.2 (Build System) and 1.1 (Contract Tests) simultaneously
+5. **Constitutional Review**: Validate all constitutional gates remain met throughout development
 
 ---
 
