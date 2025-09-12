@@ -85,7 +85,7 @@ jobs:
           }
           
           # Get libvirt version from build info if available
-          LIBVIRT_VERSION=$(curl -s "http://localhost:8080/x86_64/build-info.json" | jq -r '.libvirt_version 2>/dev/null )
+          LIBVIRT_VERSION=$(curl -s "http://localhost:8080/build-info.json" | jq -r '.libvirt_version' 2>/dev/null)
           echo "Using libvirt version: $LIBVIRT_VERSION"
           
           # Update KubeVirt RPM dependencies with custom libvirt
