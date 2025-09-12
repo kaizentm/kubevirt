@@ -51,7 +51,7 @@ jobs:
           # Initialize and update submodules
           echo "Initializing git submodules..."
           git submodule init
-          git submodule update --depth 1
+          git submodule update
           echo "Submodules updated successfully"
           
           # Get commit info for metadata
@@ -66,15 +66,18 @@ jobs:
           mkdir -p rpms
           
           # Start build environment
-          docker run -td -w /libvirt-src \
-            --security-opt label=disable \
+          docker run -td \
             --name libvirt-build \
             -v $(pwd)/libvirt-src:/libvirt-src \
             registry.gitlab.com/libvirt/libvirt/ci-centos-stream-9
           
           # Build libvirt RPMs
-          docker exec libvirt-build bash -c "
+          docker exec -w /libvirt-src libvirt-build bash -c "
             set -e
+            echo 'Adding /libvirt-src dirs to git safe directories...'
+            git config --global --add safe.directory /libvirt-src
+            git config --global --add safe.directory /libvirt-src/subprojects/keycodemapdb
+
             echo 'Building libvirt from source...'
             meson build
             ninja -C build dist
