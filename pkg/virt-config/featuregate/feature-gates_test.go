@@ -85,4 +85,13 @@ var _ = Describe("Feature Gate", func() {
 		Expect(featuregate.FeatureGateInfo(fg1.Name)).To(Equal(&fg1clone))
 		Expect(featuregate.FeatureGateInfo(fg2.Name)).To(Equal(&fg2))
 	})
+
+	It("HyperVL1VH gate is registered as Alpha and has spec detector", func() {
+		fg := featuregate.FeatureGateInfo(featuregate.HyperVL1VH)
+		Expect(fg).ToNot(BeNil())
+		Expect(fg.State).To(Equal(featuregate.Alpha))
+		Expect(fg.VmiSpecUsed).ToNot(BeNil())
+		// Message should be empty for Alpha features unless explicitly set.
+		Expect(fg.Message).To(Equal(""))
+	})
 })
