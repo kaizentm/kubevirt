@@ -37,16 +37,21 @@ jobs:
           # Pull the pre-built RPMs container
           docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           
-          docker stop rpms-http-server || true
-          
-          # Start HTTP server with the RPMs
-          docker run -dit \
-            --name rpms-http-server \
-            -p 8080:80 \
-            ${{ env.CUSTOM_LIBVIRT_IMAGE }} 
-          
-          # Wait for HTTP server to start
-          sleep 5
+          // if rpms-http-server container not running, start it
+          if [ "$(docker ps -q -f name=rpms-http-server)" ]; then
+            echo "RPMs HTTP server is already running."
+          else
+            echo "Starting RPMs HTTP server..." 
+
+            # Start HTTP server with the RPMs
+            docker run --rm -dit \
+              --name rpms-http-server \
+              -p 8080:80 \
+              ${{ env.CUSTOM_LIBVIRT_IMAGE }} 
+            
+            # Wait for HTTP server to start
+            sleep 5
+          fi
           
           # Get HTTP server IP
           SERVER_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rpms-http-server)
