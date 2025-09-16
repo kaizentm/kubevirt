@@ -37,11 +37,13 @@ jobs:
           # Pull the pre-built RPMs container
           docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           
+          docker stop rpms-http-server || true
+          
           # Start HTTP server with the RPMs
           docker run -dit \
             --name rpms-http-server \
             -p 8080:80 \
-            ${{ env.CUSTOM_LIBVIRT_IMAGE }}
+            ${{ env.CUSTOM_LIBVIRT_IMAGE }} 
           
           # Wait for HTTP server to start
           sleep 5
@@ -72,8 +74,7 @@ jobs:
           # Get libvirt version from build info if available
           LIBVIRT_VERSION=$(curl -s "http://localhost:8080/build-info.json" | jq -r '.libvirt_version' 2>/dev/null)
           echo "Using libvirt version: $LIBVIRT_VERSION"
-          
-          docker stop rpms-http-server || true
+                    
           # Update KubeVirt RPM dependencies with custom libvirt
           make CUSTOM_REPO=custom-repo.yaml LIBVIRT_VERSION="$LIBVIRT_VERSION" SINGLE_ARCH="x86_64" rpm-deps
           
