@@ -3,7 +3,7 @@ name: Build Custom libvirt RPMs
 on:
   workflow_dispatch:
   push:
-    branches: ["ise", "eugene/*"]
+    branches: ["ise"]
     paths:
       - '.github/workflows/build-libvirt-rpms.yaml'
 
@@ -90,7 +90,7 @@ jobs:
             ninja -C build dist
             
             echo 'Installing build dependencies...'
-            dnf update -y                      
+            dnf update -y
             dnf install -y createrepo hostname rpmdevtools
             dnf builddep -y /libvirt-src/build/libvirt.spec
             
