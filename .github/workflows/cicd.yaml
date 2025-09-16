@@ -2,7 +2,7 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: ["ise","eugene/*"]
+    branches: ["ise"]
   workflow_dispatch:
   
 env:
@@ -37,14 +37,20 @@ jobs:
           # Pull the pre-built RPMs container
           docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           
-          # Start HTTP server with the RPMs
-          docker run -dit \
-            --name rpms-http-server \
-            -p 8080:80 \
-            ${{ env.CUSTOM_LIBVIRT_IMAGE }}
-          
-          # Wait for HTTP server to start
-          sleep 5
+          if [ "$(docker ps -q -f name=rpms-http-server)" ]; then
+            echo "RPMs HTTP server is already running."
+          else
+            echo "Starting RPMs HTTP server..." 
+
+            # Start HTTP server with the RPMs
+            docker run --rm -dit \
+              --name rpms-http-server \
+              -p 8080:80 \
+              ${{ env.CUSTOM_LIBVIRT_IMAGE }} 
+            
+            # Wait for HTTP server to start
+            sleep 5
+          fi
           
           # Get HTTP server IP
           SERVER_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rpms-http-server)
@@ -72,7 +78,7 @@ jobs:
           # Get libvirt version from build info if available
           LIBVIRT_VERSION=$(curl -s "http://localhost:8080/build-info.json" | jq -r '.libvirt_version' 2>/dev/null)
           echo "Using libvirt version: $LIBVIRT_VERSION"
-          
+                    
           # Update KubeVirt RPM dependencies with custom libvirt
           make CUSTOM_REPO=custom-repo.yaml LIBVIRT_VERSION="$LIBVIRT_VERSION" SINGLE_ARCH="x86_64" rpm-deps
           
