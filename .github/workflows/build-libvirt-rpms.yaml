@@ -3,7 +3,7 @@ name: Build Custom libvirt RPMs
 on:
   workflow_dispatch:
   push:
-    branches: ["ise"]
+    branches: ["ise", "eugene/*"]
     paths:
       - '.github/workflows/build-libvirt-rpms.yaml'
 
@@ -86,11 +86,11 @@ jobs:
             git config --global --add safe.directory /libvirt-src/subprojects/keycodemapdb
 
             echo 'Building libvirt from source...'
+            dnf update -y
             meson build
             ninja -C build dist
             
-            echo 'Installing build dependencies...'
-            dnf update -y
+            echo 'Installing build dependencies...'          
             dnf install -y createrepo hostname rpmdevtools
             dnf builddep -y /libvirt-src/build/libvirt.spec
             
