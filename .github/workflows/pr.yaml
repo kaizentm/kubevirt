@@ -1,11 +1,6 @@
 name: PR Quality Check
 
 on:
-  # push:
-  #   branches: ["ise","eugene/*"]
-  pull_request:
-    branches: ["ise"]
-  workflow_dispatch:
   workflow_call:
 
 env:
