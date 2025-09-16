@@ -133,7 +133,7 @@ const (
 	// Alpha: v1.?.0
 	// This feature is disabled by default. When enabled, it allows setting specific Hyper-V
 	// fields on the VMI spec which are otherwise restricted.
-	HyperVL1VH = "HyperVL1VH"
+	HyperVLayered = "HyperVLayered"
 )
 
 func init() {
@@ -167,5 +167,5 @@ func init() {
 	RegisterFeatureGate(FeatureGate{Name: VideoConfig, State: Alpha})
 	RegisterFeatureGate(FeatureGate{Name: PanicDevicesGate, State: Alpha})
 	RegisterFeatureGate(FeatureGate{Name: PasstIPStackMigration, State: Alpha})
-	RegisterFeatureGate(FeatureGate{Name: HyperVL1VH, State: Alpha})
+	RegisterFeatureGate(FeatureGate{Name: HyperVLayered, State: Alpha})
 }
