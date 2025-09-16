@@ -375,7 +375,7 @@ EOF
     az vm create \
         --resource-group "$RESOURCE_GROUP" \
         --name "$VM_NAME" \
-        --image "/subscriptions/d04efe97-9374-4822-ac22-f38facb77dd3/resourceGroups/l1vh/providers/Microsoft.Compute/galleries/images/images/dom0qemu" \
+        --image "$VM_IMAGE" \
         --size "$VM_SIZE" \
         --admin-username "$ADMIN_USERNAME" \
         --ssh-key-values "$SSH_PUBLIC_KEY" \
