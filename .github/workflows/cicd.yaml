@@ -2,9 +2,9 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: ["ise"]
+    branches: ["ise","eugene/*"]
   workflow_dispatch:
-
+  
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
