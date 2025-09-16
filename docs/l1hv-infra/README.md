@@ -34,6 +34,7 @@ Each environment is a GitHub Environment holding secrets/vars for deploy & test.
 | New L1HV Tests | ✓ | ✓ |  | ✓  |
 | Existing Stable e2e |  | ✓ | ✓ | ✓ |
 
+Note! E2E tests on test-mshv environment are turned off now as the '/dev/mshv' support is not implemented yet.
 
 ## 4. Azure Resources
 
@@ -53,4 +54,3 @@ Each environment is a GitHub Environment holding secrets/vars for deploy & test.
   - [kubevirt-gh-actions-runner-2](https://ms.portal.azure.com/#@fdpo.onmicrosoft.com/resource/subscriptions/7be1b9e7-57ca-47ff-b5ab-82e7ccb8c611/resourceGroups/kubevirt-rg/providers/Microsoft.Compute/virtualMachines/kubevirt-gh-actions-runner-2/overview)
   - [kubevirt-gh-actions-runner-3](https://ms.portal.azure.com/#@fdpo.onmicrosoft.com/resource/subscriptions/7be1b9e7-57ca-47ff-b5ab-82e7ccb8c611/resourceGroups/kubevirt-rg/providers/Microsoft.Compute/virtualMachines/kubevirt-gh-actions-runner-3/overview)    
 
-  
