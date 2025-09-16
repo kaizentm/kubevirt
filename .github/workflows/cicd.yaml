@@ -37,7 +37,6 @@ jobs:
           # Pull the pre-built RPMs container
           docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           
-          // if rpms-http-server container not running, start it
           if [ "$(docker ps -q -f name=rpms-http-server)" ]; then
             echo "RPMs HTTP server is already running."
           else
