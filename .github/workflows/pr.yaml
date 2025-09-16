@@ -2,6 +2,9 @@ name: PR Quality Check
 
 on:
   workflow_call:
+  pull_request:
+    branches:
+      - ise
 
 env:
   JUNIT_REPORT_FILE: _out/artifacts/junit/junit.unittests.xml
