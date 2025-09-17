@@ -22,6 +22,7 @@ package flags
 import (
 	"flag"
 	"os"
+	"strings"
 
 	"kubevirt.io/client-go/kubecli"
 )
@@ -62,6 +63,8 @@ var DNSServiceNamespace = ""
 var MigrationNetworkNIC = "eth1"
 var MigrationNetworkName string
 
+var FeatureGates = ""
+
 func init() {
 	kubecli.Init()
 	flag.StringVar(&KubeVirtUtilityVersionTag, "utility-container-tag", "", "Set the image tag or digest to use")
@@ -97,6 +100,7 @@ func init() {
 	flag.StringVar(&DNSServiceNamespace, "dns-service-namespace", "kube-system", "cluster DNS service namespace")
 	flag.StringVar(&MigrationNetworkNIC, "migration-network-nic", "eth1", "NIC to use on cluster nodes to access the dedicated migration network")
 	flag.StringVar(&MigrationNetworkName, "migration-network-name", "", "name of the NetworkAttachmentDefinition CR to be used for dedicated migration network tests")
+	flag.StringVar(&FeatureGates, "feature-gates", "", "Comma-separated list of additional feature gates to enable (e.g., 'VSOCKGate,CPUNodeDiscovery')")
 }
 
 func NormalizeFlags() {
@@ -117,4 +121,23 @@ func NormalizeFlags() {
 		PreviousUtilityTag = PreviousReleaseTag
 	}
 
+}
+
+// IsFeatureGateEnabled checks if a specific feature gate has been passed via the -feature-gates flag
+func IsFeatureGateEnabled(featureGate string) bool {
+	if FeatureGates == "" {
+		return false
+	}
+
+	// Split by comma and check each feature gate
+	gates := strings.Split(FeatureGates, ",")
+	for _, gate := range gates {
+		// Trim whitespace and compare (case-insensitive)
+		gate = strings.TrimSpace(gate)
+		if strings.EqualFold(gate, featureGate) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -43,6 +44,7 @@ import (
 	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/kubevirt/pkg/libvmi"
+	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/tests/flags"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
@@ -106,7 +108,12 @@ func SynchronizedBeforeTestSetup() []byte {
 		createFakeKWOKNodes()
 	}
 
-	EnsureKVMPresent()
+	if flags.IsFeatureGateEnabled(featuregate.HyperVLayered) {
+		EnsureHypervisorDevice(services.HyperVDevice)
+	} else {
+		EnsureHypervisorDevice(services.KvmDevice)
+	}
+
 	AdjustKubeVirtResource()
 	EnsureKubevirtReady()
 
@@ -206,13 +213,15 @@ func shouldAllowEmulation(virtClient kubecli.KubevirtClient) bool {
 	return allowEmulation
 }
 
-func EnsureKVMPresent() {
+func EnsureHypervisorDevice(device k8sv1.ResourceName) {
 	virtClient := kubevirt.Client()
 
 	if !shouldAllowEmulation(virtClient) {
 		listOptions := metav1.ListOptions{LabelSelector: v1.AppLabel + "=virt-handler"}
 		virtHandlerPods, err := virtClient.CoreV1().Pods(flags.KubeVirtInstallNamespace).List(context.Background(), listOptions)
 		ExpectWithOffset(1, err).ToNot(HaveOccurred())
+
+		deviceName := path.Base(string(device))
 
 		EventuallyWithOffset(1, func() bool {
 			ready := true
@@ -221,14 +230,14 @@ func EnsureKVMPresent() {
 				virtHandlerNode, err := virtClient.CoreV1().Nodes().Get(context.Background(), pod.Spec.NodeName, metav1.GetOptions{})
 				ExpectWithOffset(1, err).ToNot(HaveOccurred())
 
-				kvmAllocatable, ok1 := virtHandlerNode.Status.Allocatable[services.KvmDevice]
+				allocatable, ok1 := virtHandlerNode.Status.Allocatable[device]
 				vhostNetAllocatable, ok2 := virtHandlerNode.Status.Allocatable[services.VhostNetDevice]
 				ready = ready && ok1 && ok2
-				ready = ready && (kvmAllocatable.Value() > 0) && (vhostNetAllocatable.Value() > 0)
+				ready = ready && (allocatable.Value() > 0) && (vhostNetAllocatable.Value() > 0)
 			}
 			return ready
 		}, 120*time.Second, 1*time.Second).Should(BeTrue(),
-			"Both KVM devices and vhost-net devices are required for testing, but are not present on cluster nodes")
+			fmt.Sprintf("Both %s and vhost-net devices are required for testing, but are not present on cluster nodes", deviceName))
 	}
 }
 
@@ -256,6 +265,35 @@ func createFakeKWOKNodes() {
 }
 
 func newFakeKWOKNode(nodeName string) *k8sv1.Node {
+	// Determine which hypervisor device to use based on feature gate
+	var hypervisorDevice k8sv1.ResourceName
+	hypervisorDevice = services.KvmDevice
+	if flags.IsFeatureGateEnabled(featuregate.HyperVLayered) {
+		hypervisorDevice = services.HyperVDevice
+	}
+
+	allocatable := k8sv1.ResourceList{
+		k8sv1.ResourceCPU:               resource.MustParse("32"),
+		k8sv1.ResourceMemory:            resource.MustParse("256Gi"),
+		k8sv1.ResourceEphemeralStorage:  resource.MustParse("100Gi"),
+		k8sv1.ResourcePods:              resource.MustParse("110"),
+		"devices.kubevirt.io/tun":       resource.MustParse("1k"),
+		"devices.kubevirt.io/vhost-net": resource.MustParse("1k"),
+	}
+	// Add the appropriate hypervisor device
+	allocatable[hypervisorDevice] = resource.MustParse("1k")
+
+	capacity := k8sv1.ResourceList{
+		k8sv1.ResourceCPU:               resource.MustParse("32"),
+		k8sv1.ResourceMemory:            resource.MustParse("256Gi"),
+		k8sv1.ResourceEphemeralStorage:  resource.MustParse("100Gi"),
+		k8sv1.ResourcePods:              resource.MustParse("110"),
+		"devices.kubevirt.io/tun":       resource.MustParse("1k"),
+		"devices.kubevirt.io/vhost-net": resource.MustParse("1k"),
+	}
+	// Add the appropriate hypervisor device
+	capacity[hypervisorDevice] = resource.MustParse("1k")
+
 	return &k8sv1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
@@ -289,24 +327,8 @@ func newFakeKWOKNode(nodeName string) *k8sv1.Node {
 			},
 		},
 		Status: k8sv1.NodeStatus{
-			Allocatable: k8sv1.ResourceList{
-				k8sv1.ResourceCPU:               resource.MustParse("32"),
-				k8sv1.ResourceMemory:            resource.MustParse("256Gi"),
-				k8sv1.ResourceEphemeralStorage:  resource.MustParse("100Gi"),
-				k8sv1.ResourcePods:              resource.MustParse("110"),
-				"devices.kubevirt.io/kvm":       resource.MustParse("1k"),
-				"devices.kubevirt.io/tun":       resource.MustParse("1k"),
-				"devices.kubevirt.io/vhost-net": resource.MustParse("1k"),
-			},
-			Capacity: k8sv1.ResourceList{
-				k8sv1.ResourceCPU:               resource.MustParse("32"),
-				k8sv1.ResourceMemory:            resource.MustParse("256Gi"),
-				k8sv1.ResourceEphemeralStorage:  resource.MustParse("100Gi"),
-				k8sv1.ResourcePods:              resource.MustParse("110"),
-				"devices.kubevirt.io/kvm":       resource.MustParse("1k"),
-				"devices.kubevirt.io/tun":       resource.MustParse("1k"),
-				"devices.kubevirt.io/vhost-net": resource.MustParse("1k"),
-			},
+			Allocatable: allocatable,
+			Capacity:    capacity,
 		},
 	}
 }
