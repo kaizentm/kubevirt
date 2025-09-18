@@ -81,6 +81,7 @@ jobs:
           echo "Detected libvirt version: ${LIBVIRT_VERSION:-<none>}"
           echo "Detected qemu version:    ${QEMU_VERSION:-<none>}"
 
+
           # Build combined repo descriptor so rpm-deps sees both
           cat > custom-repo.yaml <<EOF
           repositories:
