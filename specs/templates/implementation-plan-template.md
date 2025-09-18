@@ -1,5 +1,7 @@
 # Implementation Plan Template
 
+> **📝 Note**: For simpler features, consider using the [simplified template](implementation-plan-template-simplified.md) which focuses on essential elements.
+
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
