@@ -98,12 +98,7 @@ jobs:
 
           echo "Combined custom-repo.yaml:"; cat custom-repo.yaml
 
-          # Invoke rpm-deps once with both overrides (only pass versions if detected)
-          RPM_DEPS_CMD=(make CUSTOM_REPO=custom-repo.yaml SINGLE_ARCH="x86_64" rpm-deps)
-          [ -n "${LIBVIRT_VERSION:-}" ] && RPM_DEPS_CMD=(LIBVIRT_VERSION="$LIBVIRT_VERSION" "${RPM_DEPS_CMD[@]}")
-          [ -n "${QEMU_VERSION:-}" ] && RPM_DEPS_CMD=(QEMU_VERSION="$QEMU_VERSION" "${RPM_DEPS_CMD[@]}")
-          echo "Running: ${RPM_DEPS_CMD[*]}"
-          "${RPM_DEPS_CMD[@]}"
+          make CUSTOM_REPO=custom-repo.yaml LIBVIRT_VERSION="$LIBVIRT_VERSION" QEMU_VERSION="$QEMU_VERSION" SINGLE_ARCH="x86_64" rpm-deps
 
           echo "rpm-deps completed with custom libvirt & qemu"
           
@@ -116,12 +111,12 @@ jobs:
         run: |
           make bazel-push-images
 
-      - name: Cleanup Custom RPM Servers
-        if: always()
-        run: |
-          docker rm -f libvirt-rpms-http-server 2>/dev/null || true
-          docker rm -f qemu-rpms-http-server 2>/dev/null || true
-          echo "Custom RPM HTTP servers cleaned up"
+      # - name: Cleanup Custom RPM Servers
+      #   if: always()
+      #   run: |
+      #     docker rm -f libvirt-rpms-http-server 2>/dev/null || true
+      #     docker rm -f qemu-rpms-http-server 2>/dev/null || true
+      #     echo "Custom RPM HTTP servers cleaned up"
 
 
   
