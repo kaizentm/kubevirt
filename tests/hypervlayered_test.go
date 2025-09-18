@@ -61,11 +61,10 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 			vmi = libwait.WaitForSuccessfulVMIStart(vmi)
 
 			// Get the virt-launcher pod
-			pod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
+			// Check the compute container resources
+			computeContainer := libpod.LookupComputeContainerFromVmi(vmi)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Check the compute container resources
-			computeContainer := libpod.LookupComputeContainer(pod)
 			Expect(computeContainer.Resources.Limits).To(HaveKey(k8sv1.ResourceName(services.HyperVDevice)),
 				"virt-launcher pod should request 'devices.kubevirt.io/mshv' when HyperVLayered feature gate is enabled")
 			Expect(computeContainer.Resources.Limits).ToNot(HaveKey(k8sv1.ResourceName(services.KvmDevice)),
