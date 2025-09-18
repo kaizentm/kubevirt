@@ -32,14 +32,14 @@ import (
 
 	v1 "kubevirt.io/api/core/v1"
 
-	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 	"kubevirt.io/kubevirt/tests/decorators"
-	"kubevirt.io/kubevirt/tests/flags"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
+	"kubevirt.io/kubevirt/tests/libpod"
 	"kubevirt.io/kubevirt/tests/libvmifact"
+	"kubevirt.io/kubevirt/tests/libwait"
 	"kubevirt.io/kubevirt/tests/testsuite"
 )
 
@@ -48,23 +48,29 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 	var vmi *v1.VirtualMachineInstance
 
 	BeforeEach(func() {
-		if !flags.IsFeatureGateEnabled(featuregate.HyperVLayered) {
-			Skip("Skipping tests. HyperVLayered featuregate was not explicitly specified for tests.")
-		}
 		virtClient = kubevirt.Client()
 		vmi = libvmifact.NewFedora()
 	})
 
 	Context("VMI created with HyperVLayered", func() {
-		It("should request 'devices.kubevirt.io/mshv' instead of 'devices.kubevirt.io/kvm' in VMI spec", func() {
+		It("should request 'devices.kubevirt.io/mshv' instead of 'devices.kubevirt.io/kvm' in virt-launcher pod spec", func() {
 			vmi, err := virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(vmi)).Create(context.Background(), vmi, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(vmi.Spec.Domain.Resources.Limits).To(HaveKey(k8sv1.ResourceName(services.HyperVDevice)),
-				"VMI should request 'devices.kubevirt.io/mshv' when HyperVLayered feature gate is enabled")
-			Expect(vmi.Spec.Domain.Resources.Limits).ToNot(HaveKey(k8sv1.ResourceName(services.KvmDevice)),
-				"VMI should NOT request 'devices.kubevirt.io/kvm' when HyperVLayered feature gate is enabled")
-			Expect(vmi.Spec.Domain.Resources.Limits[k8sv1.ResourceName(services.HyperVDevice)]).To(Equal(resource.MustParse("1")))
 
+			// Wait for VMI to be running
+			vmi = libwait.WaitForSuccessfulVMIStart(vmi)
+
+			// Get the virt-launcher pod
+			pod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Check the compute container resources
+			computeContainer := libpod.LookupComputeContainer(pod)
+			Expect(computeContainer.Resources.Limits).To(HaveKey(k8sv1.ResourceName(services.HyperVDevice)),
+				"virt-launcher pod should request 'devices.kubevirt.io/mshv' when HyperVLayered feature gate is enabled")
+			Expect(computeContainer.Resources.Limits).ToNot(HaveKey(k8sv1.ResourceName(services.KvmDevice)),
+				"virt-launcher pod should NOT request 'devices.kubevirt.io/kvm' when HyperVLayered feature gate is enabled")
+			Expect(computeContainer.Resources.Limits[k8sv1.ResourceName(services.HyperVDevice)]).To(Equal(resource.MustParse("1")))
 		})
 
 		It("should generate libvirt domain xml with hyperv domain type", func() {

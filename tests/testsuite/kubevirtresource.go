@@ -59,75 +59,71 @@ func AdjustKubeVirtResource() {
 
 	KubeVirtDefaultConfig = originalKV.Spec.Configuration
 
+	if !flags.ApplyDefaulte2eConfiguration {
+		return
+	}
+
+	// Rotate very often during the tests to ensure that things are working
+	kv.Spec.CertificateRotationStrategy = v1.KubeVirtCertificateRotateStrategy{SelfSigned: &v1.KubeVirtSelfSignConfiguration{
+		CA: &v1.CertConfig{
+			Duration:    &metav1.Duration{Duration: 20 * time.Minute},
+			RenewBefore: &metav1.Duration{Duration: 12 * time.Minute},
+		},
+		Server: &v1.CertConfig{
+			Duration:    &metav1.Duration{Duration: 14 * time.Minute},
+			RenewBefore: &metav1.Duration{Duration: 10 * time.Minute},
+		},
+	}}
+
 	// match default kubevirt-config testing resource
 	if kv.Spec.Configuration.DeveloperConfiguration == nil {
 		kv.Spec.Configuration.DeveloperConfiguration = &v1.DeveloperConfiguration{}
+	}
+
+	lv, err := parseVerbosityEnv()
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	if lv != nil {
+		kv.Spec.Configuration.DeveloperConfiguration.LogVerbosity = lv
 	}
 
 	if kv.Spec.Configuration.DeveloperConfiguration.FeatureGates == nil {
 		kv.Spec.Configuration.DeveloperConfiguration.FeatureGates = []string{}
 	}
 
-	// Apply feature gates from command line flag
-	featureGates := parseFeatureGates()
-	if len(featureGates) > 0 {
-		kv.Spec.Configuration.DeveloperConfiguration.FeatureGates = append(kv.Spec.Configuration.DeveloperConfiguration.FeatureGates, featureGates...)
+	kv.Spec.Configuration.SeccompConfiguration = &v1.SeccompConfiguration{
+		VirtualMachineInstanceProfile: &v1.VirtualMachineInstanceProfile{
+			CustomProfile: &v1.CustomProfile{
+				LocalhostProfile: pointer.P("kubevirt/kubevirt.json"),
+			},
+		},
 	}
-
-	if flags.ApplyDefaulte2eConfiguration {
-		// Rotate very often during the tests to ensure that things are working
-		kv.Spec.CertificateRotationStrategy = v1.KubeVirtCertificateRotateStrategy{SelfSigned: &v1.KubeVirtSelfSignConfiguration{
-			CA: &v1.CertConfig{
-				Duration:    &metav1.Duration{Duration: 20 * time.Minute},
-				RenewBefore: &metav1.Duration{Duration: 12 * time.Minute},
-			},
-			Server: &v1.CertConfig{
-				Duration:    &metav1.Duration{Duration: 14 * time.Minute},
-				RenewBefore: &metav1.Duration{Duration: 10 * time.Minute},
-			},
-		}}
-
-		lv, err := parseVerbosityEnv()
-		ExpectWithOffset(1, err).ToNot(HaveOccurred())
-		if lv != nil {
-			kv.Spec.Configuration.DeveloperConfiguration.LogVerbosity = lv
-		}
-
-		kv.Spec.Configuration.SeccompConfiguration = &v1.SeccompConfiguration{
-			VirtualMachineInstanceProfile: &v1.VirtualMachineInstanceProfile{
-				CustomProfile: &v1.CustomProfile{
-					LocalhostProfile: pointer.P("kubevirt/kubevirt.json"),
-				},
-			},
-		}
-		// Disable CPUManager Featuregate for s390x as it is not supported.
-		if translateBuildArch() != "s390x" {
-			kv.Spec.Configuration.DeveloperConfiguration.FeatureGates = append(kv.Spec.Configuration.DeveloperConfiguration.FeatureGates,
-				featuregate.CPUManager,
-			)
-		}
+	// Disable CPUManager Featuregate for s390x as it is not supported.
+	if translateBuildArch() != "s390x" {
 		kv.Spec.Configuration.DeveloperConfiguration.FeatureGates = append(kv.Spec.Configuration.DeveloperConfiguration.FeatureGates,
-			featuregate.IgnitionGate,
-			featuregate.SidecarGate,
-			featuregate.SnapshotGate,
-			featuregate.HostDiskGate,
-			featuregate.VirtIOFSConfigVolumesGate,
-			featuregate.VirtIOFSStorageVolumeGate,
-			featuregate.DownwardMetricsFeatureGate,
-			featuregate.ExpandDisksGate,
-			featuregate.WorkloadEncryptionSEV,
-			featuregate.VMExportGate,
-			featuregate.KubevirtSeccompProfile,
-			featuregate.ObjectGraph,
-			featuregate.DeclarativeHotplugVolumesGate,
-			featuregate.NodeRestrictionGate,
-			featuregate.DecentralizedLiveMigration,
+			featuregate.CPUManager,
 		)
+	}
+	kv.Spec.Configuration.DeveloperConfiguration.FeatureGates = append(kv.Spec.Configuration.DeveloperConfiguration.FeatureGates,
+		featuregate.IgnitionGate,
+		featuregate.SidecarGate,
+		featuregate.SnapshotGate,
+		featuregate.HostDiskGate,
+		featuregate.VirtIOFSConfigVolumesGate,
+		featuregate.VirtIOFSStorageVolumeGate,
+		featuregate.DownwardMetricsFeatureGate,
+		featuregate.ExpandDisksGate,
+		featuregate.WorkloadEncryptionSEV,
+		featuregate.VMExportGate,
+		featuregate.KubevirtSeccompProfile,
+		featuregate.ObjectGraph,
+		featuregate.DeclarativeHotplugVolumesGate,
+		featuregate.NodeRestrictionGate,
+		featuregate.DecentralizedLiveMigration,
+	)
 
-		storageClass, exists := libstorage.GetVMStateStorageClass()
-		if exists {
-			kv.Spec.Configuration.VMStateStorageClass = storageClass
-		}
+	storageClass, exists := libstorage.GetVMStateStorageClass()
+	if exists {
+		kv.Spec.Configuration.VMStateStorageClass = storageClass
 	}
 
 	data, err := json.Marshal(kv.Spec)
@@ -247,21 +243,4 @@ func parseVerbosityEnv() (*v1.LogVerbosity, error) {
 		}
 	}
 	return lv, nil
-}
-
-// parseFeatureGates parses comma-separated feature gates from the command line flag
-func parseFeatureGates() []string {
-	if flags.FeatureGates == "" {
-		return []string{}
-	}
-
-	gates := strings.Split(flags.FeatureGates, ",")
-	var validGates []string
-	for _, gate := range gates {
-		gate = strings.TrimSpace(gate)
-		if gate != "" {
-			validGates = append(validGates, gate)
-		}
-	}
-	return validGates
 }

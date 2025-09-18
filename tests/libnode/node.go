@@ -279,8 +279,15 @@ func GetNodesWithHypervisor() []*k8sv1.Node {
 
 	nodeList := make([]*k8sv1.Node, 0)
 	hypervisorDevice = services.KvmDevice
-	if flags.IsFeatureGateEnabled(featuregate.HyperVLayered) {
-		hypervisorDevice = services.HyperVDevice
+
+	kv := libkubevirt.GetCurrentKv(virtClient)
+	if kv.Spec.Configuration.DeveloperConfiguration != nil {
+		featureGates := kv.Spec.Configuration.DeveloperConfiguration.FeatureGates
+		for _, fg := range featureGates {
+			if fg == featuregate.HyperVLayered {
+				hypervisorDevice = services.HyperVDevice
+			}
+		}
 	}
 	// cluster is not ready until all nodeList are ready.
 	for i := range virtHandlerPods.Items {
