@@ -40,6 +40,10 @@ jobs:
           docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           docker pull ${{ env.CUSTOM_QEMU_IMAGE }}
 
+          docker rm -f libvirt-rpms-http-server 2>/dev/null || true
+          docker rm -f qemu-rpms-http-server 2>/dev/null || true
+
+
           # Start libvirt repo HTTP server (port 8080) if not running
           if [ "$(docker ps -q -f name=libvirt-rpms-http-server)" ]; then
             echo "Libvirt RPM server already running"
@@ -69,7 +73,7 @@ jobs:
 
           # Verify both repos (use their mapped host ports)
           curl -f "http://localhost:8080/x86_64/repodata/repomd.xml" || { echo 'Libvirt repo not accessible'; exit 1; }
-          curl -f "http://localhost:9090/x86_64/repodata/repomd.xml" || { echo 'QEMU repo not accessible'; exit 1; }
+          curl -f "http://localhost:9090/repodata/repomd.xml" || { echo 'QEMU repo not accessible'; exit 1; }
 
           # Extract versions (tolerate missing build-info fields)
           LIBVIRT_VERSION=$(curl -s "http://localhost:8080/build-info.json" | jq -r '.libvirt_version // empty') || true
@@ -86,7 +90,7 @@ jobs:
             gpgcheck: 0
             repo_gpgcheck: 0
           - arch: x86_64
-            baseurl: http://$QEMU_IP:80/x86_64/
+            baseurl: http://$QEMU_IP:80/
             name: custom-qemu
             gpgcheck: 0
             repo_gpgcheck: 0
