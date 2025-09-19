@@ -79,7 +79,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/apply"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/generate/components"
 	"kubevirt.io/kubevirt/pkg/virt-operator/util"
@@ -89,6 +88,7 @@ import (
 	"kubevirt.io/kubevirt/tests/decorators"
 	"kubevirt.io/kubevirt/tests/flags"
 	"kubevirt.io/kubevirt/tests/framework/checks"
+	"kubevirt.io/kubevirt/tests/framework/hypervisor"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
 	"kubevirt.io/kubevirt/tests/framework/matcher"
 	. "kubevirt.io/kubevirt/tests/framework/matcher"
@@ -395,12 +395,7 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 		It("test VirtualMachineInstancesPerNode", func() {
 			newVirtualMachineInstancesPerNode := 10
 
-			var hypervisorDevice k8sv1.ResourceName
-			hypervisorDevice = services.KvmDevice
-			// if HyperVLayered feature gate is enabled, use the HyperV device instead of KVM
-			if checks.HasFeature(featuregate.HyperVLayered) {
-				hypervisorDevice = services.HyperVDevice
-			}
+			hypervisorDevice := hypervisor.GetDevice(virtClient)
 
 			By("Patching KubeVirt Object")
 			kv, err := virtClient.KubeVirt(flags.KubeVirtInstallNamespace).Get(context.Background(), originalKv.Name, metav1.GetOptions{})

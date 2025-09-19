@@ -43,10 +43,9 @@ import (
 	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/kubevirt/pkg/libvmi"
-	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/tests/flags"
-	"kubevirt.io/kubevirt/tests/framework/checks"
+	"kubevirt.io/kubevirt/tests/framework/hypervisor"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
 	"kubevirt.io/kubevirt/tests/framework/matcher"
 	"kubevirt.io/kubevirt/tests/libkubevirt"
@@ -208,17 +207,10 @@ func shouldAllowEmulation(virtClient kubecli.KubevirtClient) bool {
 	return allowEmulation
 }
 
-func getHypervisorDevice() k8sv1.ResourceName {
-	if checks.HasFeature(featuregate.HyperVLayered) {
-		return services.HyperVDevice
-	}
-	return services.KvmDevice
-}
-
 func EnsureHypervisorDevice() {
 	virtClient := kubevirt.Client()
 
-	device := getHypervisorDevice()
+	device := hypervisor.GetDevice(virtClient)
 
 	if !shouldAllowEmulation(virtClient) {
 		listOptions := metav1.ListOptions{LabelSelector: v1.AppLabel + "=virt-handler"}

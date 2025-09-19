@@ -42,13 +42,12 @@ import (
 	"kubevirt.io/kubevirt/pkg/apimachinery/patch"
 	"kubevirt.io/kubevirt/pkg/util/nodes"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
-	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/generate/components"
 	"kubevirt.io/kubevirt/tests/clientcmd"
 	"kubevirt.io/kubevirt/tests/exec"
 	"kubevirt.io/kubevirt/tests/flags"
 	"kubevirt.io/kubevirt/tests/framework/cleanup"
+	"kubevirt.io/kubevirt/tests/framework/hypervisor"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
 	"kubevirt.io/kubevirt/tests/libkubevirt"
 )
@@ -278,17 +277,8 @@ func GetNodesWithHypervisor() []*k8sv1.Node {
 	Expect(err).ToNot(HaveOccurred())
 
 	nodeList := make([]*k8sv1.Node, 0)
-	hypervisorDevice = services.KvmDevice
+	hypervisorDevice = hypervisor.GetDevice(virtClient)
 
-	kv := libkubevirt.GetCurrentKv(virtClient)
-	if kv.Spec.Configuration.DeveloperConfiguration != nil {
-		featureGates := kv.Spec.Configuration.DeveloperConfiguration.FeatureGates
-		for _, fg := range featureGates {
-			if fg == featuregate.HyperVLayered {
-				hypervisorDevice = services.HyperVDevice
-			}
-		}
-	}
 	// cluster is not ready until all nodeList are ready.
 	for i := range virtHandlerPods.Items {
 		pod := virtHandlerPods.Items[i]

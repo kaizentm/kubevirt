@@ -62,7 +62,7 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 
 			// Get the virt-launcher pod
 			// Check the compute container resources
-			computeContainer := libpod.LookupComputeContainerFromVmi(vmi)
+			computeContainer, err := libpod.LookupComputeContainerFromVmi(vmi)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(computeContainer.Resources.Limits).To(HaveKey(k8sv1.ResourceName(services.HyperVDevice)),
