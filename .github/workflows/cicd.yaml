@@ -15,6 +15,7 @@ jobs:
   # quality-check:
   #   uses: ./.github/workflows/pr.yaml
     
+    
   Build_Push_Images:
     runs-on: self-hosted
     # needs: [quality-check]
@@ -29,6 +30,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
+          logout: false
 
 
       - name: Setup Custom libvirt & qemu RPMs
