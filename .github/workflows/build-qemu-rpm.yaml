@@ -5,7 +5,7 @@ on:
   push:
     branches: ["ise, eugene/*"]
     paths:
-      - '.github/workflows/build-qemu-rpm.yaml'
+      - '*/build-qemu-rpm.yaml'
 
 env:
   QEMU_REPO: https://github.com/kaizentm/qemu
