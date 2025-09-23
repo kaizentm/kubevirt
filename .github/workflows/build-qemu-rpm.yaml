@@ -8,7 +8,7 @@ on:
       - '.github/workflows/build-qemu-rpm.yaml'
 
 env:
-  QEMU_REPO: https://github.com/kaizentm/qemu
+  QEMU_REPO: https://github.com/kaizentm/qemu.git
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
   QEMU_VERSION: '10.1.50.mshv.v4'
