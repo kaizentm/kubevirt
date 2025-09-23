@@ -8,7 +8,7 @@ on:
       - '.github/workflows/build-qemu-rpm.yaml'
 
 env:
-  QEMU_REPO: https://github.com/kaizentm/qemu.git
+  QEMU_REPO: kaizentm/qemu
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
   QEMU_VERSION: '10.1.50.mshv.v4'
@@ -42,7 +42,7 @@ jobs:
       - name: Build QEMU RPM
         working-directory: qemu-src
         run: |
-          curl -L ${{ env.QEMU_REPO }}/archive/refs/tags/v${{ env.QEMU_VERSION }}.tar.gz -o qemu-${{ env.QEMU_VERSION }}.tar.xz
+          curl -L https://github.com/${{ env.QEMU_REPO }}/archive/refs/tags/v${{ env.QEMU_VERSION }}.tar.gz -o qemu-${{ env.QEMU_VERSION }}.tar.xz
           
           docker rm -f qemu-build
 
