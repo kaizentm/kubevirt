@@ -14,6 +14,7 @@ env:
   QEMU_VERSION: '10.1.50.mshv.v4'
   RPM_IMAGE_TAG: 'qemu-mshv'
 
+
 jobs:
   build-rpms:
     runs-on: ubuntu-latest
