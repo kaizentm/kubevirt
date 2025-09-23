@@ -56,8 +56,7 @@ jobs:
               -p 8080:80 \
               ${{ env.CUSTOM_LIBVIRT_IMAGE }}
             sleep 5
-          fi
-          
+          fi          
 
           # Start qemu repo HTTP server (port 9090) if not running
             if [ "$(docker ps -q -f name=qemu-rpms-http-server)" ]; then
