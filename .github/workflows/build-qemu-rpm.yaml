@@ -3,9 +3,9 @@ name: Build Custom QEMU RPM
 on:
   workflow_dispatch:
   push:
-    branches: ["ise, eugene/*"]
+    branches: ["ise", "eugene/*"]
     paths:
-      - '*/build-qemu-rpm.yaml'
+      - '.github/workflows/build-qemu-rpm.yaml'
 
 env:
   QEMU_REPO: https://github.com/kaizentm/qemu
