@@ -37,6 +37,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/controller"
 	diskutils "kubevirt.io/kubevirt/pkg/ephemeral-disk-utils"
 	hostdisk "kubevirt.io/kubevirt/pkg/host-disk"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/safepath"
 	"kubevirt.io/kubevirt/pkg/util"
@@ -260,9 +261,10 @@ func (c *BaseController) setupDevicesOwnerships(vmi *v1.VirtualMachineInstance, 
 		return err
 	}
 
-	err = c.claimDeviceOwnership(virtLauncherRootMount, "kvm")
+	hvCtx := hypervisor.GetCurrentHypervisorContext(c.clusterConfig)
+	err = c.claimDeviceOwnership(virtLauncherRootMount, hvCtx.Name)
 	if err != nil {
-		return fmt.Errorf("failed to set up file ownership for /dev/kvm: %v", err)
+		return fmt.Errorf("failed to set up file ownership for /dev/%s: %v", hvCtx.Name, err)
 	}
 
 	if util.IsAutoAttachVSOCK(vmi) {

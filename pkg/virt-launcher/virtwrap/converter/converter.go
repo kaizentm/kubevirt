@@ -51,6 +51,7 @@ import (
 	ephemeraldisk "kubevirt.io/kubevirt/pkg/ephemeral-disk"
 	cmdv1 "kubevirt.io/kubevirt/pkg/handler-launcher-com/cmd/v1"
 	hostdisk "kubevirt.io/kubevirt/pkg/host-disk"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/ignition"
 	"kubevirt.io/kubevirt/pkg/os/disk"
 	"kubevirt.io/kubevirt/pkg/pointer"
@@ -113,6 +114,7 @@ type ConverterContext struct {
 	BochsForEFIGuests               bool
 	SerialConsoleLog                bool
 	DomainAttachmentByInterfaceName map[string]string
+	HypervisorContext               *hypervisor.HypervisorContext
 }
 
 func assignDiskToSCSIController(disk *api.Disk, unit int) {
@@ -1463,14 +1465,15 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 		domainVCPUTopologyForHotplug(vmi, domain)
 	}
 
-	kvmPath := "/dev/kvm"
-	if _, err := os.Stat(kvmPath); errors.Is(err, os.ErrNotExist) {
+	devicePath := c.HypervisorContext.DevicePath
+	domain.Spec.Type = c.HypervisorContext.DomainType
+	if _, err := os.Stat(devicePath); errors.Is(err, os.ErrNotExist) {
 		if c.AllowEmulation {
 			logger := log.DefaultLogger()
-			logger.Infof("Hardware emulation device '%s' not present. Using software emulation.", kvmPath)
+			logger.Infof("Hardware emulation device '%s' not present. Using software emulation.", devicePath)
 			domain.Spec.Type = "qemu"
 		} else {
-			return fmt.Errorf("hardware emulation device '%s' not present", kvmPath)
+			return fmt.Errorf("hardware emulation device '%s' not present", devicePath)
 		}
 	} else if err != nil {
 		return err

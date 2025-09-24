@@ -20,26 +20,39 @@
 package hypervisor
 
 import (
+	"strings"
+
 	k8sv1 "k8s.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/tests/libkubevirt"
 )
 
 // GetDevice returns the appropriate hypervisor device resource name
-// based on the current KubeVirt configuration. If HyperVLayered feature gate
-// is enabled, it returns HyperVDevice, otherwise KvmDevice.
+// based on the current KubeVirt configuration using the hypervisor package.
 func GetDevice(virtClient kubecli.KubevirtClient) k8sv1.ResourceName {
+	// Check if HyperVLayered feature gate is enabled
 	kv := libkubevirt.GetCurrentKv(virtClient)
+	hypervisorName := hypervisor.KVM // Default to KVM
+
 	if kv.Spec.Configuration.DeveloperConfiguration != nil {
 		featureGates := kv.Spec.Configuration.DeveloperConfiguration.FeatureGates
 		for _, fg := range featureGates {
-			if fg == featuregate.HyperVLayered {
-				return services.HyperVDevice
+			if fg == strings.ToLower(featuregate.HyperVLayered) {
+				hypervisorName = hypervisor.HYPERVLAYERED
+				break
 			}
 		}
 	}
-	return services.KvmDevice
+
+	// Get hypervisor context using the hypervisor package
+	hvContext, err := hypervisor.GetHypervisorContextByName(hypervisorName)
+	if err != nil {
+		// Fallback to KVM if error occurs
+		hvContext, _ = hypervisor.GetHypervisorContextByName(hypervisor.KVM)
+	}
+
+	return hvContext.K8sResourceName()
 }

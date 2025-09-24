@@ -104,6 +104,7 @@ func (c *controlledDevice) GetName() string {
 }
 
 func PermanentHostDevicePlugins(maxDevices int, permissions string) []Device {
+	// Non-hypervisor devices that are always available
 	var permanentDevicePluginPaths = map[string]string{
 		"kvm":       "/dev/kvm",
 		"tun":       "/dev/net/tun",
@@ -114,6 +115,7 @@ func PermanentHostDevicePlugins(maxDevices int, permissions string) []Device {
 	for name, path := range permanentDevicePluginPaths {
 		ret = append(ret, NewGenericDevicePlugin(name, path, maxDevices, permissions, name != "kvm"))
 	}
+
 	return ret
 }
 
@@ -173,6 +175,12 @@ func (c *DeviceController) NodeHasDevice(devicePath string) bool {
 // updatePermittedHostDevicePlugins returns a slice of device plugins for permitted devices which are present on the node
 func (c *DeviceController) updatePermittedHostDevicePlugins() []Device {
 	var permittedDevices []Device
+	log.Log.Infof("Checking virtconfig featuregates for device plugins")
+	if c.virtConfig.HyperVLayeredEnabled() {
+		log.Log.Infof("HyperVLayered feature gate is enabled, adding Hyper-V device plugins")
+	} else {
+		log.Log.Infof("HyperVLayered feature gate is disabled, skipping Hyper-V device plugins")
+	}
 
 	var featureGatedDevices = []struct {
 		Name      string
@@ -181,6 +189,7 @@ func (c *DeviceController) updatePermittedHostDevicePlugins() []Device {
 	}{
 		{"sev", "/dev/sev", c.virtConfig.WorkloadEncryptionSEVEnabled},
 		{"vhost-vsock", "/dev/vhost-vsock", c.virtConfig.VSOCKEnabled},
+		{"mshv", "/dev/mshv", c.virtConfig.HyperVLayeredEnabled},
 	}
 	for _, dev := range featureGatedDevices {
 		if dev.IsAllowed() {

@@ -48,6 +48,7 @@ import (
 
 	containerdisk "kubevirt.io/kubevirt/pkg/container-disk"
 	"kubevirt.io/kubevirt/pkg/hooks"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	metrics "kubevirt.io/kubevirt/pkg/monitoring/metrics/virt-controller"
 	"kubevirt.io/kubevirt/pkg/network/downwardapi"
 	"kubevirt.io/kubevirt/pkg/network/istio"
@@ -81,7 +82,6 @@ const VhostNetDevice = "devices.kubevirt.io/vhost-net"
 const SevDevice = "devices.kubevirt.io/sev"
 const VhostVsockDevice = "devices.kubevirt.io/vhost-vsock"
 const PrDevice = "devices.kubevirt.io/pr-helper"
-const HyperVDevice = "devices.kubevirt.io/mshv"
 
 const debugLogs = "debugLogs"
 const logVerbosity = "logVerbosity"
@@ -429,6 +429,9 @@ func (t *TemplateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 	if ok {
 		command = append(command, "--simulate-crash")
 	}
+
+	hvCtx := hypervisor.GetCurrentHypervisorContext(t.clusterConfig)
+	command = append(command, "--hypervisor", hvCtx.Name)
 
 	volumeRenderer, err := t.newVolumeRenderer(vmi, namespace, requestedHookSidecarList, backendStoragePVCName)
 	if err != nil {
@@ -857,7 +860,7 @@ func (t *TemplateService) newResourceRenderer(vmi *v1.VirtualMachineInstance, ne
 	vmiResources := vmi.Spec.Domain.Resources
 	baseOptions := []ResourceRendererOption{
 		WithEphemeralStorageRequest(),
-		WithVirtualizationResources(getRequiredResources(vmi, t.clusterConfig.AllowEmulation())),
+		WithVirtualizationResources(getRequiredResources(vmi, t.clusterConfig.AllowEmulation(), hypervisor.GetCurrentHypervisorContext(t.clusterConfig))),
 	}
 
 	if err := validatePermittedHostDevices(&vmi.Spec, t.clusterConfig); err != nil {

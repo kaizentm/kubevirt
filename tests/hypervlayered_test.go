@@ -25,14 +25,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"kubevirt.io/client-go/kubecli"
 
 	v1 "kubevirt.io/api/core/v1"
 
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 	"kubevirt.io/kubevirt/tests/decorators"
@@ -65,11 +64,14 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 			computeContainer, err := libpod.LookupComputeContainerFromVmi(vmi)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(computeContainer.Resources.Limits).To(HaveKey(k8sv1.ResourceName(services.HyperVDevice)),
+			mshvContext, _ := hypervisor.GetHypervisorContextByName(hypervisor.HYPERVLAYERED)
+			kvmContext, _ := hypervisor.GetHypervisorContextByName(hypervisor.KVM)
+
+			Expect(computeContainer.Resources.Limits).To(HaveKey(mshvContext.K8sResourceName()),
 				"virt-launcher pod should request 'devices.kubevirt.io/mshv' when HyperVLayered feature gate is enabled")
-			Expect(computeContainer.Resources.Limits).ToNot(HaveKey(k8sv1.ResourceName(services.KvmDevice)),
+			Expect(computeContainer.Resources.Limits).ToNot(HaveKey(kvmContext.K8sResourceName()),
 				"virt-launcher pod should NOT request 'devices.kubevirt.io/kvm' when HyperVLayered feature gate is enabled")
-			Expect(computeContainer.Resources.Limits[k8sv1.ResourceName(services.HyperVDevice)]).To(Equal(resource.MustParse("1")))
+			Expect(computeContainer.Resources.Limits[mshvContext.K8sResourceName()]).To(Equal(resource.MustParse("1")))
 		})
 
 		It("should generate libvirt domain xml with hyperv domain type", func() {
