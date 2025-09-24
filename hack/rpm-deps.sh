@@ -1,3 +1,9 @@
+# rome-deps.sh is updated to go with a single monolyth QEMU RPM rather than multiple smaller ones.
+# 1. to be consistent with the way how we build QEMU in CI in https://github.com/mkulke/qemu
+# 2. to keep things simple
+# 3. good enough for our purposes
+
+
 #!/usr/bin/env bash
 
 set -ex
