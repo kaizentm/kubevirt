@@ -19,7 +19,10 @@
 
 package hypervisor
 
-import v1 "kubevirt.io/api/core/v1"
+import (
+	v1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/client-go/log"
+)
 
 // Hypervisor interface defines functions needed to tune the virt-launcher pod spec and the libvirt domain XML for a specific hypervisor
 type Hypervisor interface {
@@ -28,8 +31,10 @@ type Hypervisor interface {
 func NewHypervisor(hypervisor string) Hypervisor {
 	switch hypervisor {
 	case v1.MshvL1vhHypervisorName:
+		log.Log.Info("Creating Hypervisor instance for MSHV-L1VH")
 		return &MshvL1vhHypervisor{}
 	default:
+		log.Log.Infof("Creating Hypervisor instance for default KVM implementation. Provided hypervisor: %s", hypervisor)
 		return &KVMHypervisor{}
 	}
 }
