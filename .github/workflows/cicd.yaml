@@ -2,7 +2,7 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: ["ise", "eugene/*"]
+    branches: ["ise"]
   workflow_dispatch:
   
 env:
@@ -12,13 +12,13 @@ env:
   CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
   
 jobs:
-  # quality-check:
-  #   uses: ./.github/workflows/pr.yaml
+  quality-check:
+    uses: ./.github/workflows/pr.yaml
         
 
   Build_Push_Images:
     runs-on: self-hosted
-    # needs: [quality-check]
+    needs: [quality-check]
     permissions: write-all
     steps:
       - name: Checkout
@@ -58,7 +58,7 @@ jobs:
               ${{ env.CUSTOM_LIBVIRT_IMAGE }}
             sleep 5
           fi          
-          
+
 
           # Start qemu repo HTTP server (port 9090) if not running
             if [ "$(docker ps -q -f name=qemu-rpms-http-server)" ]; then
@@ -117,12 +117,12 @@ jobs:
         run: |
           make bazel-push-images
 
-      # - name: Cleanup Custom RPM Servers
-      #   if: always()
-      #   run: |
-      #     docker rm -f libvirt-rpms-http-server 2>/dev/null || true
-      #     docker rm -f qemu-rpms-http-server 2>/dev/null || true
-      #     echo "Custom RPM HTTP servers cleaned up"
+      - name: Cleanup Custom RPM Servers
+        if: always()
+        run: |
+          docker rm -f libvirt-rpms-http-server 2>/dev/null || true
+          docker rm -f qemu-rpms-http-server 2>/dev/null || true
+          echo "Custom RPM HTTP servers cleaned up"
 
 
   
