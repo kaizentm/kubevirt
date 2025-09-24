@@ -14,7 +14,6 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/kubevirt/pkg/downwardmetrics"
-	"kubevirt.io/kubevirt/pkg/hypervisor"
 	netvmispec "kubevirt.io/kubevirt/pkg/network/vmispec"
 	"kubevirt.io/kubevirt/pkg/tpm"
 	"kubevirt.io/kubevirt/pkg/util"
@@ -546,7 +545,7 @@ func calcVCPUs(cpu *v1.CPU) int64 {
 	return int64(1)
 }
 
-func getRequiredResources(vmi *v1.VirtualMachineInstance, allowEmulation bool, hypervisorConfiguration *v1.HypervisorConfiguration) k8sv1.ResourceList {
+func getRequiredResources(vmi *v1.VirtualMachineInstance, allowEmulation bool) k8sv1.ResourceList {
 	res := k8sv1.ResourceList{}
 	if netvmispec.RequiresTunDevice(vmi) {
 		res[TunDevice] = resource.MustParse("1")
@@ -559,8 +558,7 @@ func getRequiredResources(vmi *v1.VirtualMachineInstance, allowEmulation bool, h
 		res[VhostNetDevice] = resource.MustParse("1")
 	}
 	if !allowEmulation {
-		hypervisor := hypervisor.NewHypervisor(hypervisorConfiguration.Name)
-		res[k8sv1.ResourceName(hypervisor.GetK8sResourceName())] = resource.MustParse("1")
+		res[KvmDevice] = resource.MustParse("1")
 	}
 	if util.IsAutoAttachVSOCK(vmi) {
 		res[VhostVsockDevice] = resource.MustParse("1")
