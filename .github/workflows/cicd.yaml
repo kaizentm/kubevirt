@@ -45,9 +45,6 @@ jobs:
           docker rm -f libvirt-rpms-http-server 2>/dev/null || true
           docker rm -f qemu-rpms-http-server 2>/dev/null || true
           
-          #TODO: Remove this line after verifying both repos are accessible 
-          docker rm -f rpms-http-server 2>/dev/null || true
-
           # Start libvirt repo HTTP server (port 8080) if not running
           if [ "$(docker ps -q -f name=libvirt-rpms-http-server)" ]; then
             echo "Libvirt RPM server already running"
