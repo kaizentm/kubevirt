@@ -198,7 +198,7 @@ type LibvirtDomainManager struct {
 	cpuSetGetter                  func() ([]int, error)
 	imageVolumeFeatureGateEnabled bool
 	setTimeOnce                   sync.Once
-	hypervisor                    string
+	hypervisor                    hv.Hypervisor
 }
 
 type pausedVMIs struct {
@@ -253,7 +253,12 @@ func newLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralD
 		cpuSetGetter:                  cpuSetGetter,
 		setTimeOnce:                   sync.Once{},
 		imageVolumeFeatureGateEnabled: imageVolumeEnabled,
-		hypervisor:                    hypervisor,
+	}
+
+	if hypervisor != "" {
+		manager.hypervisor = hv.NewHypervisor(hypervisor)
+	} else {
+		manager.hypervisor = hv.NewHypervisor("kvm")
 	}
 
 	log.Log.Infof("DEBUG: Domain manager created with %s as the hypervisor", manager.hypervisor)
@@ -1053,11 +1058,6 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		}
 	}
 
-	hypervisor := hv.KVM
-	if l.hypervisor != "" {
-		hypervisor = l.hypervisor
-	}
-
 	// Map the VirtualMachineInstance to the Domain
 	c := &converter.ConverterContext{
 		Architecture:          arch.NewConverter(runtime.GOARCH),
@@ -1073,7 +1073,7 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		UseLaunchSecurity:     kutil.UseLaunchSecurity(vmi),
 		FreePageReporting:     isFreePageReportingEnabled(false, vmi),
 		SerialConsoleLog:      isSerialConsoleLogEnabled(false, vmi),
-		Hypervisor:            hv.NewHypervisor(hypervisor),
+		Hypervisor:            l.hypervisor,
 	}
 
 	if options != nil {

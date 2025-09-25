@@ -21,6 +21,7 @@ package hypervisor
 
 import (
 	v1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
@@ -37,15 +38,10 @@ type Hypervisor interface {
 func NewHypervisor(hypervisor string) Hypervisor {
 	switch hypervisor {
 	case v1.HyperVLayeredHypervisorName:
-		log.Log.Info("Creating Hypervisor instance for MSHV-L1VH")
+		log.Log.Info("Creating Hypervisor instance for hyperv-layered implementation")
 		return &HyperVLayeredHypervisor{}
 	default:
 		log.Log.Infof("Creating Hypervisor instance for default KVM implementation. Provided hypervisor: %s", hypervisor)
-	case HyperVLayered:
-		return &HyperVLayeredHypervisor{}
-	case KVM:
-		fallthrough
-	default:
 		return &KVMHypervisor{}
 	}
 }
