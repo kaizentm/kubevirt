@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -2863,6 +2864,33 @@ var _ = Describe("[sig-compute]Configurations", decorators.SigCompute, func() {
 			qemuExpected := resource.MustParse(services.QemuOverhead)
 			qemuExpected.Add(vmi.Spec.Domain.Resources.Requests[k8sv1.ResourceMemory])
 			doesntExceedMemoryUsage(&processRss, "qemu", qemuExpected)
+		})
+	})
+
+	// Experimental accelerator annotation test. Intentionally isolated and opt-in to avoid
+	// introducing flakes on clusters lacking mshv support. Enable by setting
+	// KUBEVIRT_ENABLE_MSHV=true in the test environment. The test asserts that the
+	// virt-launcher QEMU command line contains "-accel mshv" and does not contain
+	// the implicit "-enable-kvm" shortcut (we switch domain type to 'qemu' when the
+	// annotation is present). Marked Serial & Experimental to limit parallel impact.
+	Context("[Experimental]with experimental accelerator annotation", Serial, func() {
+		It("[Serial][Experimental][mshv]should honor mshv accelerator annotation", func() {
+			if os.Getenv("KUBEVIRT_ENABLE_MSHV") != "true" {
+				Skip("MSHV experimental accelerator test disabled; set KUBEVIRT_ENABLE_MSHV=true to run")
+			}
+
+			vmi := libvmifact.NewCirros(
+				libvmi.WithAnnotation("kubevirt.io/experimental-qemu-accel", "mshv"),
+			)
+
+			By("Starting a VirtualMachineInstance with mshv accelerator annotation")
+			vmi = libvmops.RunVMIAndExpectLaunch(vmi, libvmops.StartupTimeoutSecondsSmall)
+
+			logsFn := func() string { return getVirtLauncherLogs(virtClient, vmi) }
+			By("Expecting QEMU command line contains -accel mshv")
+			Eventually(logsFn, 60*time.Second, 2*time.Second).Should(ContainSubstring("-accel mshv"))
+			By("Ensuring -enable-kvm is not present when using mshv")
+			Consistently(logsFn, 5*time.Second, 1*time.Second).ShouldNot(ContainSubstring("-enable-kvm"))
 		})
 	})
 
