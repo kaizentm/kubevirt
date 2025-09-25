@@ -44,11 +44,8 @@ jobs:
           echo "Setting up custom libvirt & qemu RPM repos..."
 
           # Pull pre-built RPM images
-          docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           docker pull ${{ env.CUSTOM_QEMU_IMAGE }}
-
-          docker rm -f libvirt-rpms-http-server 2>/dev/null || true
-          docker rm -f qemu-rpms-http-server 2>/dev/null || true
+          docker pull ${{ env.CUSTOM_LIBVIRT_IMAGE }}
           
           # Start libvirt repo HTTP server (port 8080) if not running
           if [ "$(docker ps -q -f name=libvirt-rpms-http-server)" ]; then
