@@ -45,25 +45,14 @@ case ${ARCHITECTURE} in
     ;;
 esac
 
-# Allow narrowing the build to a subset of images for faster inner-loop development.
-# Usage example (build only virt-launcher):
-#   ONLY_IMAGES="//cmd/virt-launcher:virt-launcher-image" make bazel-build-images
-# Multiple (space separated) targets are allowed.
-if [ -n "${ONLY_IMAGES}" ]; then
-    echo "[INFO] Building ONLY the following image target(s): ${ONLY_IMAGES}" >&2
-    image_targets=${ONLY_IMAGES}
-else
-    image_targets="//cmd/virt-operator:virt-operator-image //cmd/virt-api:virt-api-image //cmd/virt-controller:virt-controller-image \
-    //cmd/virt-handler:virt-handler-image //cmd/virt-launcher:virt-launcher-image //cmd/virt-exportproxy:virt-exportproxy-image \
-    //cmd/virt-exportserver:virt-exportserver-image //cmd/synchronization-controller:synchronization-controller-image ${other_images[@]}"
-fi
-
 bazel build \
     --config=${ARCHITECTURE} \
     --define container_prefix= \
     --define image_prefix= \
     --define container_tag= \
-    ${image_targets}
+    //cmd/virt-operator:virt-operator-image //cmd/virt-api:virt-api-image //cmd/virt-controller:virt-controller-image \
+    //cmd/virt-handler:virt-handler-image //cmd/virt-launcher:virt-launcher-image //cmd/virt-exportproxy:virt-exportproxy-image \
+    //cmd/virt-exportserver:virt-exportserver-image //cmd/synchronization-controller:synchronization-controller-image ${other_images[@]}
 
 rm -rf ${DIGESTS_DIR}/${ARCHITECTURE}
 mkdir -p ${DIGESTS_DIR}/${ARCHITECTURE}
