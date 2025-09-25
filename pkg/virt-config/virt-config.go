@@ -488,5 +488,5 @@ func (c *ClusterConfig) GetHypervisor() *v1.HypervisorConfiguration {
 	if c.ConfigurableHypervisorEnabled() {
 		return c.GetConfig().HypervisorConfiguration
 	}
-	return &v1.HypervisorConfiguration{Name: v1.KvmHypervisorName}
+	return &v1.HypervisorConfiguration{Name: DefaultHypervisorName}
 }

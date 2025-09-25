@@ -184,14 +184,14 @@ var _ = Describe("Hypervisor", func() {
 		})
 
 		It("should work end-to-end for KVM hypervisor", func() {
-			hypervisor := NewHypervisor(KVM)
+			hypervisor := NewHypervisor(v1.KvmHypervisorName)
 			originalType := domain.Spec.Type
 			hypervisor.AdjustDomain(vmi, domain)
 			Expect(domain.Spec.Type).To(Equal(originalType))
 		})
 
 		It("should work end-to-end for HyperV Layered hypervisor", func() {
-			hypervisor := NewHypervisor(HyperVLayered)
+			hypervisor := NewHypervisor(v1.HyperVLayeredHypervisorName)
 			hypervisor.AdjustDomain(vmi, domain)
 			Expect(domain.Spec.Type).To(Equal("hyperv"))
 		})
@@ -200,8 +200,8 @@ var _ = Describe("Hypervisor", func() {
 			kvmDomain := &api.Domain{Spec: api.DomainSpec{Type: "test"}}
 			hypervDomain := &api.Domain{Spec: api.DomainSpec{Type: "test"}}
 
-			kvmHypervisor := NewHypervisor(KVM)
-			hypervHypervisor := NewHypervisor(HyperVLayered)
+			kvmHypervisor := NewHypervisor(v1.KvmHypervisorName)
+			hypervHypervisor := NewHypervisor(v1.HyperVLayeredHypervisorName)
 
 			kvmHypervisor.AdjustDomain(vmi, kvmDomain)
 			hypervHypervisor.AdjustDomain(vmi, hypervDomain)
