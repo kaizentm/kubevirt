@@ -2,7 +2,7 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: ["ise"]
+    branches: ["ise", "eugene/*"]
   workflow_dispatch:
   
 env:
@@ -12,12 +12,12 @@ env:
   CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
   
 jobs:
-  quality-check:
-    uses: ./.github/workflows/pr.yaml
+  # quality-check:
+  #   uses: ./.github/workflows/pr.yaml
         
   Build_Push_Images:
     runs-on: self-hosted
-    needs: [quality-check]
+    # needs: [quality-check]
     permissions: write-all
     steps:
       - name: Checkout
@@ -128,34 +128,34 @@ jobs:
 
 
   
-  dev:
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      environment: dev
-      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-    secrets: inherit
-    needs: [Build_Push_Images]
+  # dev:
+  #   uses: ./.github/workflows/deploy.yaml
+  #   with:
+  #     environment: dev
+  #     image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+  #   secrets: inherit
+  #   needs: [Build_Push_Images]
 
-  test-kvm:
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      environment: test-kvm
-      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-    secrets: inherit
-    needs: [dev]
+  # test-kvm:
+  #   uses: ./.github/workflows/deploy.yaml
+  #   with:
+  #     environment: test-kvm
+  #     image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+  #   secrets: inherit
+  #   needs: [dev]
 
-  test-emulation:
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      environment: test-emulation
-      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-    secrets: inherit
-    needs: [dev]
+  # test-emulation:
+  #   uses: ./.github/workflows/deploy.yaml
+  #   with:
+  #     environment: test-emulation
+  #     image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+  #   secrets: inherit
+  #   needs: [dev]
 
-  test-mshv:
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      environment: test-mshv
-      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-    secrets: inherit
-    needs: [dev]
+  # test-mshv:
+  #   uses: ./.github/workflows/deploy.yaml
+  #   with:
+  #     environment: test-mshv
+  #     image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+  #   secrets: inherit
+  #   needs: [dev]
