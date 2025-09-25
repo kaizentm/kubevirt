@@ -18,3 +18,13 @@
  */
 
 package hypervisor
+
+import (
+	"testing"
+
+	"kubevirt.io/client-go/testutils"
+)
+
+func TestHypervisor(t *testing.T) {
+	testutils.KubeVirtTestSuiteSetup(t)
+}

@@ -31,6 +31,9 @@ const deviceName = "mshv"
 type HyperVLayeredHypervisor struct{}
 
 func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
+	if domain == nil {
+		return
+	}
 	domain.Spec.Type = "hyperv"
 	log.Log.Infof("DEBUG: Adjusting domain for HyperV Layered")
 }
