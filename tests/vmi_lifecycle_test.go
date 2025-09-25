@@ -51,7 +51,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	device_manager "kubevirt.io/kubevirt/pkg/virt-handler/device-manager"
 	"kubevirt.io/kubevirt/tests/console"
 	cd "kubevirt.io/kubevirt/tests/containerdisk"
@@ -588,6 +587,8 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 			})
 
 			It("[test_id:3198]device plugins should re-register if the kubelet restarts", func() {
+				kv := libkubevirt.GetCurrentKv(kubevirt.Client())
+				hypervisorDevice := kv.Spec.Configuration.HypervisorConfiguration.Name
 
 				By("starting a VMI on a node")
 				vmi := libvmifact.NewAlpine()
@@ -608,7 +609,7 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 						// We want to fail if the file does not exist, but don't want to be asked
 						// if we really want to remove write-protected files
 						"--interactive=never",
-						device_manager.SocketPath("kvm"),
+						device_manager.SocketPath(hypervisorDevice),
 					})
 				Expect(err).ToNot(HaveOccurred())
 
@@ -626,7 +627,7 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 					return string(data)
 				}, 60, 1).Should(
 					ContainSubstring(
-						fmt.Sprintf("device socket file for device %s was removed, kubelet probably restarted.", "kvm"),
+						fmt.Sprintf("device socket file for device %s was removed, kubelet probably restarted.", hypervisorDevice),
 					), "Should log device plugin restart")
 
 				// This is a little bit arbitrar
@@ -1281,19 +1282,22 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 
 		Context("VM Accelerated Mode", decorators.WgS390x, func() {
 
-			It("[test_id:1648]Should provide KVM via plugin framework", func() {
+			It("[test_id:1648]Should provide hypervisor via plugin framework", func() {
 				nodeList := libnode.GetAllSchedulableNodes(kubevirt.Client())
+				kv := libkubevirt.GetCurrentKv(kubevirt.Client())
+				hypervisorName := kv.Spec.Configuration.HypervisorConfiguration.Name
+				hypervisorDeviceK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, hypervisorName))
 
 				if len(nodeList.Items) == 0 {
 					Fail("There are no compute nodes in cluster")
 				}
 				node := nodeList.Items[0]
 
-				_, ok := node.Status.Allocatable[services.KvmDevice]
-				Expect(ok).To(BeTrue(), "KVM devices not allocatable on node: %s", node.Name)
+				_, ok := node.Status.Allocatable[hypervisorDeviceK8sResource]
+				Expect(ok).To(BeTrue(), "%s devices not allocatable on node: %s", hypervisorName, node.Name)
 
-				_, ok = node.Status.Capacity[services.KvmDevice]
-				Expect(ok).To(BeTrue(), "No Capacity for KVM devices on node: %s", node.Name)
+				_, ok = node.Status.Capacity[hypervisorDeviceK8sResource]
+				Expect(ok).To(BeTrue(), "No Capacity for %s devices on node: %s", hypervisorName, node.Name)
 			})
 		})
 	})
