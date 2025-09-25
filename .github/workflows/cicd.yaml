@@ -15,7 +15,6 @@ jobs:
   # quality-check:
   #   uses: ./.github/workflows/pr.yaml
         
-
   Build_Push_Images:
     runs-on: self-hosted
     # needs: [quality-check]
