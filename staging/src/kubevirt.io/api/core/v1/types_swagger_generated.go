@@ -903,7 +903,7 @@ func (KubeVirtConfiguration) SwaggerDoc() map[string]string {
 func (HypervisorConfiguration) SwaggerDoc() map[string]string {
 	return map[string]string{
 		"":     "HypervisorConfiguration holds information regarding the hypervisor present on cluster nodes.",
-		"name": "Name is the name of the hypervisor.\nSupported values are: \"kvm\", \"mshv\", \"mshv-l1vh\".",
+		"name": "Name is the name of the hypervisor.\nSupported values are: \"kvm\", \"hyperv-layered\".",
 	}
 }
 

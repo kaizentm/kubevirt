@@ -1040,7 +1040,7 @@ var CRDsValidation map[string]string = map[string]string{
                 name:
                   description: |-
                     Name is the name of the hypervisor.
-                    Supported values are: "kvm", "mshv", "mshv-l1vh".
+                    Supported values are: "kvm", "hyperv-layered".
                   type: string
               type: object
             imagePullPolicy:

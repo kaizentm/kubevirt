@@ -2928,16 +2928,14 @@ type KubeVirtConfiguration struct {
 const (
 	// KVM is the default and most common hypervisor used with KubeVirt.
 	KvmHypervisorName string = "kvm"
-	// MSHV is the Microsoft Hypervisor, used on Azure and Windows nodes.
-	MshvHypervisorName string = "mshv"
-	// MSHV with L1 Virtualization Host support.
-	MshvL1vhHypervisorName string = "mshv-l1vh"
+	// HyperV with L1 Virtualization Host support.
+	HyperVLayeredHypervisorName string = "hyperv-layered"
 )
 
 // HypervisorConfiguration holds information regarding the hypervisor present on cluster nodes.
 type HypervisorConfiguration struct {
 	// Name is the name of the hypervisor.
-	// Supported values are: "kvm", "mshv", "mshv-l1vh".
+	// Supported values are: "kvm", "hyperv-layered".
 	Name string `json:"name,omitempty"`
 }
 

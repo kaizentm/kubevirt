@@ -447,7 +447,7 @@ spec:
                       name:
                         description: |-
                           Name is the name of the hypervisor.
-                          Supported values are: "kvm", "mshv", "mshv-l1vh".
+                          Supported values are: "kvm", "hyperv-layered".
                         type: string
                     type: object
                   imagePullPolicy:
@@ -3750,7 +3750,7 @@ spec:
                       name:
                         description: |-
                           Name is the name of the hypervisor.
-                          Supported values are: "kvm", "mshv", "mshv-l1vh".
+                          Supported values are: "kvm", "hyperv-layered".
                         type: string
                     type: object
                   imagePullPolicy:

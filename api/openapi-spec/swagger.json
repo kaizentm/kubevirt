@@ -14427,7 +14427,7 @@
     "type": "object",
     "properties": {
      "name": {
-      "description": "Name is the name of the hypervisor. Supported values are: \"kvm\", \"mshv\", \"mshv-l1vh\".",
+      "description": "Name is the name of the hypervisor. Supported values are: \"kvm\", \"hyperv-layered\".",
       "type": "string"
      }
     }

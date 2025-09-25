@@ -30,9 +30,9 @@ type Hypervisor interface {
 
 func NewHypervisor(hypervisor string) Hypervisor {
 	switch hypervisor {
-	case v1.MshvL1vhHypervisorName:
+	case v1.HyperVLayeredHypervisorName:
 		log.Log.Info("Creating Hypervisor instance for MSHV-L1VH")
-		return &MshvL1vhHypervisor{}
+		return &HyperVLayeredHypervisor{}
 	default:
 		log.Log.Infof("Creating Hypervisor instance for default KVM implementation. Provided hypervisor: %s", hypervisor)
 		return &KVMHypervisor{}

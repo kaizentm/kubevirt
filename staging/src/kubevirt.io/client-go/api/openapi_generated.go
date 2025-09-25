@@ -20816,7 +20816,7 @@ func schema_kubevirtio_api_core_v1_HypervisorConfiguration(ref common.ReferenceC
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the hypervisor. Supported values are: \"kvm\", \"mshv\", \"mshv-l1vh\".",
+							Description: "Name is the name of the hypervisor. Supported values are: \"kvm\", \"hyperv-layered\".",
 							Type:        []string{"string"},
 							Format:      "",
 						},

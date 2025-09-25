@@ -19,4 +19,4 @@
 
 package hypervisor
 
-type MshvL1vhHypervisor struct{}
+type HyperVLayeredHypervisor struct{}
