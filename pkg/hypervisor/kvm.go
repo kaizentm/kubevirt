@@ -28,5 +28,5 @@ import (
 type KVMHypervisor struct{}
 
 func (k *KVMHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
- // no adjustments needed for KVM
+	// no adjustments needed for KVM
 }

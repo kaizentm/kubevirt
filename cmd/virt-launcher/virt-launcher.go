@@ -431,11 +431,10 @@ func main() {
 
 	signalStopChan := make(chan struct{})
 	log.Log.Infof("DEBUG: Creating domain manager with hypervisor %s", *hypervisor)
-	domainManager, err := virtwrap.NewLibvirtDomainManager(domainConn, *virtShareDir, *ephemeralDiskDir, &agentStore, *ovmfPath, ephemeralDiskCreator, metadataCache, signalStopChan, *diskMemoryLimitBytes, util.GetPodCPUSet, *imageVolumeEnabled)
+	domainManager, err := virtwrap.NewLibvirtDomainManager(domainConn, *virtShareDir, *ephemeralDiskDir, &agentStore, *ovmfPath, ephemeralDiskCreator, metadataCache, signalStopChan, *diskMemoryLimitBytes, util.GetPodCPUSet, *imageVolumeEnabled, *hypervisor)
 	if err != nil {
 		panic(err)
 	}
-	domainManager.Hypervisor = *hypervisor
 	// Start the virt-launcher command service.
 	// Clients can use this service to tell virt-launcher
 	// to start/stop virtual machines

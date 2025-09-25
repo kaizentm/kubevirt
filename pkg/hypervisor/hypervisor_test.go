@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "kubevirt.io/api/core/v1"
+
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
@@ -205,7 +206,7 @@ var _ = Describe("Hypervisor", func() {
 			kvmHypervisor.AdjustDomain(vmi, kvmDomain)
 			hypervHypervisor.AdjustDomain(vmi, hypervDomain)
 
-			Expect(kvmDomain.Spec.Type).To(Equal("test"))     // unchanged
+			Expect(kvmDomain.Spec.Type).To(Equal("test"))      // unchanged
 			Expect(hypervDomain.Spec.Type).To(Equal("hyperv")) // changed to hyperv
 		})
 	})

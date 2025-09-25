@@ -226,14 +226,14 @@ func (s pausedVMIs) contains(uid types.UID) bool {
 
 func NewLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralDiskDir string, agentStore *agentpoller.AsyncAgentStore,
 	ovmfPath string, ephemeralDiskCreator ephemeraldisk.EphemeralDiskCreatorInterface, metadataCache *metadata.Cache,
-	stopChan chan struct{}, diskMemoryLimitBytes int64, cpuSetGetter func() ([]int, error), imageVolumeEnabled bool) (DomainManager, error) {
+	stopChan chan struct{}, diskMemoryLimitBytes int64, cpuSetGetter func() ([]int, error), imageVolumeEnabled bool, hypervisor string) (DomainManager, error) {
 	directIOChecker := converter.NewDirectIOChecker()
-	return newLibvirtDomainManager(connection, virtShareDir, ephemeralDiskDir, agentStore, ovmfPath, ephemeralDiskCreator, directIOChecker, metadataCache, stopChan, diskMemoryLimitBytes, cpuSetGetter, imageVolumeEnabled)
+	return newLibvirtDomainManager(connection, virtShareDir, ephemeralDiskDir, agentStore, ovmfPath, ephemeralDiskCreator, directIOChecker, metadataCache, stopChan, diskMemoryLimitBytes, cpuSetGetter, imageVolumeEnabled, hypervisor)
 }
 
 func newLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralDiskDir string, agentStore *agentpoller.AsyncAgentStore, ovmfPath string,
 	ephemeralDiskCreator ephemeraldisk.EphemeralDiskCreatorInterface, directIOChecker converter.DirectIOChecker, metadataCache *metadata.Cache,
-	stopChan chan struct{}, diskMemoryLimitBytes int64, cpuSetGetter func() ([]int, error), imageVolumeEnabled bool) (DomainManager, error) {
+	stopChan chan struct{}, diskMemoryLimitBytes int64, cpuSetGetter func() ([]int, error), imageVolumeEnabled bool, hypervisor string) (DomainManager, error) {
 	manager := LibvirtDomainManager{
 		diskMemoryLimitBytes: diskMemoryLimitBytes,
 		virConn:              connection,
@@ -253,6 +253,7 @@ func newLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralD
 		cpuSetGetter:                  cpuSetGetter,
 		setTimeOnce:                   sync.Once{},
 		imageVolumeFeatureGateEnabled: imageVolumeEnabled,
+		hypervisor:                    hypervisor,
 	}
 
 	log.Log.Infof("DEBUG: Domain manager created with %s as the hypervisor", manager.hypervisor)
