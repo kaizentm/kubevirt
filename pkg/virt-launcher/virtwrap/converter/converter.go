@@ -1988,6 +1988,11 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 	setIOThreads(vmi, domain, vcpus)
 
+	// Inject compatibility globals if the user requested a downstream RHEL
+	// pc-q35 machine alias and we need to approximate its behavior on upstream
+	// QEMU. This is intentionally late so all devices/controllers are present.
+	applyRHELQ35Compat(vmi, domain)
+
 	return nil
 }
 
