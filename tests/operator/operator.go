@@ -79,7 +79,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
+	devicemanager "kubevirt.io/kubevirt/pkg/virt-handler/device-manager"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/apply"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/generate/components"
 	"kubevirt.io/kubevirt/pkg/virt-operator/util"
@@ -411,12 +411,14 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			testsuite.EnsureKubevirtReadyWithTimeout(kv, 120*time.Second)
 
 			By("Test that worker nodes have the correct allocatable kvm devices according to virtualMachineInstancesPerNode setting")
+			hypervisorName := kv.Spec.Configuration.HypervisorConfiguration.Name
+			hypervisorDeviceKey := k8sv1.ResourceName(fmt.Sprintf("%s/%s", devicemanager.DeviceNamespace, hypervisorName))
 			Eventually(func() error {
-				nodesWithKvm := libnode.GetNodesWithKVM()
+				nodesWithKvm := libnode.GetNodesWithHypervisorDevice(hypervisorName)
 				for _, node := range nodesWithKvm {
-					kvmDevices, _ := node.Status.Allocatable[services.KvmDevice]
-					if int(kvmDevices.Value()) != newVirtualMachineInstancesPerNode {
-						return fmt.Errorf("node %s does not have the expected allocatable kvm devices: %d, got: %d", node.Name, newVirtualMachineInstancesPerNode, kvmDevices.Value())
+					hypervisorDevices, _ := node.Status.Allocatable[hypervisorDeviceKey]
+					if int(hypervisorDevices.Value()) != newVirtualMachineInstancesPerNode {
+						return fmt.Errorf("node %s does not have the expected allocatable %s devices: %d, got: %d", node.Name, hypervisorName, newVirtualMachineInstancesPerNode, hypervisorDevices.Value())
 					}
 				}
 				return nil
@@ -433,15 +435,14 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			By("Waiting for virt-operator to apply changes to component")
 			testsuite.EnsureKubevirtReadyWithTimeout(kv, 120*time.Second)
 
-			By("Check that worker nodes resumed the default amount of allocatable kvm devices")
-			const defaultKvmDevices = "1k"
-			defaultKvmDevicesQuant := resource.MustParse(defaultKvmDevices)
-			kvmDeviceKey := k8sv1.ResourceName(services.KvmDevice)
+			By("Check that worker nodes resumed the default amount of allocatable hypervisor devices")
+			const defaultHypervisorDevices = "1k"
+			defaultHypervisorDevicesQuant := resource.MustParse(defaultHypervisorDevices)
 
 			Eventually(func(g Gomega) {
-				nodesWithKvm := libnode.GetNodesWithKVM()
+				nodesWithKvm := libnode.GetNodesWithHypervisorDevice(hypervisorName)
 				for _, node := range nodesWithKvm {
-					g.Expect(node.Status.Allocatable).To(HaveKeyWithValue(kvmDeviceKey, defaultKvmDevicesQuant), "node %s does not have the expected allocatable kvm devices", node.Name)
+					g.Expect(node.Status.Allocatable).To(HaveKeyWithValue(hypervisorDeviceKey, defaultHypervisorDevicesQuant), "node %s does not have the expected allocatable %s devices", node.Name, hypervisorName)
 				}
 			}).WithTimeout(60 * time.Second).WithPolling(5 * time.Second).Should(Succeed())
 		})

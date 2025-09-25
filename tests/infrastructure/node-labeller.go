@@ -54,28 +54,31 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 
 	var (
 		virtClient               kubecli.KubevirtClient
-		nodesWithKVM             []*k8sv1.Node
+		nodesWithHypervisor      []*k8sv1.Node
+		hypervisorName           string
 		nonExistingCPUModelLabel = v1.CPUModelLabel + "someNonExistingCPUModel"
 	)
 
 	BeforeEach(func() {
 		virtClient = kubevirt.Client()
-		nodesWithKVM = libnode.GetNodesWithKVM()
-		if len(nodesWithKVM) == 0 {
-			Fail("No nodes with kvm")
+		kubevirt := libkubevirt.GetCurrentKv(virtClient)
+		hypervisorName = kubevirt.Spec.Configuration.HypervisorConfiguration.Name
+		nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorName)
+		if len(nodesWithHypervisor) == 0 {
+			Fail(fmt.Sprintf("No nodes with hypervisor device %s found", hypervisorName))
 		}
 	})
 
 	AfterEach(func() {
-		nodesWithKVM = libnode.GetNodesWithKVM()
+		nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorName)
 
-		for _, node := range nodesWithKVM {
+		for _, node := range nodesWithHypervisor {
 			libnode.RemoveLabelFromNode(node.Name, nonExistingCPUModelLabel)
 			libnode.RemoveAnnotationFromNode(node.Name, v1.LabellerSkipNodeAnnotation)
 		}
 		libinfra.WakeNodeLabellerUp(virtClient)
 
-		for _, node := range nodesWithKVM {
+		for _, node := range nodesWithHypervisor {
 			Eventually(func() error {
 				nodeObj, err := virtClient.CoreV1().Nodes().Get(context.Background(), node.Name, metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
@@ -114,7 +117,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 		}
 
 		It("skip node reconciliation when node has skip annotation", func() {
-			for i, node := range nodesWithKVM {
+			for i, node := range nodesWithHypervisor {
 				node.Labels[nonExistingCPUModelLabel] = trueStr
 				p := []patch{
 					{
@@ -143,9 +146,9 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 			config.UpdateKubeVirtConfigValueAndWait(kvConfig)
 
 			Eventually(func() bool {
-				nodesWithKVM = libnode.GetNodesWithKVM()
+				nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorName)
 
-				for _, node := range nodesWithKVM {
+				for _, node := range nodesWithHypervisor {
 					_, skipAnnotationFound := node.Annotations[v1.LabellerSkipNodeAnnotation]
 					_, customLabelFound := node.Labels[nonExistingCPUModelLabel]
 					if customLabelFound && !skipAnnotationFound {
@@ -157,7 +160,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 		})
 
 		It("[test_id:6246] label nodes with cpu model, cpu features and host cpu model", func() {
-			for _, node := range nodesWithKVM {
+			for _, node := range nodesWithHypervisor {
 				cpuModelLabelPresent := false
 				cpuFeatureLabelPresent := false
 				hyperVLabelPresent := false
@@ -199,7 +202,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 			kvConfig := libkubevirt.GetCurrentKv(virtClient)
 			kvConfig.Spec.Configuration.ObsoleteCPUModels = nil
 			config.UpdateKubeVirtConfigValueAndWait(kvConfig.Spec.Configuration)
-			node := nodesWithKVM[0]
+			node := nodesWithHypervisor[0]
 			timeout := 30 * time.Second
 			Eventually(func() error {
 				nodeObj, err := virtClient.CoreV1().Nodes().Get(context.Background(), node.Name, metav1.GetOptions{})
@@ -217,7 +220,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 		})
 
 		It("[test_id:6995]should expose tsc frequency and tsc scalability", func() {
-			node := nodesWithKVM[0]
+			node := nodesWithHypervisor[0]
 			Expect(node.Labels).To(HaveKey("cpu-timer.node.kubevirt.io/tsc-frequency"))
 			Expect(node.Labels).To(HaveKey("cpu-timer.node.kubevirt.io/tsc-scalable"))
 			Expect(node.Labels["cpu-timer.node.kubevirt.io/tsc-scalable"]).To(Or(Equal(trueStr), Equal("false")))
@@ -240,7 +243,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 
 		It("[test_id:6249] should update node with new cpu model label set", func() {
 			obsoleteModel := ""
-			node := nodesWithKVM[0]
+			node := nodesWithHypervisor[0]
 
 			kvConfig := originalKubeVirt.Spec.Configuration.DeepCopy()
 			kvConfig.ObsoleteCPUModels = make(map[string]bool)
@@ -277,7 +280,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 		})
 
 		It("[test_id:6252] should remove all cpu model labels (all cpu model are in obsolete list)", func() {
-			node := nodesWithKVM[0]
+			node := nodesWithHypervisor[0]
 
 			obsoleteModels := map[string]bool{}
 			for k, v := range nodelabellerutil.DefaultObsoleteCPUModels {

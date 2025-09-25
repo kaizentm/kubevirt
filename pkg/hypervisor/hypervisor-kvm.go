@@ -20,3 +20,7 @@
 package hypervisor
 
 type KVMHypervisor struct{}
+
+func (*KVMHypervisor) GetDevice() string {
+	return "kvm"
+}
