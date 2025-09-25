@@ -20,3 +20,7 @@
 package hypervisor
 
 type HyperVLayeredHypervisor struct{}
+
+func (*HyperVLayeredHypervisor) GetDevice() string {
+	return "mshv"
+}

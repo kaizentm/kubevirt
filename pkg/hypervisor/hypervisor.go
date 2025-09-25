@@ -26,6 +26,8 @@ import (
 
 // Hypervisor interface defines functions needed to tune the virt-launcher pod spec and the libvirt domain XML for a specific hypervisor
 type Hypervisor interface {
+	// Returns the hypervisor device
+	GetDevice() string
 }
 
 func NewHypervisor(hypervisor string) Hypervisor {
