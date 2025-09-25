@@ -110,9 +110,7 @@ jobs:
 
       - name: Build Images
         run: |
-          # build only launcher image
-          # make bazel-build-images 
-          ONLY_IMAGES='//cmd/virt-launcher:virt-launcher-image' make bazel-build-images
+          make bazel-build-images 
 
       - name: Push Images
         run: |
