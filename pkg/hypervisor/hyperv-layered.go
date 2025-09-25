@@ -26,8 +26,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
-const deviceName = "mshv"
-
 type HyperVLayeredHypervisor struct{}
 
 func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain) {

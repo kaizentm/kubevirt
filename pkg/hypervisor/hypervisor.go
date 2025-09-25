@@ -26,11 +26,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
-const (
-	HyperVLayered = "hyperv-layered"
-	KVM           = "kvm"
-)
-
 type Hypervisor interface {
 	AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain)
 }
