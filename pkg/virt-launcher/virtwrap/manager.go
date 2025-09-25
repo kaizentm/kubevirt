@@ -253,12 +253,7 @@ func newLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralD
 		cpuSetGetter:                  cpuSetGetter,
 		setTimeOnce:                   sync.Once{},
 		imageVolumeFeatureGateEnabled: imageVolumeEnabled,
-	}
-
-	if hypervisor != "" {
-		manager.hypervisor = hv.NewHypervisor(hypervisor)
-	} else {
-		manager.hypervisor = hv.NewHypervisor("kvm")
+		hypervisor:                    hv.NewHypervisor(hypervisor),
 	}
 
 	log.Log.Infof("DEBUG: Domain manager created with %s as the hypervisor", manager.hypervisor)

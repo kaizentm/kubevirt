@@ -69,7 +69,7 @@ var _ = Describe("Live migration source", func() {
 				virtconfig.DefaultDiskVerificationMemoryLimitBytes,
 				fakeCpuSetGetter,
 				false, // image volume enabled
-				"",
+				virtconfig.DefaultHypervisorName,
 			)
 			libvirtDomainManager = manager.(*LibvirtDomainManager)
 			libvirtDomainManager.initializeMigrationMetadata(vmi, v1.MigrationPreCopy)
