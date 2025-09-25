@@ -37,6 +37,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	nodelabellerutil "kubevirt.io/kubevirt/pkg/virt-handler/node-labeller/util"
 	"kubevirt.io/kubevirt/tests/events"
@@ -55,22 +56,25 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 	var (
 		virtClient               kubecli.KubevirtClient
 		nodesWithHypervisor      []*k8sv1.Node
-		hypervisorName           string
+		hypervisorDevice         string
 		nonExistingCPUModelLabel = v1.CPUModelLabel + "someNonExistingCPUModel"
 	)
 
 	BeforeEach(func() {
 		virtClient = kubevirt.Client()
 		kubevirt := libkubevirt.GetCurrentKv(virtClient)
-		hypervisorName = kubevirt.Spec.Configuration.HypervisorConfiguration.Name
-		nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorName)
+		// Get the hypervisor device from Hypervisor configuration
+		hypervisorName := kubevirt.Spec.Configuration.HypervisorConfiguration.Name
+		hypervisorDevice = hypervisor.NewHypervisor(hypervisorName).GetDevice()
+
+		nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorDevice)
 		if len(nodesWithHypervisor) == 0 {
 			Fail(fmt.Sprintf("No nodes with hypervisor device %s found", hypervisorName))
 		}
 	})
 
 	AfterEach(func() {
-		nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorName)
+		nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorDevice)
 
 		for _, node := range nodesWithHypervisor {
 			libnode.RemoveLabelFromNode(node.Name, nonExistingCPUModelLabel)
@@ -146,7 +150,7 @@ var _ = Describe(SIGSerial("Node-labeller", func() {
 			config.UpdateKubeVirtConfigValueAndWait(kvConfig)
 
 			Eventually(func() bool {
-				nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorName)
+				nodesWithHypervisor = libnode.GetNodesWithHypervisorDevice(hypervisorDevice)
 
 				for _, node := range nodesWithHypervisor {
 					_, skipAnnotationFound := node.Annotations[v1.LabellerSkipNodeAnnotation]

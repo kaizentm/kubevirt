@@ -48,6 +48,7 @@ import (
 
 	"kubevirt.io/kubevirt/pkg/apimachinery/patch"
 	"kubevirt.io/kubevirt/pkg/controller"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
@@ -588,7 +589,8 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 
 			It("[test_id:3198]device plugins should re-register if the kubelet restarts", func() {
 				kv := libkubevirt.GetCurrentKv(kubevirt.Client())
-				hypervisorDevice := kv.Spec.Configuration.HypervisorConfiguration.Name
+				hypervisorName := kv.Spec.Configuration.HypervisorConfiguration.Name
+				hypervisorDevice := hypervisor.NewHypervisor(hypervisorName).GetDevice()
 
 				By("starting a VMI on a node")
 				vmi := libvmifact.NewAlpine()
@@ -1286,7 +1288,8 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 				nodeList := libnode.GetAllSchedulableNodes(kubevirt.Client())
 				kv := libkubevirt.GetCurrentKv(kubevirt.Client())
 				hypervisorName := kv.Spec.Configuration.HypervisorConfiguration.Name
-				hypervisorDeviceK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, hypervisorName))
+				hypervisorDevice := hypervisor.NewHypervisor(hypervisorName).GetDevice()
+				hypervisorDeviceK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, hypervisorDevice))
 
 				if len(nodeList.Items) == 0 {
 					Fail("There are no compute nodes in cluster")
@@ -1294,10 +1297,10 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 				node := nodeList.Items[0]
 
 				_, ok := node.Status.Allocatable[hypervisorDeviceK8sResource]
-				Expect(ok).To(BeTrue(), "%s devices not allocatable on node: %s", hypervisorName, node.Name)
+				Expect(ok).To(BeTrue(), "%s devices not allocatable on node: %s", hypervisorDevice, node.Name)
 
 				_, ok = node.Status.Capacity[hypervisorDeviceK8sResource]
-				Expect(ok).To(BeTrue(), "No Capacity for %s devices on node: %s", hypervisorName, node.Name)
+				Expect(ok).To(BeTrue(), "No Capacity for %s devices on node: %s", hypervisorDevice, node.Name)
 			})
 		})
 	})

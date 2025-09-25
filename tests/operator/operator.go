@@ -76,6 +76,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/certificates/triple"
 	"kubevirt.io/kubevirt/pkg/certificates/triple/cert"
 	"kubevirt.io/kubevirt/pkg/controller"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
@@ -412,13 +413,14 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 
 			By("Test that worker nodes have the correct allocatable kvm devices according to virtualMachineInstancesPerNode setting")
 			hypervisorName := kv.Spec.Configuration.HypervisorConfiguration.Name
-			hypervisorDeviceKey := k8sv1.ResourceName(fmt.Sprintf("%s/%s", devicemanager.DeviceNamespace, hypervisorName))
+			hypervisorDevice := hypervisor.NewHypervisor(hypervisorName).GetDevice()
+			hypervisorDeviceKey := k8sv1.ResourceName(fmt.Sprintf("%s/%s", devicemanager.DeviceNamespace, hypervisorDevice))
 			Eventually(func() error {
-				nodesWithKvm := libnode.GetNodesWithHypervisorDevice(hypervisorName)
+				nodesWithKvm := libnode.GetNodesWithHypervisorDevice(hypervisorDevice)
 				for _, node := range nodesWithKvm {
 					hypervisorDevices, _ := node.Status.Allocatable[hypervisorDeviceKey]
 					if int(hypervisorDevices.Value()) != newVirtualMachineInstancesPerNode {
-						return fmt.Errorf("node %s does not have the expected allocatable %s devices: %d, got: %d", node.Name, hypervisorName, newVirtualMachineInstancesPerNode, hypervisorDevices.Value())
+						return fmt.Errorf("node %s does not have the expected allocatable %s devices: %d, got: %d", node.Name, hypervisorDevice, newVirtualMachineInstancesPerNode, hypervisorDevices.Value())
 					}
 				}
 				return nil
@@ -440,9 +442,9 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			defaultHypervisorDevicesQuant := resource.MustParse(defaultHypervisorDevices)
 
 			Eventually(func(g Gomega) {
-				nodesWithKvm := libnode.GetNodesWithHypervisorDevice(hypervisorName)
+				nodesWithKvm := libnode.GetNodesWithHypervisorDevice(hypervisorDevice)
 				for _, node := range nodesWithKvm {
-					g.Expect(node.Status.Allocatable).To(HaveKeyWithValue(hypervisorDeviceKey, defaultHypervisorDevicesQuant), "node %s does not have the expected allocatable %s devices", node.Name, hypervisorName)
+					g.Expect(node.Status.Allocatable).To(HaveKeyWithValue(hypervisorDeviceKey, defaultHypervisorDevicesQuant), "node %s does not have the expected allocatable %s devices", node.Name, hypervisorDevice)
 				}
 			}).WithTimeout(60 * time.Second).WithPolling(5 * time.Second).Should(Succeed())
 		})
