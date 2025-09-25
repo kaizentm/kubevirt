@@ -1388,8 +1388,6 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 		const vmiLaunchTimeout = 360
 
 		It("soft reboot vmi with agent connected should succeed", decorators.Conformance, func() {
-			vmi := libvmifact.NewFedora(withoutACPI())
-
 			// NOTE: ACPI is deliberately disabled here (withoutACPI()) to validate the guest-agent-only
 			// soft reboot path (i.e. success without relying on an ACPI reboot event). On the q35
 			// machine type KubeVirt normally attaches virtio devices behind PCIe root ports; enumerating
@@ -1399,9 +1397,9 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 			// the legacy root bus (00:xx) so Linux can enumerate them without ACPI, allowing the VM to
 			// boot while still keeping ACPI disabled for the purpose of isolating the agent-based reboot
 			// mechanism. Remove only if q35 topology changes to make ACPI-less enumeration viable again.
-			vmi.Annotations = map[string]string{
-				v1.PlacePCIDevicesOnRootComplex: "true",
-			}
+
+			vmi := libvmifact.NewFedora(withoutACPI(),
+				libvmi.WithAnnotation(v1.PlacePCIDevicesOnRootComplex, "true"))
 
 			vmi = libvmops.RunVMIAndExpectLaunch(vmi, vmiLaunchTimeout)
 
@@ -1426,14 +1424,12 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 		})
 
 		It("soft reboot vmi neither have the agent connected nor the ACPI feature enabled should fail", decorators.Conformance, func() {
-			vmi := libvmifact.NewCirros(withoutACPI())
-
 			// Same enumeration issue as above: place devices on root complex so the Cirros disk is visible
 			// even with ACPI disabled; in this case we want soft reboot to fail because neither ACPI nor
 			// the guest agent is available.
-			vmi.Annotations = map[string]string{
-				v1.PlacePCIDevicesOnRootComplex: "true",
-			}
+
+			vmi := libvmifact.NewCirros(withoutACPI(),
+				libvmi.WithAnnotation(v1.PlacePCIDevicesOnRootComplex, "true"))
 
 			vmi = libvmops.RunVMIAndExpectLaunch(vmi, vmiLaunchTimeout)
 
