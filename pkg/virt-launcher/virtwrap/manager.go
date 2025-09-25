@@ -1054,7 +1054,6 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 	}
 
 	hypervisor := hv.KVM
-	// L1VH TODO: Add feature gate checks
 	if l.hypervisor != "" {
 		hypervisor = l.hypervisor
 	}
