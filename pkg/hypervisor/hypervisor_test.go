@@ -18,15 +18,3 @@
  */
 
 package hypervisor
-
-import (
-	v1 "kubevirt.io/api/core/v1"
-
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
-)
-
-type KVMHypervisor struct{}
-
-func (k *KVMHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
- // no adjustments needed for KVM
-}

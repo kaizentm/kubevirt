@@ -21,11 +21,17 @@ package hypervisor
 
 import (
 	v1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/client-go/log"
+
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
-// Hypervisor interface defines functions needed to tune the virt-launcher pod spec and the libvirt domain XML for a specific hypervisor
+const (
+	HyperVLayered = "hyperv-layered"
+	KVM           = "kvm"
+)
+
 type Hypervisor interface {
+	AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain)
 }
 
 func NewHypervisor(hypervisor string) Hypervisor {
@@ -35,6 +41,11 @@ func NewHypervisor(hypervisor string) Hypervisor {
 		return &HyperVLayeredHypervisor{}
 	default:
 		log.Log.Infof("Creating Hypervisor instance for default KVM implementation. Provided hypervisor: %s", hypervisor)
+	case HyperVLayered:
+		return &HyperVLayeredHypervisor{}
+	case KVM:
+		fallthrough
+	default:
 		return &KVMHypervisor{}
 	}
 }

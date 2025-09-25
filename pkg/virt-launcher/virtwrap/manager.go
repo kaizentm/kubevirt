@@ -64,6 +64,7 @@ import (
 	ephemeraldisk "kubevirt.io/kubevirt/pkg/ephemeral-disk"
 	cmdv1 "kubevirt.io/kubevirt/pkg/handler-launcher-com/cmd/v1"
 	"kubevirt.io/kubevirt/pkg/hooks"
+	hv "kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/ignition"
 	"kubevirt.io/kubevirt/pkg/liveupdate/memory"
 	"kubevirt.io/kubevirt/pkg/network/cache"
@@ -197,6 +198,7 @@ type LibvirtDomainManager struct {
 	cpuSetGetter                  func() ([]int, error)
 	imageVolumeFeatureGateEnabled bool
 	setTimeOnce                   sync.Once
+	hypervisor                    string
 }
 
 type pausedVMIs struct {
@@ -252,6 +254,8 @@ func newLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralD
 		setTimeOnce:                   sync.Once{},
 		imageVolumeFeatureGateEnabled: imageVolumeEnabled,
 	}
+
+	log.Log.Infof("DEBUG: Domain manager created with %s as the hypervisor", manager.hypervisor)
 
 	manager.hotplugHostDevicesInProgress = make(chan struct{}, maxConcurrentHotplugHostDevices)
 	manager.memoryDumpInProgress = make(chan struct{}, maxConcurrentMemoryDumps)
@@ -1048,6 +1052,12 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		}
 	}
 
+	hypervisor := hv.KVM
+	// L1VH TODO: Add feature gate checks
+	if l.hypervisor != "" {
+		hypervisor = l.hypervisor
+	}
+
 	// Map the VirtualMachineInstance to the Domain
 	c := &converter.ConverterContext{
 		Architecture:          arch.NewConverter(runtime.GOARCH),
@@ -1063,6 +1073,7 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		UseLaunchSecurity:     kutil.UseLaunchSecurity(vmi),
 		FreePageReporting:     isFreePageReportingEnabled(false, vmi),
 		SerialConsoleLog:      isSerialConsoleLogEnabled(false, vmi),
+		Hypervisor:            hv.NewHypervisor(hypervisor),
 	}
 
 	if options != nil {

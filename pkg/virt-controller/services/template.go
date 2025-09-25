@@ -48,6 +48,7 @@ import (
 
 	containerdisk "kubevirt.io/kubevirt/pkg/container-disk"
 	"kubevirt.io/kubevirt/pkg/hooks"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	metrics "kubevirt.io/kubevirt/pkg/monitoring/metrics/virt-controller"
 	"kubevirt.io/kubevirt/pkg/network/downwardapi"
 	"kubevirt.io/kubevirt/pkg/network/istio"
@@ -428,6 +429,11 @@ func (t *TemplateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 	_, ok := vmi.Annotations[v1.FuncTestLauncherFailFastAnnotation]
 	if ok {
 		command = append(command, "--simulate-crash")
+	}
+
+	if t.clusterConfig.HyperVLayeredEnabled() {
+		log.Log.V(4).Infof("DEBUG: Using HyperV Layered as the hypervisor")
+		command = append(command, "--hypervisor", hypervisor.HyperVLayered)
 	}
 
 	volumeRenderer, err := t.newVolumeRenderer(vmi, namespace, requestedHookSidecarList, backendStoragePVCName)

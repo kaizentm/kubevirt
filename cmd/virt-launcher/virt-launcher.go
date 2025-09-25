@@ -359,6 +359,7 @@ func main() {
 	qemuAgentFSFreezeStatusInterval := pflag.Duration("qemu-fsfreeze-status-interval", 5*time.Second, "Interval between consecutive qemu agent calls for fsfreeze status command")
 	simulateCrash := pflag.Bool("simulate-crash", false, "Causes virt-launcher to immediately crash. This is used by functional tests to simulate crash loop scenarios.")
 	libvirtLogFilters := pflag.String("libvirt-log-filters", "", "Set custom log filters for libvirt")
+	hypervisor := pflag.String("hypervisor", "kvm", "The hypervisor to use. Supported values are 'kvm' and 'hyperv-layered'.")
 
 	pflag.CommandLine.AddGoFlag(goflag.CommandLine.Lookup("v"))
 	pflag.Parse()
@@ -429,11 +430,12 @@ func main() {
 	metadataCache := metadata.NewCache()
 
 	signalStopChan := make(chan struct{})
+	log.Log.Infof("DEBUG: Creating domain manager with hypervisor %s", *hypervisor)
 	domainManager, err := virtwrap.NewLibvirtDomainManager(domainConn, *virtShareDir, *ephemeralDiskDir, &agentStore, *ovmfPath, ephemeralDiskCreator, metadataCache, signalStopChan, *diskMemoryLimitBytes, util.GetPodCPUSet, *imageVolumeEnabled)
 	if err != nil {
 		panic(err)
 	}
-
+	domainManager.Hypervisor = *hypervisor
 	// Start the virt-launcher command service.
 	// Clients can use this service to tell virt-launcher
 	// to start/stop virtual machines

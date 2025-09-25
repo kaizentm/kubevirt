@@ -19,4 +19,18 @@
 
 package hypervisor
 
+import (
+	v1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/client-go/log"
+
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
+)
+
+const deviceName = "mshv"
+
 type HyperVLayeredHypervisor struct{}
+
+func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
+	domain.Spec.Type = "hyperv"
+	log.Log.Infof("DEBUG: Adjusting domain for HyperV Layered")
+}
