@@ -1,6 +1,8 @@
 package isolation
 
 import (
+	"embed"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -13,6 +15,13 @@ import (
 //
 // then OFF/ON branch coverage + memlock expectation tests must be added. This sentinel will fail
 // the moment a call to HyperVLayeredEnabled appears in detector.go, forcing that update.
+//
+//go:embed detector.go
+var detectorSource string
+
+// Prevent goimports from pruning the embed import before the compiler processes the directive.
+var _ embed.FS
+
 var _ = Describe("AdjustQemuProcessMemoryLimits hypervisor parity sentinel", func() {
 	It("should fail fast once AdjustQemuProcessMemoryLimits introduces HyperVLayered gating", func() {
 		Expect(detectorSource).NotTo(ContainSubstring("HyperVLayeredEnabled("),
@@ -20,7 +29,4 @@ var _ = Describe("AdjustQemuProcessMemoryLimits hypervisor parity sentinel", fun
 	})
 })
 
-// Embed detector.go to make sentinel robust to test build directory layout.
-//
-//go:embed detector.go
-var detectorSource string
+// (detectorSource embedded above)
