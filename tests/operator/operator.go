@@ -416,7 +416,7 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			By("Test that worker nodes have the correct allocatable hypervisor devices according to virtualMachineInstancesPerNode setting")
 			hypervisorDevK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, hypervisorDevice))
 			Eventually(func() error {
-				nodesWithHypervisor := libnode.GetNodesWithHypervisor()
+				nodesWithHypervisor := libnode.GetNodesWithHypervisor(hypervisorDevice)
 				for _, node := range nodesWithHypervisor {
 					devices, _ := node.Status.Allocatable[hypervisorDevK8sResource]
 					if int(devices.Value()) != newVirtualMachineInstancesPerNode {
@@ -442,7 +442,7 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			defaultDevicesQuant := resource.MustParse(defaultDevices)
 
 			Eventually(func(g Gomega) {
-				nodesWithHypervisor := libnode.GetNodesWithHypervisor()
+				nodesWithHypervisor := libnode.GetNodesWithHypervisor(hypervisorDevice)
 				for _, node := range nodesWithHypervisor {
 					g.Expect(node.Status.Allocatable).To(HaveKeyWithValue(hypervisorDevK8sResource, defaultDevicesQuant), "node %s does not have the expected allocatable hypervisor devices", node.Name)
 				}

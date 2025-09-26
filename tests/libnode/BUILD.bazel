@@ -17,7 +17,6 @@ go_library(
         "//tests/exec:go_default_library",
         "//tests/flags:go_default_library",
         "//tests/framework/cleanup:go_default_library",
-        "//tests/framework/hypervisor:go_default_library",
         "//tests/framework/kubevirt:go_default_library",
         "//tests/libkubevirt:go_default_library",
         "//vendor/github.com/onsi/ginkgo/v2:go_default_library",
