@@ -2891,6 +2891,16 @@ var _ = Describe("[sig-compute]Configurations", decorators.SigCompute, func() {
 			Eventually(logsFn, 60*time.Second, 2*time.Second).Should(ContainSubstring("-accel mshv"))
 			By("Ensuring -enable-kvm is not present when using mshv")
 			Consistently(logsFn, 5*time.Second, 1*time.Second).ShouldNot(ContainSubstring("-enable-kvm"))
+
+			By("Logging into the guest to ensure it is responsive")
+			Expect(console.LoginToCirros(vmi)).To(Succeed())
+
+			By("Running a simple marker command inside the guest")
+			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
+				&expect.BSnd{S: "echo mshv-guest-alive\\n"},
+				&expect.BExp{R: console.RetValue("mshv-guest-alive")},
+			}, 15)).To(Succeed())
+
 		})
 	})
 
