@@ -19,6 +19,8 @@
 package services
 
 import (
+	"embed"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	v1 "kubevirt.io/api/core/v1"
@@ -27,6 +29,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+//go:embed renderresources.go
+var renderResourcesSource string
+
+var _ embed.FS
 
 // NOTE(parity): At the time of writing there is no branching in GetMemoryOverhead()
 // (or AdjustQemuProcessMemoryLimits()) based on underlying hypervisor (KVM vs mshv).
@@ -96,8 +103,4 @@ var _ = Describe("Hypervisor memory overhead parity", func() {
 
 })
 
-// Embed the current source of renderresources.go so the sentinel does not depend on filesystem layout
-// during 'go test' (which compiles to a separate build directory without source files).
-//
-//go:embed renderresources.go
-var renderResourcesSource string
+// (renderResourcesSource embedded above)
