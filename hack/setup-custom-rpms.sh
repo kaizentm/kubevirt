@@ -60,10 +60,10 @@ if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then usage; fi
 
 # Provide sensible defaults for images if not specified.
 if [[ -z "${CUSTOM_LIBVIRT_IMAGE:-}" ]]; then
-  CUSTOM_LIBVIRT_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kubevirt/unknown}/libvirt-rpms:qemu-mshv"
+  CUSTOM_LIBVIRT_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kaizentm/kubevirt}/libvirt-rpms:qemu-mshv"
 fi
 if [[ -z "${CUSTOM_QEMU_IMAGE:-}" ]]; then
-  CUSTOM_QEMU_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kubevirt/unknown}/qemu-rpms:qemu-mshv"
+  CUSTOM_QEMU_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kaizentm/kubevirt}/qemu-rpms:qemu-mshv"
 fi
 
 command -v docker >/dev/null || err "docker not found in PATH"
