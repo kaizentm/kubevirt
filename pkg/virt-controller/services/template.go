@@ -404,6 +404,7 @@ func (t *TemplateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 			"--hook-sidecars", strconv.Itoa(len(requestedHookSidecarList)),
 			"--ovmf-path", ovmfPath,
 			"--disk-memory-limit", strconv.Itoa(int(t.clusterConfig.GetDiskVerification().MemoryLimit.Value())),
+			"--hypervisor", t.clusterConfig.GetHypervisor().Name,
 		}
 		if nonRoot {
 			command = append(command, "--run-as-nonroot")
@@ -429,8 +430,6 @@ func (t *TemplateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 	if ok {
 		command = append(command, "--simulate-crash")
 	}
-
-	command = append(command, "--hypervisor", t.clusterConfig.GetHypervisor().Name)
 
 	volumeRenderer, err := t.newVolumeRenderer(vmi, namespace, requestedHookSidecarList, backendStoragePVCName)
 	if err != nil {
