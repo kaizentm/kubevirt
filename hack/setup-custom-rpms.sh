@@ -105,15 +105,6 @@ docker run --rm -d \
   -p "$QEMU_PORT:80" \
   "$CUSTOM_QEMU_IMAGE" >/dev/null
 
-cleanup() {
-  if [[ "${KEEP_CONTAINERS:-0}" != "1" ]]; then
-    log "Stopping containers"
-    docker rm -f "$LIBVIRT_CONTAINER" "$QEMU_CONTAINER" >/dev/null 2>&1 || true
-  else
-    log "KEEP_CONTAINERS=1 -> leaving repo servers running"
-  fi
-}
-trap cleanup EXIT
 
 wait_http() {
   local url=$1 name=$2 tries=30 delay=1
