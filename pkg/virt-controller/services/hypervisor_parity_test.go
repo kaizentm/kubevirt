@@ -19,8 +19,6 @@
 package services
 
 import (
-	"os"
-
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	v1 "kubevirt.io/api/core/v1"
@@ -48,9 +46,7 @@ var _ = Describe("Hypervisor memory overhead parity", func() {
 		// truly toggle behavior; we instead watch for appearance of the gating call.
 		// When this fires, replace this sentinel with a real off/on evaluation using the
 		// new code path.
-		data, err := os.ReadFile("renderresources.go")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(string(data)).NotTo(ContainSubstring("HyperVLayeredEnabled("),
+		Expect(renderResourcesSource).NotTo(ContainSubstring("HyperVLayeredEnabled("),
 			"GetMemoryOverhead started using HyperVLayered gating; update parity test to calculate both OFF and ON overhead via config and assert expected invariant (likely equality unless spec changes)")
 	})
 
@@ -99,3 +95,9 @@ var _ = Describe("Hypervisor memory overhead parity", func() {
 	})
 
 })
+
+// Embed the current source of renderresources.go so the sentinel does not depend on filesystem layout
+// during 'go test' (which compiles to a separate build directory without source files).
+//
+//go:embed renderresources.go
+var renderResourcesSource string
