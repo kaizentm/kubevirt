@@ -23,6 +23,10 @@ import (
 	"kubevirt.io/client-go/kubecli"
 
 	"kubevirt.io/kubevirt/pkg/hypervisor"
+	virt_config "kubevirt.io/kubevirt/pkg/virt-config"
+	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
+
+	"kubevirt.io/kubevirt/tests/framework/checks"
 	"kubevirt.io/kubevirt/tests/libkubevirt"
 )
 
@@ -30,6 +34,10 @@ import (
 // based on the current KubeVirt configuration.
 func GetDevice(virtClient kubecli.KubevirtClient) string {
 	kv := libkubevirt.GetCurrentKv(virtClient)
-	hypervisorName := kv.Spec.Configuration.HypervisorConfiguration.Name
+	hypervisorName := virt_config.DefaultHypervisorName
+	if checks.HasFeature(featuregate.ConfigurableHypervisor) && kv.Spec.Configuration.HypervisorConfiguration != nil {
+		hypervisorName = kv.Spec.Configuration.HypervisorConfiguration.Name
+	}
 	return hypervisor.NewHypervisor(hypervisorName).GetDevice()
+
 }

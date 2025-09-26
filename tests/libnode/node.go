@@ -48,7 +48,6 @@ import (
 	"kubevirt.io/kubevirt/tests/exec"
 	"kubevirt.io/kubevirt/tests/flags"
 	"kubevirt.io/kubevirt/tests/framework/cleanup"
-	"kubevirt.io/kubevirt/tests/framework/hypervisor"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
 	"kubevirt.io/kubevirt/tests/libkubevirt"
 )
@@ -270,7 +269,7 @@ func Taint(nodeName, key string, effect k8sv1.TaintEffect) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func GetNodesWithHypervisor() []*k8sv1.Node {
+func GetNodesWithHypervisor(hypervisorDevice string) []*k8sv1.Node {
 	virtClient := kubevirt.Client()
 	listOptions := k8smetav1.ListOptions{LabelSelector: v1.AppLabel + "=virt-handler"}
 	virtHandlerPods, err := virtClient.CoreV1().Pods(flags.KubeVirtInstallNamespace).List(context.Background(), listOptions)
@@ -280,7 +279,7 @@ func GetNodesWithHypervisor() []*k8sv1.Node {
 
 	// Construct the K8s resource name for the hypervisor device
 	// Example: "devices.kubevirt.io/kvm"
-	hypervisorDevK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, hypervisor.GetDevice(virtClient)))
+	hypervisorDevK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, hypervisorDevice))
 
 	// cluster is not ready until all nodeList are ready.
 	for i := range virtHandlerPods.Items {
