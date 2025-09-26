@@ -430,7 +430,7 @@ func main() {
 	metadataCache := metadata.NewCache()
 
 	signalStopChan := make(chan struct{})
-	log.Log.Infof("DEBUG: Creating domain manager with hypervisor %s", *hypervisor)
+	log.Log.Infof("Creating domain manager with hypervisor %s", *hypervisor)
 	domainManager, err := virtwrap.NewLibvirtDomainManager(domainConn, *virtShareDir, *ephemeralDiskDir, &agentStore, *ovmfPath, ephemeralDiskCreator, metadataCache, signalStopChan, *diskMemoryLimitBytes, util.GetPodCPUSet, *imageVolumeEnabled, *hypervisor)
 	if err != nil {
 		panic(err)

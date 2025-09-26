@@ -256,7 +256,7 @@ func newLibvirtDomainManager(connection cli.Connection, virtShareDir, ephemeralD
 		hypervisor:                    hv.NewHypervisor(hypervisor),
 	}
 
-	log.Log.Infof("DEBUG: Domain manager created with %s as the hypervisor", manager.hypervisor)
+	log.Log.Infof("Domain manager created with %s as the hypervisor", manager.hypervisor)
 
 	manager.hotplugHostDevicesInProgress = make(chan struct{}, maxConcurrentHotplugHostDevices)
 	manager.memoryDumpInProgress = make(chan struct{}, maxConcurrentMemoryDumps)
