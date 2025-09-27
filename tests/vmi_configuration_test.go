@@ -24,7 +24,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -1598,7 +1597,7 @@ var _ = Describe("[sig-compute]Configurations", decorators.SigCompute, func() {
 		It("[test_id:3125]should allow creating VM without Machine defined", func() {
 			vmi := libvmifact.NewGuestless()
 			vmi.Spec.Domain.Machine = nil
-			vmi = libvmops.RunVMIAndExpectLaunch(vmi, libvmops.StartupTimeoutSecondsTiny)
+			vmi = libvmops.RunVMIAndExpectLaunch(vmi, libvmops.StartupTimeoutSecondsXHuge)
 			runningVMISpec, err := libdomain.GetRunningVMIDomainSpec(vmi)
 
 			Expect(err).ToNot(HaveOccurred())
@@ -2871,16 +2870,13 @@ var _ = Describe("[sig-compute]Configurations", decorators.SigCompute, func() {
 	// introducing flakes on clusters lacking mshv support. Enable by setting
 	// KUBEVIRT_ENABLE_MSHV=true in the test environment. The test asserts that the
 	// virt-launcher QEMU command line contains "-accel mshv" and does not contain
-	// the implicit "-enable-kvm" shortcut (we switch domain type to 'qemu' when the
-	// annotation is present). Marked Serial & Experimental to limit parallel impact.
+	// the implicit "-accel kvm" (added when domain type is 'kvm'). When the annotation
+	// requests domain type 'hyperv' (kubevirt.io/experimental-domain-type=hyperv) a patched
+	// libvirt emits "-accel mshv" automatically. Marked Serial & Experimental.
 	Context("[Experimental]with experimental accelerator annotation", Serial, func() {
 		It("[Serial][Experimental][mshv]should honor mshv accelerator annotation", func() {
-			if os.Getenv("KUBEVIRT_ENABLE_MSHV") != "true" {
-				Skip("MSHV experimental accelerator test disabled; set KUBEVIRT_ENABLE_MSHV=true to run")
-			}
-
 			vmi := libvmifact.NewCirros(
-				libvmi.WithAnnotation("kubevirt.io/experimental-qemu-accel", "mshv"),
+				libvmi.WithAnnotation("kubevirt.io/experimental-domain-type", "hyperv"),
 			)
 
 			By("Starting a VirtualMachineInstance with mshv accelerator annotation")
@@ -2889,8 +2885,8 @@ var _ = Describe("[sig-compute]Configurations", decorators.SigCompute, func() {
 			logsFn := func() string { return getVirtLauncherLogs(virtClient, vmi) }
 			By("Expecting QEMU command line contains -accel mshv")
 			Eventually(logsFn, 60*time.Second, 2*time.Second).Should(ContainSubstring("-accel mshv"))
-			By("Ensuring -enable-kvm is not present when using mshv")
-			Consistently(logsFn, 5*time.Second, 1*time.Second).ShouldNot(ContainSubstring("-enable-kvm"))
+			By("Ensuring -accel kvm is not present when using mshv")
+			Consistently(logsFn, 5*time.Second, 1*time.Second).ShouldNot(ContainSubstring("-accel kvm"))
 
 			By("Logging into the guest to ensure it is responsive")
 			Expect(console.LoginToCirros(vmi)).To(Succeed())

@@ -36,16 +36,19 @@
 set -euo pipefail
 
 log() {
-  if [[ "${QUIET:-0}" != "1" ]]; then
-    echo "[setup-custom-rpms] $*" >&2
-  fi
+    if [[ "${QUIET:-0}" != "1" ]]; then
+        echo "[setup-custom-rpms] $*" >&2
+    fi
 }
 
-err() { echo "[setup-custom-rpms][ERROR] $*" >&2; exit 1; }
+err() {
+    echo "[setup-custom-rpms][ERROR] $*" >&2
+    exit 1
+}
 
 usage() {
-  grep '^#' "$0" | sed 's/^# \{0,1\}//'
-  exit 0
+    grep '^#' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
 }
 
 if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then usage; fi
@@ -60,10 +63,10 @@ if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then usage; fi
 
 # Provide sensible defaults for images if not specified.
 if [[ -z "${CUSTOM_LIBVIRT_IMAGE:-}" ]]; then
-  CUSTOM_LIBVIRT_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kaizentm/kubevirt}/libvirt-rpms:qemu-mshv"
+    CUSTOM_LIBVIRT_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kaizentm/kubevirt}/libvirt-rpms:qemu-mshv"
 fi
 if [[ -z "${CUSTOM_QEMU_IMAGE:-}" ]]; then
-  CUSTOM_QEMU_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kaizentm/kubevirt}/qemu-rpms:qemu-mshv"
+    CUSTOM_QEMU_IMAGE="ghcr.io/${GITHUB_REPOSITORY:-kaizentm/kubevirt}/qemu-rpms:qemu-mshv"
 fi
 
 command -v docker >/dev/null || err "docker not found in PATH"
@@ -83,10 +86,10 @@ docker pull "$CUSTOM_LIBVIRT_IMAGE" >/dev/null
 docker pull "$CUSTOM_QEMU_IMAGE" >/dev/null
 
 stop_container() {
-  local name=$1
-  if docker ps -a -q -f name="^${name}$" >/dev/null 2>&1; then
-    docker rm -f "$name" >/dev/null 2>&1 || true
-  fi
+    local name=$1
+    if docker ps -a -q -f name="^${name}$" >/dev/null 2>&1; then
+        docker rm -f "$name" >/dev/null 2>&1 || true
+    fi
 }
 
 log "Ensuring old containers removed"
@@ -95,41 +98,40 @@ stop_container "$QEMU_CONTAINER"
 
 log "Starting libvirt RPM HTTP server on host port $LIBVIRT_PORT"
 docker run --rm -d \
-  --name "$LIBVIRT_CONTAINER" \
-  -p "$LIBVIRT_PORT:80" \
-  "$CUSTOM_LIBVIRT_IMAGE" >/dev/null
+    --name "$LIBVIRT_CONTAINER" \
+    -p "$LIBVIRT_PORT:80" \
+    "$CUSTOM_LIBVIRT_IMAGE" >/dev/null
 
 log "Starting qemu RPM HTTP server on host port $QEMU_PORT"
 docker run --rm -d \
-  --name "$QEMU_CONTAINER" \
-  -p "$QEMU_PORT:80" \
-  "$CUSTOM_QEMU_IMAGE" >/dev/null
-
+    --name "$QEMU_CONTAINER" \
+    -p "$QEMU_PORT:80" \
+    "$CUSTOM_QEMU_IMAGE" >/dev/null
 
 wait_http() {
-  local url=$1 name=$2 tries=30 delay=1
-  for ((i=1;i<=tries;i++)); do
-    if curl -fsS "$url" >/dev/null 2>&1; then
-      log "$name reachable at $url"
-      return 0
-    fi
-    sleep $delay
-  done
-  err "Timed out waiting for $name at $url"
+    local url=$1 name=$2 tries=30 delay=1
+    for ((i = 1; i <= tries; i++)); do
+        if curl -fsS "$url" >/dev/null 2>&1; then
+            log "$name reachable at $url"
+            return 0
+        fi
+        sleep $delay
+    done
+    err "Timed out waiting for $name at $url"
 }
 
 wait_http "http://localhost:$LIBVIRT_PORT/x86_64/repodata/repomd.xml" "libvirt repo"
 wait_http "http://localhost:$QEMU_PORT/x86_64/repodata/repomd.xml" "qemu repo"
 
 if [[ "$USE_CONTAINER_IP" == "1" ]]; then
-  LIBVIRT_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$LIBVIRT_CONTAINER")
-  QEMU_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$QEMU_CONTAINER")
-  [[ -n "$LIBVIRT_IP" && -n "$QEMU_IP" ]] || err "Failed to obtain container IPs"
-  BASEURL_LIBVIRT="http://$LIBVIRT_IP:80/x86_64/"
-  BASEURL_QEMU="http://$QEMU_IP:80/x86_64/"
+    LIBVIRT_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$LIBVIRT_CONTAINER")
+    QEMU_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$QEMU_CONTAINER")
+    [[ -n "$LIBVIRT_IP" && -n "$QEMU_IP" ]] || err "Failed to obtain container IPs"
+    BASEURL_LIBVIRT="http://$LIBVIRT_IP:80/x86_64/"
+    BASEURL_QEMU="http://$QEMU_IP:80/x86_64/"
 else
-  BASEURL_LIBVIRT="http://localhost:$LIBVIRT_PORT/x86_64/"
-  BASEURL_QEMU="http://localhost:$QEMU_PORT/x86_64/"
+    BASEURL_LIBVIRT="http://localhost:$LIBVIRT_PORT/x86_64/"
+    BASEURL_QEMU="http://localhost:$QEMU_PORT/x86_64/"
 fi
 
 log "Libvirt baseurl: $BASEURL_LIBVIRT"
@@ -166,7 +168,7 @@ MAKE_ARGS=(CUSTOM_REPO="$OUTPUT_REPO_YAML" SINGLE_ARCH="$SINGLE_ARCH")
 [[ -n "${QEMU_VERSION}" ]] && MAKE_ARGS+=(QEMU_VERSION="$QEMU_VERSION")
 
 if [[ -n "${EXTRA_RPM_DEPS_ARGS:-}" ]]; then
-  MAKE_ARGS+=($EXTRA_RPM_DEPS_ARGS)
+    MAKE_ARGS+=($EXTRA_RPM_DEPS_ARGS)
 fi
 
 log "Invoking: make ${MAKE_ARGS[*]} rpm-deps"

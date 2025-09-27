@@ -1988,11 +1988,8 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 	setIOThreads(vmi, domain, vcpus)
 
-	// Experimental accelerator override (e.g. force -accel mshv) must be applied last so that
-	// earlier domain population (which may set domain.Spec.Type to "kvm" and omit custom QEMU args)
-	// can be safely overridden for this VMI only. This is a test/developer annotation and NOT a
-	// supported production API. If the annotation is absent, no change is made.
-	applyExperimentalAccel(vmi, domain)
+	// Experimental domain type override (e.g. type 'hyperv') applied at the end.
+	applyExperimentalDomainType(vmi, domain)
 
 	return nil
 }
@@ -2143,28 +2140,20 @@ func domainVCPUTopologyForHotplug(vmi *v1.VirtualMachineInstance, domain *api.Do
 	}
 }
 
-// experimentalQEMUAccelAnnotation allows forcing an alternative QEMU accelerator (e.g. "mshv")
-// for development / test purposes. This is NOT a supported production API. When present, we:
-// 1. Switch domain type to "qemu" so libvirt does not inject -enable-kvm.
-// 2. Append "-accel <value>" to the QEMU command line.
-// If the annotation is absent, no change is made.
-// NOTE: Using unsupported accelerators may break expectations elsewhere (feature probing,
-// migration, device hotplug). Use only in controlled test environments.
-const experimentalQEMUAccelAnnotation = "kubevirt.io/experimental-qemu-accel"
+// experimentalDomainTypeAnnotation allows forcing a libvirt domain type (test/dev only).
+// Currently used to set 'hyperv' so a patched libvirt injects an mshv accelerator implicitly.
+// Value not recognised -> ignored.
+const experimentalDomainTypeAnnotation = "kubevirt.io/experimental-domain-type"
 
-func applyExperimentalAccel(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
+func applyExperimentalDomainType(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
 	if vmi == nil || domain == nil || vmi.Annotations == nil {
 		return
 	}
-	accel := vmi.Annotations[experimentalQEMUAccelAnnotation]
-	if accel == "" {
-		return
+	dt := vmi.Annotations[experimentalDomainTypeAnnotation]
+	switch dt {
+	case "hyperv":
+		domain.Spec.Type = "hyperv"
+	default:
+		// ignore unknown / empty
 	}
-	// Switch to generic qemu domain to avoid implicit -enable-kvm
-	domain.Spec.Type = "qemu"
-	initializeQEMUCmdAndQEMUArg(domain)
-	domain.Spec.QEMUCmd.QEMUArg = append(domain.Spec.QEMUCmd.QEMUArg,
-		api.Arg{Value: "-accel"},
-		api.Arg{Value: accel},
-	)
 }
