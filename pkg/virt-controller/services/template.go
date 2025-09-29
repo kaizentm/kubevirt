@@ -858,7 +858,7 @@ func (t *TemplateService) newVolumeRenderer(vmi *v1.VirtualMachineInstance, name
 
 func (t *TemplateService) newResourceRenderer(vmi *v1.VirtualMachineInstance, networkToResourceMap map[string]string) (*ResourceRenderer, error) {
 	vmiResources := vmi.Spec.Domain.Resources
-	hypervisorDevice := hypervisor.NewHypervisor(t.clusterConfig.GetConfig().HypervisorConfiguration.Name).GetDevice()
+	hypervisorDevice := hypervisor.NewHypervisor(t.clusterConfig.GetHypervisor().Name).GetDevice()
 	baseOptions := []ResourceRendererOption{
 		WithEphemeralStorageRequest(),
 		WithVirtualizationResources(getRequiredResources(vmi, hypervisorDevice, t.clusterConfig.AllowEmulation())),
