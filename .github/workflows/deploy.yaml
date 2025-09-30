@@ -7,13 +7,18 @@ on:
         description: 'The environment to deploy to'
         required: true
         type: string
+      registry:
+        description: 'Container registry to push images to'
+        required: false
+        default: 'ghcr.io'
+        type: string
       image_tag:
         description: 'The image tag to deploy'
         required: true
         type: string
 
 env:
-  DOCKER_PREFIX: ghcr.io/${{ github.repository }}
+  DOCKER_PREFIX:  ${{ inputs.registry }}/${{ github.repository }}
   DOCKER_TAG: ${{ inputs.image_tag }}
   KUBEVIRT_PROVIDER: external
   KUBECONFIG: ${{ github.workspace }}/kube-config
