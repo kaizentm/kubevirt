@@ -4,12 +4,33 @@ on:
   push:
     branches: ["ise"]
   workflow_dispatch:
+    inputs:
+      registry:
+        description: 'Container registry to push images to'
+        required: false
+        default: 'ghcr.io'
+        type: string
+      rpm_image_tag:
+        description: 'Tag for custom libvirt and QEMU RPMs images'
+        required: false
+        default: 'qemu-mshv'
+        type: string
+      registry_username:
+        description: 'Username for container registry (only needed for non-GHCR registries)'
+        required: false
+        default: ''
+        type: string
+      registry_password:
+        description: 'Password for container registry (only needed for non-GHCR registries)'
+        required: false
+        default: ''
+        type: string
   
 env:
-  DOCKER_PREFIX: ghcr.io/${{ github.repository }}
+  DOCKER_PREFIX: ${{ inputs.registry }}/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, 'qemu-mshv') }}
-  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
+  CUSTOM_LIBVIRT_IMAGE: ${{ format('{0}/{1}/libvirt-rpms:{2}', inputs.registry, github.repository, inputs.rpm_image_tag) }}
+  CUSTOM_QEMU_IMAGE: ${{ format('{0}/{1}/qemu-rpms:{2}', inputs.registry, github.repository, inputs.rpm_image_tag) }}
   
 jobs:
   quality-check:
@@ -30,12 +51,12 @@ jobs:
            # Remove stopped containers, unused images, networks, and optionally volumes
            docker system prune -f
 
-      - name: Login to GHCR
+      - name: Login to Container Registry
         uses: docker/login-action@v1 
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ inputs.registry }}
+          username: ${{ inputs.registry == 'ghcr.io' && github.actor || inputs.registry_username || secrets.REGISTRY_USERNAME }}
+          password: ${{ inputs.registry == 'ghcr.io' && secrets.GITHUB_TOKEN || inputs.registry_password || secrets.REGISTRY_PASSWORD }}
 
 
       - name: Setup Custom libvirt & qemu RPMs
