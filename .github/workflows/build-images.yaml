@@ -38,8 +38,8 @@ on:
 env:
   DOCKER_PREFIX: ${{ inputs.registry }}/${{ github.repository }}
   DOCKER_TAG: ${{ inputs.docker_tag }}
-  CUSTOM_LIBVIRT_IMAGE: ${{ format('{0}/{1}/libvirt-rpms:{2}', inputs.registry, github.repository, inputs.rpm_image_tag) }}
-  CUSTOM_QEMU_IMAGE: ${{ format('{0}/{1}/qemu-rpms:{2}', inputs.registry, github.repository, inputs.rpm_image_tag) }}
+  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, inputs.rpm_image_tag) }}
+  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, inputs.rpm_image_tag) }}
 
 jobs:
   build-push-images:
