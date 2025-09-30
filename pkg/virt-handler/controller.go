@@ -196,11 +196,11 @@ func (c *BaseController) isMigrationSource(vmi *v1.VirtualMachineInstance) bool 
 		!vmi.Status.MigrationState.Completed
 }
 
-func (c *BaseController) tryClaimDeviceOwnership(virtLauncherRootMount *safepath.Path, deviceName string, ignoreErrorWithEmulation bool) error {
+func (c *BaseController) tryClaimDeviceOwnership(virtLauncherRootMount *safepath.Path, deviceName string, isHypervisorDevice bool) error {
 	softwareEmulation := c.clusterConfig.AllowEmulation()
 	devicePath, err := safepath.JoinNoFollow(virtLauncherRootMount, filepath.Join("dev", deviceName))
 	if err != nil {
-		if softwareEmulation && ignoreErrorWithEmulation {
+		if softwareEmulation && isHypervisorDevice {
 			return nil
 		}
 		return err
