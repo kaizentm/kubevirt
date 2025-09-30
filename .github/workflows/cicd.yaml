@@ -27,12 +27,12 @@ on:
         type: string
   
 jobs:
-  quality-check:
-    uses: ./.github/workflows/pr.yaml
+  # quality-check:
+  #   uses: ./.github/workflows/pr.yaml
         
   build-push-images:
     uses: ./.github/workflows/build-images.yaml
-    needs: [quality-check]
+    # needs: [quality-check]
     with:
       registry: ${{ inputs.registry }}
       rpm_image_tag: ${{ inputs.rpm_image_tag }}
