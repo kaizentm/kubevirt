@@ -27,12 +27,12 @@ on:
         type: string
   
 jobs:
-  # quality-check:
-  #   uses: ./.github/workflows/pr.yaml
+  quality-check:
+    uses: ./.github/workflows/pr.yaml
         
   build-push-images:
     uses: ./.github/workflows/build-images.yaml
-    # needs: [quality-check]
+    needs: [quality-check]
     with:
       registry: ${{ inputs.registry }}
       rpm_image_tag: ${{ inputs.rpm_image_tag }}
@@ -41,38 +41,38 @@ jobs:
       docker_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
     secrets: inherit
 
-  # dev:
-  #   uses: ./.github/workflows/deploy.yaml
-  #   with:
-  #     environment: dev
-  #     registry: ${{ needs.build-push-images.outputs.registry }}
-  #     image_tag: ${{ needs.build-push-images.outputs.image_tag }}
-  #   secrets: inherit
-  #   needs: [build-push-images]
+  dev:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: dev
+      registry: ${{ needs.build-push-images.outputs.registry }}
+      image_tag: ${{ needs.build-push-images.outputs.image_tag }}
+    secrets: inherit
+    needs: [build-push-images]
 
-  # test-kvm:
-  #   uses: ./.github/workflows/deploy.yaml
-  #   with:
-  #     environment: test-kvm
-  #     registry: ${{ needs.build-push-images.outputs.registry }}
-  #     image_tag: ${{ needs.build-push-images.outputs.image_tag }}
-  #   secrets: inherit
-  #   needs: [build-push-images, dev]
+  test-kvm:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: test-kvm
+      registry: ${{ needs.build-push-images.outputs.registry }}
+      image_tag: ${{ needs.build-push-images.outputs.image_tag }}
+    secrets: inherit
+    needs: [build-push-images, dev]
 
-  # test-emulation:
-  #   uses: ./.github/workflows/deploy.yaml
-  #   with:
-  #     environment: test-emulation
-  #     registry: ${{ needs.build-push-images.outputs.registry }}
-  #     image_tag: ${{ needs.build-push-images.outputs.image_tag }}
-  #   secrets: inherit
-  #   needs: [build-push-images, dev]
+  test-emulation:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: test-emulation
+      registry: ${{ needs.build-push-images.outputs.registry }}
+      image_tag: ${{ needs.build-push-images.outputs.image_tag }}
+    secrets: inherit
+    needs: [build-push-images, dev]
 
-  # test-mshv:
-  #   uses: ./.github/workflows/deploy.yaml
-  #   with:
-  #     environment: test-mshv
-  #     registry: ${{ needs.build-push-images.outputs.registry }}
-  #     image_tag: ${{ needs.build-push-images.outputs.image_tag }}
-  #   secrets: inherit
-  #   needs: [build-push-images, dev]
+  test-mshv:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: test-mshv
+      registry: ${{ needs.build-push-images.outputs.registry }}
+      image_tag: ${{ needs.build-push-images.outputs.image_tag }}
+    secrets: inherit
+    needs: [build-push-images, dev]
