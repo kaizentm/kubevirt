@@ -131,7 +131,7 @@ jobs:
       environment: dev
       image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
     secrets: inherit
-    needs: [Build_Push_Images]
+    # needs: [Build_Push_Images]
 
   test-kvm:
     uses: ./.github/workflows/deploy.yaml
