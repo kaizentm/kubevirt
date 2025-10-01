@@ -1,5 +1,5 @@
 export GO15VENDOREXPERIMENT := 1
-export DOCKER_TAG := eugene
+export DOCKER_TAG := eugene-dev
 export DOCKER_PREFIX := ghcr.io/kaizentm/kubevirt
 export KUBEVIRT_PROVIDER := external
 

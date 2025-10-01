@@ -21,6 +21,7 @@ package tests_test
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,11 +33,13 @@ import (
 
 	v1 "kubevirt.io/api/core/v1"
 
+	"kubevirt.io/kubevirt/pkg/testutils"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 	"kubevirt.io/kubevirt/tests/decorators"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
+	"kubevirt.io/kubevirt/tests/libkubevirt"
 	"kubevirt.io/kubevirt/tests/libpod"
 	"kubevirt.io/kubevirt/tests/libvmifact"
 	"kubevirt.io/kubevirt/tests/libwait"
@@ -50,6 +53,19 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 	BeforeEach(func() {
 		virtClient = kubevirt.Client()
 		vmi = libvmifact.NewFedora()
+
+		kv := libkubevirt.GetCurrentKv(virtClient)
+
+		clusterConfig, _, _ := testutils.NewFakeClusterConfigUsingKVConfig(&kv.Spec.Configuration)
+
+		if clusterConfig.GetHypervisor().Name != v1.HyperVLayeredHypervisorName {
+			Skip(fmt.Sprintf(
+				"Skipping HyperVLayered integration tests: clusterConfig.GetHypervisor().Name=%q (need %q)",
+				clusterConfig.GetHypervisor().Name, v1.HyperVLayeredHypervisorName,
+			))
+
+		}
+
 	})
 
 	Context("VMI created with HyperVLayered", func() {
@@ -66,10 +82,11 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(computeContainer.Resources.Limits).To(HaveKey(k8sv1.ResourceName(services.HyperVDevice)),
-				"virt-launcher pod should request 'devices.kubevirt.io/mshv' when HyperVLayered feature gate is enabled")
+				"virt-launcher pod should request 'devices.kubevirt.io/mshv' when hyperv-layered hypervisor is used")
 			Expect(computeContainer.Resources.Limits).ToNot(HaveKey(k8sv1.ResourceName(services.KvmDevice)),
-				"virt-launcher pod should NOT request 'devices.kubevirt.io/kvm' when HyperVLayered feature gate is enabled")
-			Expect(computeContainer.Resources.Limits[k8sv1.ResourceName(services.HyperVDevice)]).To(Equal(resource.MustParse("1")))
+				"virt-launcher pod should NOT request 'devices.kubevirt.io/kvm' when hyperv-layered hypervisor is used")
+			Expect(computeContainer.Resources.Limits[k8sv1.ResourceName(services.HyperVDevice)]).To(Equal(resource.MustParse("1")),
+				"virt-launcher pod should request 1 'devices.kubevirt.io/mshv' when hyperv-layered hypervisor is used")
 		})
 
 		It("should generate libvirt domain xml with hyperv domain type", func() {
@@ -77,7 +94,7 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 			c := &converter.ConverterContext{}
 			err := converter.Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, c)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(domain.Spec.Type).To(Equal("hyperv"), "libvirt XML domain type should be 'hyperv' when HyperVLayered is enabled")
+			Expect(domain.Spec.Type).To(Equal("hyperv"), "libvirt XML domain type should be 'hyperv' when hyperv-layered hypervisor is used")
 		})
 
 	})

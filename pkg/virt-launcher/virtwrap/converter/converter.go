@@ -1993,12 +1993,6 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 	setIOThreads(vmi, domain, vcpus)
 
-	// Experimental domain type override (e.g. type 'hyperv') applied at the end.
-	applyExperimentalDomainType(vmi, domain)
-	if c.Hypervisor != nil {
-		c.Hypervisor.AdjustDomain(vmi, domain)
-	}
-
 	return nil
 }
 
@@ -2145,23 +2139,5 @@ func domainVCPUTopologyForHotplug(vmi *v1.VirtualMachineInstance, domain *api.Do
 	domain.Spec.VCPU = &api.VCPU{
 		Placement: "static",
 		CPUs:      cpuCount,
-	}
-}
-
-// experimentalDomainTypeAnnotation allows forcing a libvirt domain type (test/dev only).
-// Currently used to set 'hyperv' so a patched libvirt injects an mshv accelerator implicitly.
-// Value not recognised -> ignored.
-const experimentalDomainTypeAnnotation = "kubevirt.io/experimental-domain-type"
-
-func applyExperimentalDomainType(vmi *v1.VirtualMachineInstance, domain *api.Domain) {
-	if vmi == nil || domain == nil || vmi.Annotations == nil {
-		return
-	}
-	dt := vmi.Annotations[experimentalDomainTypeAnnotation]
-	switch dt {
-	case "hyperv":
-		domain.Spec.Type = "hyperv"
-	default:
-		// ignore unknown / empty
 	}
 }
