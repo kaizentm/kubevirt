@@ -33,10 +33,14 @@ import (
 
 	v1 "kubevirt.io/api/core/v1"
 
+	"kubevirt.io/kubevirt/pkg/ephemeral-disk/fake"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
+	"kubevirt.io/kubevirt/pkg/os/disk"
 	"kubevirt.io/kubevirt/pkg/testutils"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
+	archconverter "kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/arch"
 	"kubevirt.io/kubevirt/tests/decorators"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
 	"kubevirt.io/kubevirt/tests/libkubevirt"
@@ -49,6 +53,7 @@ import (
 var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.HyperVLayered, func() {
 	var virtClient kubecli.KubevirtClient
 	var vmi *v1.VirtualMachineInstance
+	var hypervisorConfig *v1.HypervisorConfiguration
 
 	BeforeEach(func() {
 		virtClient = kubevirt.Client()
@@ -58,10 +63,12 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 
 		clusterConfig, _, _ := testutils.NewFakeClusterConfigUsingKVConfig(&kv.Spec.Configuration)
 
-		if clusterConfig.GetHypervisor().Name != v1.HyperVLayeredHypervisorName {
+		hypervisorConfig = clusterConfig.GetHypervisor()
+
+		if hypervisorConfig.Name != v1.HyperVLayeredHypervisorName {
 			Skip(fmt.Sprintf(
-				"Skipping HyperVLayered integration tests: clusterConfig.GetHypervisor().Name=%q (need %q)",
-				clusterConfig.GetHypervisor().Name, v1.HyperVLayeredHypervisorName,
+				"Skipping HyperVLayered integration tests: hypervisor.Name=%q (need %q)",
+				hypervisorConfig.Name, v1.HyperVLayeredHypervisorName,
 			))
 
 		}
@@ -90,8 +97,19 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 		})
 
 		It("should generate libvirt domain xml with hyperv domain type", func() {
+
 			domain := &api.Domain{}
-			c := &converter.ConverterContext{}
+			c := &converter.ConverterContext{
+				Architecture:         archconverter.NewConverter("amd64"),
+				Hypervisor:           hypervisor.NewHypervisor(hypervisorConfig.Name),
+				EphemeraldiskCreator: &fake.MockEphemeralDiskImageCreator{},
+			}
+
+			c.DisksInfo = map[string]*disk.DiskInfo{}
+			for _, vol := range vmi.Spec.Volumes {
+				c.DisksInfo[vol.Name] = &disk.DiskInfo{}
+			}
+
 			err := converter.Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, c)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(domain.Spec.Type).To(Equal("hyperv"), "libvirt XML domain type should be 'hyperv' when hyperv-layered hypervisor is used")

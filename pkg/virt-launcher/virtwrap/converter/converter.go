@@ -1993,6 +1993,10 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 	setIOThreads(vmi, domain, vcpus)
 
+	if c.Hypervisor != nil {
+		c.Hypervisor.AdjustDomain(vmi, domain)
+	}
+
 	return nil
 }
 
