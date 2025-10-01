@@ -94,7 +94,6 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 		})
 
 		It("should generate libvirt domain xml with hyperv domain type", func() {
-
 			domain := &api.Domain{}
 			c := &converter.ConverterContext{
 				Architecture:         archconverter.NewConverter("amd64"),
