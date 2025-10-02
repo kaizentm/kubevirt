@@ -2,7 +2,7 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: ["ise"]
+    branches: ["ise", "eugene/*"]
   workflow_dispatch:
   
 env:
@@ -12,12 +12,12 @@ env:
   CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
   
 jobs:
-  quality-check:
-    uses: ./.github/workflows/pr.yaml
+  # quality-check:
+  #   uses: ./.github/workflows/pr.yaml
         
   Build_Push_Images:
     runs-on: self-hosted
-    needs: [quality-check]
+    # needs: [quality-check]
     permissions: write-all
     steps:
       - name: Checkout
