@@ -1849,7 +1849,10 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 	}
 
 	if vmi.Spec.Domain.Devices.AutoattachSerialConsole == nil || *vmi.Spec.Domain.Devices.AutoattachSerialConsole {
-		// Add mandatory console device
+		// Add mandatory console/controller. Under the HyperVLayered (mshv) hypervisor the ISA serial
+		// path appears non-functional (no guest output, virsh console rejects non-pty unix backend).
+		// Provide a virtio-based console instead when domain type is "hyperv" to leverage the
+		// existing virtio-serial controller and avoid dependence on ISA emulation.
 		domain.Spec.Devices.Controllers = append(domain.Spec.Devices.Controllers, api.Controller{
 			Type:   "virtio-serial",
 			Index:  "0",
@@ -1858,38 +1861,53 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 		})
 
 		var serialPort uint = 0
-		var serialType string = "serial"
-		domain.Spec.Devices.Consoles = []api.Console{
-			{
-				Type: "pty",
-				Target: &api.ConsoleTarget{
-					Type: &serialType,
-					Port: &serialPort,
+		if domain.Spec.Type == "hyperv" {
+			// virtio console variant
+			virtioType := "virtio"
+			domain.Spec.Devices.Consoles = []api.Console{
+				{
+					Type: "pty",
+					Target: &api.ConsoleTarget{
+						Type: &virtioType,
+						Port: &serialPort,
+					},
 				},
-			},
-		}
+			}
+			// Skip adding ISA serial backend (unix socket) which did not deliver output on mshv.
+		} else {
+			// Original ISA serial + unix socket backend
+			serialType := "serial"
+			domain.Spec.Devices.Consoles = []api.Console{
+				{
+					Type: "pty",
+					Target: &api.ConsoleTarget{
+						Type: &serialType,
+						Port: &serialPort,
+					},
+				},
+			}
 
-		socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
-		domain.Spec.Devices.Serials = []api.Serial{
-			{
-				Type: "unix",
-				Target: &api.SerialTarget{
-					Port: &serialPort,
+			socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
+			domain.Spec.Devices.Serials = []api.Serial{
+				{
+					Type: "unix",
+					Target: &api.SerialTarget{
+						Port: &serialPort,
+					},
+					Source: &api.SerialSource{
+						Mode: "bind",
+						Path: socketPath,
+					},
 				},
-				Source: &api.SerialSource{
-					Mode: "bind",
-					Path: socketPath,
-				},
-			},
-		}
+			}
 
-		if c.SerialConsoleLog {
-			domain.Spec.Devices.Serials[0].Log = &api.SerialLog{
-				File:   fmt.Sprintf("%s-log", socketPath),
-				Append: "on",
+			if c.SerialConsoleLog {
+				domain.Spec.Devices.Serials[0].Log = &api.SerialLog{
+					File:   fmt.Sprintf("%s-log", socketPath),
+					Append: "on",
+				}
 			}
 		}
-
 	}
 
 	if vmi.Spec.Domain.Devices.AutoattachGraphicsDevice == nil || *vmi.Spec.Domain.Devices.AutoattachGraphicsDevice {
