@@ -1849,63 +1849,52 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 	}
 
 	if vmi.Spec.Domain.Devices.AutoattachSerialConsole == nil || *vmi.Spec.Domain.Devices.AutoattachSerialConsole {
-		// Add mandatory console/controller. Under the HyperVLayered (mshv) hypervisor the ISA serial
-		// path appears non-functional (no guest output, virsh console rejects non-pty unix backend).
-		// Provide a virtio-based console instead when domain type is "hyperv" to leverage the
-		// existing virtio-serial controller and avoid dependence on ISA emulation.
-		domain.Spec.Devices.Controllers = append(domain.Spec.Devices.Controllers, api.Controller{
-			Type:   "virtio-serial",
-			Index:  "0",
-			Model:  InterpretTransitionalModelType(&c.UseVirtioTransitional, c.Architecture.GetArchitecture()),
-			Driver: controllerDriver,
-		})
+		// Add mandatory console/controller. Our earlier attempt keyed on domain.Spec.Type == "hyperv",
+		// but HyperVLayered sets domain.Spec.Type later via Hypervisor.AdjustDomain(), so that check
+		// never triggered here. Instead detect the layered Hyper-V path via the Hypervisor device.
+		isHyperVLayered := c.Hypervisor != nil && c.Hypervisor.GetDevice() == "mshv"
+
+		// Always ensure a virtio-serial controller exists (libvirt/qemu ignore duplicates gracefully)
+		// and prefer a virtio-based primary console on Hyper-V layered where ISA serial is unreliable.
+		alreadyHasVirtioSerial := false
+		for _, ctrl := range domain.Spec.Devices.Controllers {
+			if ctrl.Type == "virtio-serial" {
+				alreadyHasVirtioSerial = true
+				break
+			}
+		}
+		if !alreadyHasVirtioSerial {
+			domain.Spec.Devices.Controllers = append(domain.Spec.Devices.Controllers, api.Controller{
+				Type:   "virtio-serial",
+				Index:  "0",
+				Model:  InterpretTransitionalModelType(&c.UseVirtioTransitional, c.Architecture.GetArchitecture()),
+				Driver: controllerDriver,
+			})
+		}
 
 		var serialPort uint = 0
-		if domain.Spec.Type == "hyperv" {
-			// virtio console variant
+		if isHyperVLayered {
 			virtioType := "virtio"
-			domain.Spec.Devices.Consoles = []api.Console{
-				{
-					Type: "pty",
-					Target: &api.ConsoleTarget{
-						Type: &virtioType,
-						Port: &serialPort,
-					},
-				},
-			}
-			// Skip adding ISA serial backend (unix socket) which did not deliver output on mshv.
+			domain.Spec.Devices.Consoles = []api.Console{{
+				Type:   "pty",
+				Target: &api.ConsoleTarget{Type: &virtioType, Port: &serialPort},
+			}}
+			// Intentionally do NOT add an ISA serial when running on mshv; prior tests showed no output.
 		} else {
-			// Original ISA serial + unix socket backend
 			serialType := "serial"
-			domain.Spec.Devices.Consoles = []api.Console{
-				{
-					Type: "pty",
-					Target: &api.ConsoleTarget{
-						Type: &serialType,
-						Port: &serialPort,
-					},
-				},
-			}
+			domain.Spec.Devices.Consoles = []api.Console{{
+				Type:   "pty",
+				Target: &api.ConsoleTarget{Type: &serialType, Port: &serialPort},
+			}}
 
 			socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
-			domain.Spec.Devices.Serials = []api.Serial{
-				{
-					Type: "unix",
-					Target: &api.SerialTarget{
-						Port: &serialPort,
-					},
-					Source: &api.SerialSource{
-						Mode: "bind",
-						Path: socketPath,
-					},
-				},
-			}
-
+			domain.Spec.Devices.Serials = []api.Serial{{
+				Type:   "unix",
+				Target: &api.SerialTarget{Port: &serialPort},
+				Source: &api.SerialSource{Mode: "bind", Path: socketPath},
+			}}
 			if c.SerialConsoleLog {
-				domain.Spec.Devices.Serials[0].Log = &api.SerialLog{
-					File:   fmt.Sprintf("%s-log", socketPath),
-					Append: "on",
-				}
+				domain.Spec.Devices.Serials[0].Log = &api.SerialLog{File: fmt.Sprintf("%s-log", socketPath), Append: "on"}
 			}
 		}
 	}
