@@ -1,0 +1,19 @@
+apiVersion: kubevirt.io/v1
+kind: KubeVirt
+metadata:
+  name: kubevirt
+  namespace: kubevirt
+spec:
+  certificateRotateStrategy: {}
+  configuration:
+    hypervisorConfiguration:
+      name: hyperv-layered
+    developerConfiguration:
+      featureGates:
+      - HyperVLayered
+      - ConfigurableHypervisor
+    imagePullPolicy: Always
+  customizeComponents: {}
+  imagePullPolicy: Always
+  workloadUpdateStrategy: {}
+ 

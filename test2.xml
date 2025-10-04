@@ -1,0 +1,37 @@
+<domain type='qemu' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+        <name>qemu_only</name>
+  <title>Qemu + MSHV</title>
+
+  <memory unit='G'>2</memory>
+  <cpu mode='host-model'/>
+  <vcpu placement="static">1</vcpu>
+  <os>
+    <type machine='q35'>hvm</type>
+  </os>
+  <features>
+     <acpi/>
+  </features>
+  <devices>
+    <emulator>/usr/local/bin/qemu-system-x86_64</emulator>
+        <!-- Primary disk: switched from Ubuntu cloud image to Cirros (smaller, always prints to serial) -->
+        <disk type='file'>
+          <source file='/home/azureuser/work/kubevirt/cirros-0.6.3-x86_64-disk.img'/>
+            <driver if='virtio' type='qcow2' queues='1'/>
+            <target dev='vda'/>
+    </disk>
+    <disk type='file'>
+            <source file='/home/azureuser/work/kubevirt/cidata.raw'/>
+             <driver if='virtio'/>
+            <target dev='vdb'/>
+    </disk>
+    <serial type="pty">
+    <target port='0'/>
+
+   </serial>
+    <!-- Added virtio-serial controller and virtio console for testing virtio console output under mshv -->
+    <controller type='virtio-serial'/>
+    <console type='pty'>
+      <target type='virtio' port='0'/>
+    </console>
+</devices>
+</domain>

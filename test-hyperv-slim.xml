@@ -1,0 +1,47 @@
+<domain type='qemu' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+  <name>hyperv_slim</name>
+  <memory unit='MiB'>512</memory>
+  <vcpu placement='static'>1</vcpu>
+  <!-- Use a generic CPU model to avoid host feature exposure that mshv path might mishandle -->
+  <!-- Start with host-model; if it fails, we'll fall back to qemu64 later -->
+  <cpu mode='host-model'>
+    <model fallback='allow'/>
+  </cpu>
+  <os>
+    <type machine='q35'>hvm</type>
+  </os>
+  <features>
+    <acpi/>
+  </features>
+  <devices>
+    <emulator>/usr/local/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/home/azureuser/work/kubevirt/cirros-0.6.3-x86_64-disk.img'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <!-- Add virtio-serial controller for persistent virtio console testing -->
+    <controller type='virtio-serial' index='0'/>
+    <!-- Keep ONLY a classic serial (pty) to isolate 8250 path -->
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <!-- Persistent virtio console (will be silent until guest has console=hvc0 or a getty) -->
+    <console type='pty'>
+      <target type='virtio' port='0'/>
+    </console>
+  </devices>
+  <qemu:commandline>
+    <!-- Prefer separate -accel to avoid duplicating libvirt -machine arguments -->
+    <qemu:arg value='-accel'/>
+    <qemu:arg value='mshv'/>
+    <!-- Minimal logging first; if it starts, we can expand -->
+    <qemu:arg value='-d'/>
+    <qemu:arg value='guest_errors'/>
+    <qemu:arg value='-D'/>
+    <qemu:arg value='/tmp/qemu-hyperv-slim.log'/>
+  </qemu:commandline>
+</domain>

@@ -1,0 +1,11 @@
+repositories:
+- arch: x86_64
+  baseurl: http://172.17.0.3:80/x86_64/
+  name: custom-libvirt
+  gpgcheck: 0
+  repo_gpgcheck: 0
+- arch: x86_64
+  baseurl: http://172.17.0.4:80/x86_64/
+  name: custom-qemu
+  gpgcheck: 0
+  repo_gpgcheck: 0

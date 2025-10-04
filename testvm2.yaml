@@ -1,0 +1,75 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: testvm2
+  annotations:
+    kubevirt.io/virt-launcher-image: "ghcr.io/kaizentm/kubevirt/virt-launcher:1.6.0-l1vh.140-fix"
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: testvm2
+    spec:
+      domain:
+        cpu:
+          model: host-model
+          sockets: 1
+          cores: 1
+          threads: 1
+        machine:
+          # Try legacy pc first; q35 under hyperv-layered has shown no serial output
+          type: q35
+        resources:
+          requests:
+            memory: 512Mi
+        devices:
+          autoattachSerialConsole: true
+          # (Experimental) Add useVirtioTransitional disabled by avoiding explicit model; rely on defaults
+          disks:
+          - name: rootdisk
+            disk:
+              bus: virtio
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+          interfaces:
+          - name: default
+            masquerade: {}
+          rng: {}
+        firmware:
+          uuid: 11111111-2222-3333-4444-555555555555
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - name: rootdisk
+        containerDisk:
+          image: quay.io/containerdisks/fedora:41
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            hostname: testvm2
+            ssh_pwauth: true
+            chpasswd:
+              list: |
+                fedora:fedora
+              expire: False
+            write_files:
+              - path: /etc/systemd/system/serial-getty@ttyS0.service.d/override.conf
+                content: |
+                  [Service]
+                  ExecStart=
+                  ExecStart=-/sbin/agetty -o '-p -- \u' --keep-baud 115200,38400,9600 ttyS0 vt220
+            runcmd:
+              - echo 'Enabling serial + early printk'
+              - grubby --update-kernel=ALL --args="console=ttyS0,115200 console=hvc0 earlyprintk=ttyS0 ignore_loglevel systemd.log_target=console"
+              - systemctl daemon-reload || true
+              - systemctl enable serial-getty@ttyS0.service || true
+              - systemctl restart serial-getty@ttyS0.service || true
+              - echo 'Adding hvc0 getty override'
+              - bash -c 'cat >/etc/systemd/system/serial-getty@hvc0.service.d/override.conf <<EOF\n[Service]\nExecStart=\nExecStart=-/sbin/agetty -o "-p -- \\u" --keep-baud 115200,38400,9600 hvc0 vt220\nEOF'
+              - systemctl enable serial-getty@hvc0.service || true
+              - systemctl restart serial-getty@hvc0.service || true
+

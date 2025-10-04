@@ -1874,12 +1874,19 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 		var serialPort uint = 0
 		if isHyperVLayered {
+			// Provide a virtio console exposed via a unix socket at the legacy serial path so virt-handler
+			// (which today only dials /virt-serial0) can attach and users can still use 'virtctl console'.
+			// Using a unix socket instead of a pty ensures a stable, discoverable path identical to the
+			// previous serial device, while avoiding the non-functional ISA serial on mshv.
 			virtioType := "virtio"
+			socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
 			domain.Spec.Devices.Consoles = []api.Console{{
-				Type:   "pty",
+				Type:   "unix",
 				Target: &api.ConsoleTarget{Type: &virtioType, Port: &serialPort},
+				Source: &api.ConsoleSource{Mode: "bind", Path: socketPath},
 			}}
-			// Intentionally do NOT add an ISA serial when running on mshv; prior tests showed no output.
+			// (Console logging not supported like serial.Log; skip optional log attachment here.)
+			// No separate Serial device added.
 		} else {
 			serialType := "serial"
 			domain.Spec.Devices.Consoles = []api.Console{{

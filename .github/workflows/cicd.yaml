@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
   
 env:
+
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
   CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, 'qemu-mshv') }}

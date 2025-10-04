@@ -1,0 +1,67 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: testvm
+spec:
+  # Changed to Always so the VM auto-starts (was Halted)
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: testvm
+        kubevirt.io/size: small
+    spec:
+      architecture: amd64
+      domain:
+        cpu:
+          # Simplify CPU topology & rely on host-model for better compatibility with hyperv-layered
+          model: host-model
+          sockets: 1
+          cores: 1
+          threads: 1
+        machine:
+          # Switch from q35 to pc to reduce potential hyperv-layered incompatibilities
+          type: pc
+        resources:
+          requests:
+            # Increase memory (64M is very tight and may prevent successful boot under hyperv)
+            memory: 512Mi
+        devices:
+          autoattachSerialConsole: true
+          disks:
+          - name: containerdisk
+            disk:
+              bus: virtio
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+          interfaces:
+          - name: default
+            masquerade: {}
+          # Add RNG to reduce potential entropy stalls
+          rng: {}
+        firmware:
+          serial: 266e24d0-9f59-4d92-ab63-d5572167ea30
+          uuid: 632d9836-1355-4513-a176-b4bf024accd1
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - name: containerdisk
+        containerDisk:
+          image: quay.io/kubevirt/cirros-container-disk-demo
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            # Cirros may already direct output to ttyS0; add an explicit getty enable & kernel console hint.
+            # (Note: modifying GRUB inside Cirros may not persist; Cirros uses simple boot loader.)
+            runcmd:
+              - echo 'Ensuring /etc/inittab has ttyS0 getty (if applicable)'
+              - grep -q 'ttyS0' /etc/inittab || echo 'ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100' >> /etc/inittab || true
+              - [ sh, -c, "ln -sf /dev/ttyS0 /dev/console || true" ]
+              - [ sh, -c, "echo 'If no console output, image may not support hyperv-layered domain type yet.'" ]
+              - [ sh, -c, "echo 'Adding kernel console hints (Cirros uses /boot/grub/grub.cfg generation limited)." ]
+              - [ sh, -c, "grep -q 'console=ttyS0' /proc/cmdline || echo 'NOTE: Cirros cmdline static; may require alternate image (Fedora/Alpine) for serial on hyperv).'" ]
+              - [ sh, -c, "echo 'Attempting to run shell on hvc0 if virtio console enumerates'" ]
+              - [ sh, -c, "[ -c /dev/hvc0 ] && (echo 'hvc0::respawn:/sbin/getty -L 115200 hvc0 vt100' >> /etc/inittab) || true" ]

@@ -1,0 +1,48 @@
+<domain type='qemu' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+  <name>qemu_tcg_demo</name>
+  <title>QEMU TCG Console Demo</title>
+  <memory unit='MiB'>1024</memory>
+  <vcpu placement='static'>1</vcpu>
+  <cpu mode='custom' match='exact'>
+    <model fallback='forbid'>qemu64</model>
+  </cpu>
+  <os>
+    <type machine='q35'>hvm</type>
+    <!-- Firmware boot (BIOS/UEFI) loads kernel from disk; no -kernel used so no -append needed -->
+  </os>
+  <features>
+    <acpi/>
+  </features>
+  <devices>
+    <!-- Emulator path: adjust if your qemu binary lives elsewhere -->
+    <emulator>/usr/local/bin/qemu-system-x86_64</emulator>
+
+    <!-- Primary Cirros disk (same image as hyperv test) -->
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/home/azureuser/work/kubevirt/cirros-0.6.3-x86_64-disk.img'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+
+    <!-- Simple serial PTY: virsh console attaches here and Cirros prints by default (ttyS0) -->
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+
+    <!-- (Optional) Enable virtio console by uncommenting block below and adding console=hvc0 in kernel cmdline via grub or direct kernel boot.
+    <controller type='virtio-serial'/>
+    <console type='pty'>
+      <target type='virtio' port='0'/>
+    </console>
+    -->
+  </devices>
+
+  <!-- Force pure software emulation (TCG) even if hardware accel present -->
+  <qemu:commandline>
+    <qemu:arg value='-machine'/>
+    <qemu:arg value='q35,accel=tcg'/>
+  </qemu:commandline>
+</domain>

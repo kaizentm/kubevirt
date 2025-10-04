@@ -1,0 +1,78 @@
+<domain type='hyperv' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+  <name>qemu_mshv_test</name>
+  <title>MSHV dual console (ISA + virtio)</title>
+
+  <memory unit='MiB'>2048</memory>
+  <vcpu placement='static'>1</vcpu>
+  <cpu mode='host-model'>
+    <model fallback='allow'/>
+  </cpu>
+  <os>
+    <type machine='q35'>hvm</type>
+    <!-- If you later add direct kernel boot, place <kernel>/<initrd>/<cmdline> here -->
+  </os>
+  <features>
+    <acpi/>
+  </features>
+  <devices>
+    <emulator>/usr/local/bin/qemu-system-x86_64</emulator>
+
+    <!-- Primary disk: Cirros (serial friendly) -->
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/home/azureuser/work/kubevirt/cirros-0.6.3-x86_64-disk.img'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+
+    <!-- Cloud-init / cidata style secondary (raw) if present -->
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source file='/home/azureuser/work/kubevirt/cidata.raw'/>
+      <target dev='vdb' bus='virtio'/>
+      <alias name='cidata'/>
+    </disk>
+
+    <!-- ISA 16550 serial for guaranteed early boot console (virsh console maps here) -->
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+      <alias name='serial0-console'/>
+    </console>
+
+    <!-- Virtio serial controller providing virtio console(s). Limit ports to reduce probe time -->
+    <controller type='virtio-serial' index='0' ports='4'/>
+
+    <!-- Virtio console: comment out if diagnosing boot stalls -->
+    <!-- <console type='pty'>
+      <target type='virtio' port='0'/>
+      <alias name='virtio-console0'/>
+    </console> -->
+
+    <!-- Optional generic virtio serial port (uncomment for raw channel testing)
+    <channel type='pty'>
+      <target type='virtio' name='org.kubevirt.test.port0'/>
+    </channel>
+    -->
+  </devices>
+
+  <!-- QEMU logging (trim/expand -d flags as needed) -->
+  <qemu:commandline>
+    <!-- Explicit accel for clarity; libvirt hyperv type should imply mshv but we force it -->
+    <qemu:arg value='-accel'/>
+    <qemu:arg value='mshv'/>
+
+    <!-- Early debug console to separate BIOS/very-early kernel output -->
+    <qemu:arg value='-device'/>
+    <qemu:arg value='isa-debugcon,iobase=0x402,chardev=dbg0'/>
+    <qemu:arg value='-chardev'/>
+    <qemu:arg value='file,id=dbg0,path=/tmp/qemu_mshv_debugcon.log'/>
+
+    <!-- Logging; add ioport,unimp if deeper tracing needed -->
+    <qemu:arg value='-d'/>
+    <qemu:arg value='guest_errors'/>
+    <qemu:arg value='-D'/>
+    <qemu:arg value='/tmp/qemu-mshv-hyperv.log'/>
+  </qemu:commandline>
+</domain>
