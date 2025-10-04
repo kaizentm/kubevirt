@@ -42,9 +42,9 @@ var _ embed.FS
 // update will be required.
 var _ = Describe("Hypervisor memory overhead parity", func() {
 
-	It("should fail fast once GetMemoryOverhead introduces HyperVLayered gating (sentinel for future branch)", func() {
+	It("should fail fast once GetMemoryOverhead introduces ConfigurableHypervisor gating (sentinel for future branch)", func() {
 		// This sentinel ensures that if someone adds code in renderresources.go like:
-		//   if config.HyperVLayeredEnabled() { ... }
+		//   if config.ConfigurableHypervisorEnabled() { ... }
 		// (either by adding a config parameter or referencing a global), the test suite will
 		// flag it explicitly so we can update the parity tests to exercise both branches
 		// with real configs (ensuring either maintained parity or deliberate, documented divergence).
@@ -53,8 +53,8 @@ var _ = Describe("Hypervisor memory overhead parity", func() {
 		// truly toggle behavior; we instead watch for appearance of the gating call.
 		// When this fires, replace this sentinel with a real off/on evaluation using the
 		// new code path.
-		Expect(renderResourcesSource).NotTo(ContainSubstring("HyperVLayeredEnabled("),
-			"GetMemoryOverhead started using HyperVLayered gating; update parity test to calculate both OFF and ON overhead via config and assert expected invariant (likely equality unless spec changes)")
+		Expect(renderResourcesSource).NotTo(ContainSubstring("ConfigurableHypervisorEnabled("),
+			"GetMemoryOverhead started using ConfigurableHypervisor gating; update parity test to calculate both OFF and ON overhead via config and assert expected invariant (likely equality unless spec changes)")
 	})
 
 	It("should treat combined VFIO+SEV overhead identically across hypervisors (parity sentinel)", func() {

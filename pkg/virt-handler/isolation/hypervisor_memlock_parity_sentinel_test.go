@@ -9,12 +9,12 @@ import (
 
 // Sentinel rationale:
 // AdjustQemuProcessMemoryLimits currently has no hypervisor-specific branching (e.g. it does not
-// consult HyperVLayeredEnabled). If future changes introduce gating like:
+// consult ConfigurableHypervisorEnabled). If future changes introduce gating like:
 //
-//	if cfg.HyperVLayeredEnabled() { ... }
+//	if cfg.ConfigurableHypervisorEnabled() { ... }
 //
 // then OFF/ON branch coverage + memlock expectation tests must be added. This sentinel will fail
-// the moment a call to HyperVLayeredEnabled appears in detector.go, forcing that update.
+// the moment a call to ConfigurableHypervisorEnabled appears in detector.go, forcing that update.
 //
 //go:embed detector.go
 var detectorSource string
@@ -23,9 +23,9 @@ var detectorSource string
 var _ embed.FS
 
 var _ = Describe("AdjustQemuProcessMemoryLimits hypervisor parity sentinel", func() {
-	It("should fail fast once AdjustQemuProcessMemoryLimits introduces HyperVLayered gating", func() {
-		Expect(detectorSource).NotTo(ContainSubstring("HyperVLayeredEnabled("),
-			"AdjustQemuProcessMemoryLimits started using HyperVLayered gating; add OFF/ON gate tests and update memlock invariants")
+	It("should fail fast once AdjustQemuProcessMemoryLimits introduces ConfigurableHypervisor gating", func() {
+		Expect(detectorSource).NotTo(ContainSubstring("ConfigurableHypervisorEnabled("),
+			"AdjustQemuProcessMemoryLimits started using ConfigurableHypervisor gating; add OFF/ON gate tests and update memlock invariants")
 	})
 })
 
