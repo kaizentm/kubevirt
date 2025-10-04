@@ -46,3 +46,4 @@ hack/builder/manifests/
 user.bazelrc
 .vscode/
 services.test
+*.test
