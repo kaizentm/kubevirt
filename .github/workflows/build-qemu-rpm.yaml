@@ -3,7 +3,7 @@ name: Build Custom QEMU RPM
 on:
   workflow_dispatch:
   push:
-    branches: ["ise"]
+    branches: ["ise", "eugene/*"]
     paths:
       - '.github/workflows/build-qemu-rpm.yaml'
 
@@ -11,7 +11,7 @@ env:
   QEMU_REPO: kaizentm/qemu
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
-  QEMU_VERSION: '10.1.50.mshv.v4'
+  QEMU_VERSION: '10.1.50.mshv.v5'
   RPM_IMAGE_TAG: 'qemu-mshv'
 
 
