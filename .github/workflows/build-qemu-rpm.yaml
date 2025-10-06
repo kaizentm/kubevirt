@@ -3,7 +3,7 @@ name: Build Custom QEMU RPM
 on:
   workflow_dispatch:
   push:
-    branches: ["ise"]
+    branches: ["ise", "eugene/*"]
     paths:
       - '.github/workflows/build-qemu-rpm.yaml'
 
@@ -80,7 +80,7 @@ jobs:
           
           cat > build-info.json <<EOF
           {
-            "qemu_version": "0:10.1.50.mshv.v4-1.el9"
+            "qemu_version": "0:10.1.50.mshv.v5-1.el9"
           }
           EOF
 
