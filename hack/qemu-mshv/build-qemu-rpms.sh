@@ -14,9 +14,9 @@ if [ -z "$QEMU_REPO" ] || [ -z "$QEMU_VERSION" ]; then
     exit 1
 fi
 
-git clone https://github.com/kaizentm/qemu
+git clone ${QEMU_REPO} qemu-src
 
-cd qemu/
+cd qemu-src/
 
 curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
 
