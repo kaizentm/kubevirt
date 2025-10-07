@@ -53,7 +53,7 @@ echo "Submodules updated successfully"
 cd ..
 
 # Create directory for RPMs
-mkdir -p rpms
+mkdir -p rpms-libvirt
 
 # Start build environment
 docker run -td \
@@ -87,10 +87,10 @@ docker exec -w /libvirt-src libvirt-build bash -c "
 "
 
 # Copy RPMs to local directory
-docker cp libvirt-build:/root/rpmbuild/RPMS/. rpms/
+docker cp libvirt-build:/root/rpmbuild/RPMS/. rpms-libvirt/
 
 # Create metadata file
-cat >rpms/build-info.json <<EOF
+cat >rpms-libvirt/build-info.json <<EOF
 {
   "libvirt_version": "0:11.7.0-1.$COMMIT_SHA_SHORT.el9",
   "commit_sha": "$COMMIT_SHA",
@@ -106,5 +106,5 @@ EOF
 docker rm -f libvirt-build
 
 echo "libvirt RPMs built successfully:"
-ls -la rpms/
-cat rpms/build-info.json
+ls -la rpms-libvirt/
+cat rpms-libvirt/build-info.json
