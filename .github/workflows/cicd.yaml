@@ -17,7 +17,6 @@ jobs:
         
   Build_Push_Images:
     runs-on: self-hosted
-    needs: [quality-check]
     permissions: write-all
     steps:
       - name: Checkout
