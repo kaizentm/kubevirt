@@ -13,7 +13,9 @@ spec:
       - HyperVLayered
       - ConfigurableHypervisor
     imagePullPolicy: Always
+    obsoleteCPUModels:
+      qemu64: false
+      qemu64-1: false
   customizeComponents: {}
   imagePullPolicy: Always
   workloadUpdateStrategy: {}
- 
