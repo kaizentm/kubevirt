@@ -20,10 +20,10 @@
 package hypervisor
 
 import (
-	v1 "kubevirt.io/api/core/v1"
-	"kubevirt.io/client-go/log"
+    v1 "kubevirt.io/api/core/v1"
+    "kubevirt.io/client-go/log"
 
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
+    "kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
 type HyperVLayeredHypervisor struct{}
@@ -33,10 +33,17 @@ func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, d
 		return
 	}
 	domain.Spec.Type = "hyperv"
-	
-	// TODO: make it configurable
-	domain.Spec.CPU = &api.CPU{}
-	log.Log.Infof("Adjusting domain for HyperV Layered")
+
+	// If user did not request a specific CPU model (converter likely filled host-model),
+	// force a stable minimal baseline for mshv to reduce feature-surface while debugging.
+	// NOTE: virtwrap api.DomainSpec.CPU is a value; we only mutate fields.
+	//if domain.Spec.CPU.Mode == "" || domain.Spec.CPU.Mode == "host-model" || domain.Spec.CPU.Model == "" {
+		// Use libvirt custom mode with qemu64 model.
+		domain.Spec.CPU.Mode = "custom"
+		domain.Spec.CPU.Model = "qemu64"
+	//}
+
+	log.Log.Infof("Adjusting domain for HyperV Layered (name=%s, cpuMode=%s, cpuModel=%s)", domain.Spec.Name, domain.Spec.CPU.Mode, domain.Spec.CPU.Model)
 }
 
 func (*HyperVLayeredHypervisor) GetDevice() string {
