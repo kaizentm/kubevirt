@@ -1,0 +1,42 @@
+#!/bin/bash
+
+QEMU_REPO=https://github.com/kaizentm/qemu
+QEMU_VERSION=10.1.50.mshv.v5
+
+git clone https://github.com/kaizentm/qemu
+
+cd qemu/
+
+curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
+
+docker rm -f qemu-build
+
+docker run -td \
+    --name qemu-build \
+    -v $(pwd):/qemu-src \
+    registry.gitlab.com/libvirt/libvirt/ci-centos-stream-9
+
+# Build qemu RPM
+docker exec -w /qemu-src qemu-build bash -c "
+  set -e
+  mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  cp qemu.spec ~/rpmbuild/SPECS
+  cp qemu-${QEMU_VERSION}.tar.xz ~/rpmbuild/SOURCES/
+  cd ~/rpmbuild/SPECS
+  dnf update -y
+  dnf -y install createrepo
+  dnf builddep -y qemu.spec
+  rpmbuild -ba qemu.spec
+  cd ~/rpmbuild/RPMS
+  createrepo --general-compress-type=gz --checksum=sha256 x86_64
+"
+
+cd ../
+
+docker cp qemu-build:/root/rpmbuild/RPMS ./rpms
+
+cat >./rpms/build-info.json <<EOF
+{
+  "qemu_version": "0:10.1.50.mshv.v5-1.el9"
+}
+EOF
