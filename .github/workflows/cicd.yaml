@@ -2,14 +2,14 @@ name: CICD Pipeline
 
 on:
   push:
-    branches: ["ise"]
+    branches: ["ise", "guptaharshit/*"]
   workflow_dispatch:
   
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, 'qemu-mshv') }}
-  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
+  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, 'guptaharshit-test') }}
+  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'guptaharshit-test') }}
   
 jobs:
   quality-check:
