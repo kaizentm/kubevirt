@@ -1849,61 +1849,47 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 	}
 
 	if vmi.Spec.Domain.Devices.AutoattachSerialConsole == nil || *vmi.Spec.Domain.Devices.AutoattachSerialConsole {
-		// Add mandatory console/controller. Our earlier attempt keyed on domain.Spec.Type == "hyperv",
-		// but HyperVLayered sets domain.Spec.Type later via Hypervisor.AdjustDomain(), so that check
-		// never triggered here. Instead detect the layered Hyper-V path via the Hypervisor device.
-		isHyperVLayered := c.Hypervisor != nil && c.Hypervisor.GetDevice() == "mshv"
-
-		// Always ensure a virtio-serial controller exists (libvirt/qemu ignore duplicates gracefully)
-		// and prefer a virtio-based primary console on Hyper-V layered where ISA serial is unreliable.
-		alreadyHasVirtioSerial := false
-		for _, ctrl := range domain.Spec.Devices.Controllers {
-			if ctrl.Type == "virtio-serial" {
-				alreadyHasVirtioSerial = true
-				break
-			}
-		}
-		if !alreadyHasVirtioSerial {
-			domain.Spec.Devices.Controllers = append(domain.Spec.Devices.Controllers, api.Controller{
-				Type:   "virtio-serial",
-				Index:  "0",
-				Model:  InterpretTransitionalModelType(&c.UseVirtioTransitional, c.Architecture.GetArchitecture()),
-				Driver: controllerDriver,
-			})
-		}
+		// Add mandatory console device
+		domain.Spec.Devices.Controllers = append(domain.Spec.Devices.Controllers, api.Controller{
+			Type:   "virtio-serial",
+			Index:  "0",
+			Model:  InterpretTransitionalModelType(&c.UseVirtioTransitional, c.Architecture.GetArchitecture()),
+			Driver: controllerDriver,
+		})
 
 		var serialPort uint = 0
-		if isHyperVLayered {
-			// Provide a virtio console exposed via a unix socket at the legacy serial path so virt-handler
-			// (which today only dials /virt-serial0) can attach and users can still use 'virtctl console'.
-			// Using a unix socket instead of a pty ensures a stable, discoverable path identical to the
-			// previous serial device, while avoiding the non-functional ISA serial on mshv.
-			virtioType := "virtio"
-			socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
-			domain.Spec.Devices.Consoles = []api.Console{{
-				Type:   "unix",
-				Target: &api.ConsoleTarget{Type: &virtioType, Port: &serialPort},
-				Source: &api.ConsoleSource{Mode: "bind", Path: socketPath},
-			}}
-			// (Console logging not supported like serial.Log; skip optional log attachment here.)
-			// No separate Serial device added.
-		} else {
-			serialType := "serial"
-			domain.Spec.Devices.Consoles = []api.Console{{
-				Type:   "pty",
-				Target: &api.ConsoleTarget{Type: &serialType, Port: &serialPort},
-			}}
+		var serialType string = "serial"
+		domain.Spec.Devices.Consoles = []api.Console{
+			{
+				Type: "pty",
+				Target: &api.ConsoleTarget{
+					Type: &serialType,
+					Port: &serialPort,
+				},
+			},
+		}
 
-			socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
-			domain.Spec.Devices.Serials = []api.Serial{{
-				Type:   "unix",
-				Target: &api.SerialTarget{Port: &serialPort},
-				Source: &api.SerialSource{Mode: "bind", Path: socketPath},
-			}}
-			if c.SerialConsoleLog {
-				domain.Spec.Devices.Serials[0].Log = &api.SerialLog{File: fmt.Sprintf("%s-log", socketPath), Append: "on"}
+		socketPath := fmt.Sprintf("%s/%s/virt-serial%d", util.VirtPrivateDir, vmi.ObjectMeta.UID, serialPort)
+		domain.Spec.Devices.Serials = []api.Serial{
+			{
+				Type: "unix",
+				Target: &api.SerialTarget{
+					Port: &serialPort,
+				},
+				Source: &api.SerialSource{
+					Mode: "bind",
+					Path: socketPath,
+				},
+			},
+		}
+
+		if c.SerialConsoleLog {
+			domain.Spec.Devices.Serials[0].Log = &api.SerialLog{
+				File:   fmt.Sprintf("%s-log", socketPath),
+				Append: "on",
 			}
 		}
+
 	}
 
 	if vmi.Spec.Domain.Devices.AutoattachGraphicsDevice == nil || *vmi.Spec.Domain.Devices.AutoattachGraphicsDevice {
