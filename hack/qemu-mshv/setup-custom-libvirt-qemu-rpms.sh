@@ -37,6 +37,8 @@ else
   sleep 5
 fi
 
+docker images --digests
+
 LIBVIRT_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' libvirt-rpms-http-server)
 QEMU_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' qemu-rpms-http-server)
 echo "Libvirt repo IP: $LIBVIRT_IP"
