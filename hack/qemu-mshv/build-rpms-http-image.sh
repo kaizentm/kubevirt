@@ -24,7 +24,7 @@ cat >Dockerfile <<EOF
 FROM httpd:alpine
 
 # Copy RPMs to web directory
-COPY ${RPMS_DIR}/ /usr/local/apache2/htdocs/
+COPY ${RPMS_DIR} /usr/local/apache2/htdocs/
 
 # Set proper permissions for Apache to serve files
 RUN chmod -R 755 /usr/local/apache2/htdocs/ && \
