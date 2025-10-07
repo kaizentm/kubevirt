@@ -1,6 +1,6 @@
 export GO15VENDOREXPERIMENT := 1
 export DOCKER_PREFIX := ghcr.io/kaizentm/kubevirt
-# export DOCKER_TAG := 1.6.0-l1vh.141-fix
+export DOCKER_TAG := 1.6.0-l1vh.148
 export KUBEVIRT_PROVIDER := external
 export KUBECONFIG := /etc/rancher/k3s/k3s.yaml
 
