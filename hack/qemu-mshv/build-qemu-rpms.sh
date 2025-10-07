@@ -1,7 +1,18 @@
 #!/bin/bash
 
-QEMU_REPO=https://github.com/kaizentm/qemu
-QEMU_VERSION=10.1.50.mshv.v5
+while getopts r:v: flag
+do
+    case "${flag}" in
+        r) QEMU_REPO=${OPTARG};;
+        v) QEMU_VERSION=${OPTARG};;
+        *) echo "Invalid option"; exit 1;;
+    esac
+done
+
+if [ -z "$QEMU_REPO" ] || [ -z "$QEMU_VERSION" ]; then
+    echo "Usage: $0 -r <QEMU_REPO> -v <QEMU_VERSION>"
+    exit 1
+fi
 
 git clone https://github.com/kaizentm/qemu
 
@@ -33,9 +44,9 @@ docker exec -w /qemu-src qemu-build bash -c "
 
 cd ../
 
-docker cp qemu-build:/root/rpmbuild/RPMS ./rpms
+docker cp qemu-build:/root/rpmbuild/RPMS ./rpms-qemu
 
-cat >./rpms/build-info.json <<EOF
+cat >./rpms-qemu/build-info.json <<EOF
 {
   "qemu_version": "0:10.1.50.mshv.v5-1.el9"
 }
