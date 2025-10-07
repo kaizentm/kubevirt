@@ -3,7 +3,7 @@ name: Build Custom libvirt RPMs
 on:
   workflow_dispatch:
   push:
-    branches: ["ise"]
+    branches: ["ise", "guptaharshit/*"]
     paths:
       - '.github/workflows/build-libvirt-rpms.yaml'
 
@@ -12,7 +12,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
   LIBVERT_TAG: 'qemu_mshv_v1'
-  RPM_IMAGE_TAG: 'qemu-mshv'
+  RPM_IMAGE_TAG: 'guptaharshit-test'
 
 jobs:
   build-rpms:
