@@ -35,7 +35,7 @@ func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, d
 	domain.Spec.Type = "hyperv"
 	
 	// TODO: make it configurable
-	domain.Spec.CPU = nil
+	domain.Spec.CPU = &api.CPU{}
 	log.Log.Infof("Adjusting domain for HyperV Layered")
 }
 
