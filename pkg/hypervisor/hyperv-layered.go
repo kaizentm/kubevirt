@@ -38,8 +38,8 @@ func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, d
 	// the user explicitly requested something else. This helps align feature exposure (e.g. APIC/x2apic,
 	// virtualization extensions) while still allowing custom overrides.
 	// if domain.Spec.CPU.Mode == "" || domain.Spec.CPU.Mode == "host-model" || domain.Spec.CPU.Model == "" || domain.Spec.CPU.Model == "qemu64" {
-		domain.Spec.CPU.Mode = "custom"
-		domain.Spec.CPU.Model = "EPYC"
+		// domain.Spec.CPU.Mode = "custom"
+		// domain.Spec.CPU.Model = "EPYC"
 	//}
 
 	log.Log.Infof("Adjusting domain for HyperV Layered (name=%s, cpuMode=%s, cpuModel=%s)", domain.Spec.Name, domain.Spec.CPU.Mode, domain.Spec.CPU.Model)
