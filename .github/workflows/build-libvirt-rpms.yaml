@@ -5,14 +5,14 @@ on:
   push:
     branches: ["ise"]
     paths:
-      - '.github/workflows/build-libvirt-rpms.yaml'
+      - .github/workflows/build-libvirt-rpms.yaml
 
 env:
   LIBVIRT_REPO: https://github.com/kaizentm/libvirt.git
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
-  LIBVIRT_TAG: 'qemu_mshv_v1'
-  RPM_IMAGE_TAG: 'guptaharshit-test'
+  LIBVIRT_TAG: qemu_mshv_v1
+  RPM_IMAGE_TAG: qemu-mshv
 
 jobs:
   build-rpms:

@@ -5,15 +5,14 @@ on:
   push:
     branches: ["ise"]
     paths:
-      - '.github/workflows/build-qemu-rpm.yaml'
+      - .github/workflows/build-qemu-rpm.yaml
 
 env:
   QEMU_REPO: https://github.com/kaizentm/qemu
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
-  QEMU_VERSION: '10.1.50.mshv.v5'
-  RPM_IMAGE_TAG: 'guptaharshit-test'
-
+  QEMU_VERSION: 10.1.50.mshv.v5
+  RPM_IMAGE_TAG: qemu-mshv
 
 jobs:
   build-rpms:
