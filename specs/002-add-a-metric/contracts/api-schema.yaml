@@ -1,0 +1,199 @@
+# API Schema: VMI Hypervisor Tracking Metric
+
+**Generated**: October 13, 2025  
+**Feature**: VMI Hypervisor Tracking Metric
+
+## API Impact Analysis
+
+### CRD Modifications: None Required
+
+✅ **No API Changes**: This feature adds observability without modifying any KubeVirt Custom Resource Definitions.
+
+**Rationale**: 
+- Metric collection uses existing VMI resources and libvirt APIs
+- No new configuration fields or spec changes needed
+- Purely observational feature leveraging existing data sources
+
+### Existing API Integration Points
+
+#### VirtualMachineInstance Resource Usage
+
+```yaml
+# Existing VMI resource structure (READ-ONLY access)
+apiVersion: kubevirt.io/v1
+kind: VirtualMachineInstance
+metadata:
+  name: my-vm
+  namespace: default
+spec:
+  # ... existing spec fields used for identification ...
+status:
+  nodeName: worker-node-1  # Used for metric node label
+  phase: Running           # Used to determine metric lifecycle
+  # ... other status fields ...
+```
+
+**Fields Used by Metric**:
+- `metadata.name` → metric label `name`
+- `metadata.namespace` → metric label `namespace`  
+- `status.nodeName` → metric label `node`
+- `status.phase` → metric lifecycle trigger
+
+#### libvirt API Integration
+
+```xml
+<!-- libvirt Domain XML (READ-ONLY access) -->
+<!-- Accessed via existing virt-handler libvirt connection -->
+<domain type="kvm">  <!-- Source of hypervisor_type label -->
+  <name>default_my-vm</name>
+  <!-- ... existing domain configuration ... -->
+</domain>
+```
+
+**API Usage Pattern**:
+- Query: `virDomainGetXMLDesc()` via existing libvirt connection
+- Parse: Extract `type` attribute from `<domain>` element
+- Map: Domain type → hypervisor_type label value
+
+## Prometheus Metrics API
+
+### New Metric Endpoint Extension
+
+```yaml
+# Added to existing virt-handler /metrics endpoint
+# HELP kubevirt_vmi_hypervisor_info Information about the hypervisor type used by a VirtualMachineInstance
+# TYPE kubevirt_vmi_hypervisor_info info
+
+# Metric format (Prometheus exposition format)
+kubevirt_vmi_hypervisor_info{namespace="default",name="my-vm",node="worker-1",hypervisor_type="kvm"} 1
+kubevirt_vmi_hypervisor_info{namespace="default",name="other-vm",node="worker-1",hypervisor_type="qemu-tcg"} 1
+```
+
+### Metric Query API
+
+**Prometheus Query Examples**:
+
+```promql
+# Count VMIs by hypervisor type
+count by (hypervisor_type) (kubevirt_vmi_hypervisor_info)
+
+# VMIs using hardware acceleration
+kubevirt_vmi_hypervisor_info{hypervisor_type="kvm"}
+
+# VMIs on specific node
+kubevirt_vmi_hypervisor_info{node="worker-node-1"}
+
+# VMIs in specific namespace
+kubevirt_vmi_hypervisor_info{namespace="production"}
+```
+
+## Service Discovery Integration
+
+### Existing Prometheus Integration
+
+```yaml
+# virt-handler service (existing - no changes)
+apiVersion: v1
+kind: Service
+metadata:
+  name: virt-handler-metrics
+  labels:
+    app: virt-handler
+spec:
+  selector:
+    app: virt-handler
+  ports:
+  - name: metrics
+    port: 8443
+    targetPort: 8443
+```
+
+**Integration Method**: New metric automatically exposed via existing metrics endpoint
+
+### ServiceMonitor Integration
+
+```yaml
+# Existing ServiceMonitor (no changes required)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubevirt-virt-handler
+spec:
+  selector:
+    matchLabels:
+      app: virt-handler
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+```
+
+**Automatic Discovery**: New metric discovered by existing Prometheus scraping configuration
+
+## RBAC Requirements
+
+### No Additional Permissions Required
+
+✅ **Existing Permissions Sufficient**:
+
+```yaml
+# virt-handler already has required permissions (no changes)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubevirt:virt-handler
+rules:
+# VMI read access (existing)
+- apiGroups: ["kubevirt.io"]
+  resources: ["virtualmachineinstances"]
+  verbs: ["get", "list", "watch"]
+# Node information access (existing)  
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+# No additional permissions needed for libvirt (existing connection)
+# No additional permissions needed for metrics (existing endpoint)
+```
+
+## Backward Compatibility Guarantees
+
+### API Compatibility
+
+- ✅ **No Breaking Changes**: No modifications to existing APIs
+- ✅ **Additive Only**: Only adds new metric, no removals or modifications
+- ✅ **Optional Feature**: Metric collection failure does not impact VMI functionality
+- ✅ **Version Independence**: Compatible with all KubeVirt versions (uses stable APIs)
+
+### Upgrade Safety
+
+- ✅ **Rolling Upgrades**: Safe to deploy incrementally across cluster nodes
+- ✅ **Rollback Safe**: Can be removed without affecting existing functionality
+- ✅ **Configuration Independence**: No configuration changes required
+
+## Schema Validation
+
+### Metric Label Validation
+
+```go
+// Label validation rules
+var labelValidation = map[string]func(string) error{
+    "namespace": validateK8sName,     // Kubernetes namespace format
+    "name":      validateK8sName,     // Kubernetes resource name format  
+    "node":      validateK8sNodeName, // Kubernetes node name format
+    "hypervisor_type": validateHypervisorType, // Enum validation
+}
+
+func validateHypervisorType(value string) error {
+    validTypes := []string{"kvm", "qemu-tcg", "unknown"}
+    // ... validation logic ...
+}
+```
+
+### Data Consistency Rules
+
+- **Unique Metrics**: One metric per unique (namespace, name) combination
+- **Label Consistency**: All labels must be present and non-empty (except for validation failures)
+- **Lifecycle Consistency**: Metrics exist only for Running VMIs
+- **Node Consistency**: Node label matches VMI status.nodeName
+
+This schema specification confirms that the VMI hypervisor tracking metric integrates cleanly with existing KubeVirt APIs without requiring any modifications, maintaining full backward compatibility while providing valuable observability data.
