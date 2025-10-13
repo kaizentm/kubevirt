@@ -88,44 +88,56 @@ stateDiagram-v2
 
 ## Internal Data Structures
 
-### KubeVirt Metrics Framework Integration
+### KubeVirt Static Metrics Pattern
 
 ```go
-// Following established patterns in pkg/monitoring/metrics/virt-handler/
-// Integration with existing SetupMetrics() function
+// Following established static metrics pattern (like versionInfo, machineTypeMetrics)
+// pkg/monitoring/metrics/virt-handler/hypervisor_metrics.go
 
-// pkg/monitoring/metrics/virt-handler/hypervisor.go
 var (
-    hypervisorInfoMetric = operatormetrics.NewInfoMetric(
+    hypervisorMetrics = []operatormetrics.Metric{
+        vmiHypervisorInfo,
+    }
+
+    vmiHypervisorInfo = operatormetrics.NewInfoVec(
         operatormetrics.MetricOpts{
-            Name: "kubevirt_vmi_hypervisor_info", 
+            Name: "kubevirt_vmi_hypervisor_info",
             Help: "Information about the hypervisor type used by a VirtualMachineInstance",
         },
         []string{"namespace", "name", "node", "hypervisor_type"},
     )
 )
 
-// Register in metrics setup (follows existing pattern)
-func SetupHypervisorMetrics() error {
-    return operatormetrics.RegisterMetrics(hypervisorInfoMetric)
+// Event-driven metric updates (not a collector)
+func SetVMIHypervisorInfo(namespace, name, node, hypervisorType string) {
+    vmiHypervisorInfo.WithLabelValues(namespace, name, node, hypervisorType).Set(1)
+}
+
+func RemoveVMIHypervisorInfo(namespace, name, node, hypervisorType string) {
+    vmiHypervisorInfo.DeleteLabelValues(namespace, name, node, hypervisorType)
 }
 ```
 
-### Collector Integration Pattern
+### VMI Informer Integration Pattern
 
 ```go
-// Following domainstats collector pattern
-type HypervisorInfoCollector struct {
-    vmiInformer cache.SharedIndexInformer
-    // Reuse existing libvirt connections from domainstats
-}
+// Integration with VMI lifecycle events (not a collector)
+// pkg/monitoring/metrics/virt-handler/hypervisor_metrics.go
 
-// Integration with existing collector registration
-func RegisterHypervisorCollector(vmiInformer cache.SharedIndexInformer) error {
-    collector := &HypervisorInfoCollector{
-        vmiInformer: vmiInformer,
+func SetupHypervisorMetrics(vmiInformer cache.SharedIndexInformer) error {
+    // Register static metric
+    if err := operatormetrics.RegisterMetrics(hypervisorMetrics...); err != nil {
+        return err
     }
-    return operatormetrics.RegisterCollector(collector)
+    
+    // Set up VMI informer event handlers
+    vmiInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+        AddFunc:    handleVMIAdd,
+        UpdateFunc: handleVMIUpdate,
+        DeleteFunc: handleVMIDelete,
+    })
+    
+    return nil
 }
 ```
 

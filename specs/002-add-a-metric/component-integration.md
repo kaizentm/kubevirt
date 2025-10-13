@@ -10,123 +10,133 @@
 **Role**: Node-level agent with established metrics infrastructure at `pkg/monitoring/metrics/virt-handler/`
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          virt-handler                                       │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │              pkg/monitoring/metrics/virt-handler/                       │ │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌───────────────────────┐   │ │
-│  │  │ domainstats/    │  │ migration       │  │ NEW: hypervisor/      │   │ │
-│  │  │ (existing)      │  │ domainstats/    │  │                       │   │ │
-│  │  │                 │  │ (existing)      │  │ - detector.go         │   │ │
-│  │  │ - Domain stats  │  │                 │  │ - collector.go        │   │ │
-│  │  │ - VMI informer  │  │ - Migration     │  │ - metrics.go          │   │ │
-│  │  │ - libvirt conn  │  │   tracking      │  │                       │   │ │
-│  │  └─────────────────┘  └─────────────────┘  └───────────────────────┘   │ │
-│  │                               │                        │                │ │
-│  │                               ▼                        ▼                │ │
-│  │  ┌─────────────────────────────────────────────────────────────────────┐ │ │
-│  │  │                    metrics.go (SetupMetrics)                        │ │ │
-│  │  │  - operatormetrics.RegisterMetrics()                               │ │ │
-│  │  │  - operatormetrics.RegisterCollector()                             │ │ │
-│  │  │  - Shared VMI informer                                              │ │ │
-│  │  │  - Common libvirt connection patterns                               │ │ │
-│  │  └─────────────────────────────────────────────────────────────────────┘ │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                        │                                     │
-│                                        ▼                                     │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │         operator-observability-toolkit /metrics Endpoint               │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                          virt-handler                                         │
+│  ┌───────────────────────────────────────────────────────────────────────────┐ │
+│  │              pkg/monitoring/metrics/virt-handler/                         │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐   │ │
+│  │  │ domainstats/    │  │ migration       │  │ hypervisor_metrics.go   │   │ │
+│  │  │ (existing)      │  │ domainstats/    │  │ (NEW - static metric)   │   │ │
+│  │  │                 │  │ (existing)      │  │                         │   │ │
+│  │  │ - Dynamic stats │  │                 │  │ - InfoVec metric        │   │ │
+│  │  │ - Collectors    │  │ - Migration     │  │ - Event handlers        │   │ │
+│  │  │ - VMI reports   │  │   tracking      │  │ - Hypervisor detection  │   │ │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────────────┘   │ │
+│  │                               │                        │                  │ │
+│  │                               ▼                        ▼                  │ │
+│  │  ┌───────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                    metrics.go (SetupMetrics)                          │ │ │
+│  │  │  - RegisterMetrics(versionMetrics, machineTypeMetrics,               │ │ │
+│  │  │                    hypervisorMetrics) ← NEW                          │ │ │
+│  │  │  - RegisterCollector(domainstats, migrationstats)                    │ │ │
+│  │  │  - VMI informer event handlers ← NEW                                 │ │ │
+│  │  └───────────────────────────────────────────────────────────────────────┘ │ │
+│  └───────────────────────────────────────────────────────────────────────────┘ │
+│                                        │                                       │
+│                                        ▼                                       │
+│  ┌───────────────────────────────────────────────────────────────────────────┐ │
+│  │         operator-observability-toolkit /metrics Endpoint                 │ │
+│  └───────────────────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Integration Flow
 
-#### 1. Integration with Existing Metrics Infrastructure
+#### 1. Integration with Existing Static Metrics
 
 ```go
 // pkg/monitoring/metrics/virt-handler/metrics.go (MODIFY)
 func SetupMetrics(nodeName string, MaxRequestsInFlight int, vmiInformer cache.SharedIndexInformer, machines []libvirtxml.CapsGuestMachine) error {
     // ... existing setup ...
     
-    // NEW: Add hypervisor metrics setup
-    if err := SetupHypervisorMetrics(); err != nil {
+    // MODIFY: Add hypervisor metrics to static metrics registration
+    if err := operatormetrics.RegisterMetrics(versionMetrics, machineTypeMetrics, hypervisorMetrics); err != nil {
+        return err
+    }
+    SetVersionInfo()
+    ReportDeprecatedMachineTypes(machines, nodeName)
+    
+    // NEW: Setup hypervisor metrics with VMI informer event handlers
+    if err := SetupHypervisorMetrics(vmiInformer); err != nil {
         return err
     }
     
-    // NEW: Register hypervisor collector (follows existing pattern)
-    hypervisorCollector := NewHypervisorInfoCollector(vmiInformer)
-    
+    // Existing collector registration (no changes)
     return operatormetrics.RegisterCollector(
         domainstats.Collector,
         domainstats.DomainDirtyRateStatsCollector,
         migrationdomainstats.MigrationStatsCollector,
         domainstats.GuestAgentInfoCollector,
-        hypervisorCollector, // NEW
     )
 }
 ```
 
-#### 2. Collector Pattern Integration
+#### 2. VMI Event Handler Integration
 
 ```go
-// pkg/monitoring/metrics/virt-handler/hypervisor/collector.go (NEW)
-// Following established collector patterns from domainstats/
+// pkg/monitoring/metrics/virt-handler/hypervisor_metrics.go (NEW)
+// Following static metrics pattern (like versionInfo, machineTypeMetrics)
 
-type HypervisorInfoCollector struct {
-    vmiInformer cache.SharedIndexInformer
-    detector    *HypervisorDetector
+func SetupHypervisorMetrics(vmiInformer cache.SharedIndexInformer) error {
+    // Add VMI informer event handlers for lifecycle-driven updates
+    vmiInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+        AddFunc:    onVMIAdd,
+        UpdateFunc: onVMIUpdate,
+        DeleteFunc: onVMIDelete,
+    })
+    return nil
 }
 
-func NewHypervisorInfoCollector(vmiInformer cache.SharedIndexInformer) *HypervisorInfoCollector {
-    return &HypervisorInfoCollector{
-        vmiInformer: vmiInformer,
-        detector:    NewHypervisorDetector(), // Reuses libvirt connection patterns
+func onVMIAdd(obj interface{}) {
+    vmi := obj.(*v1.VirtualMachineInstance)
+    if vmi.Status.Phase == v1.Running {
+        updateHypervisorMetric(vmi)
     }
 }
 
-// Implements Prometheus Collector interface (like domainstats)
-func (c *HypervisorInfoCollector) Collect(ch chan<- prometheus.Metric) {
-    // Use VMI informer to get running VMIs (established pattern)
-    vmis := c.vmiInformer.GetStore().List()
-    for _, obj := range vmis {
-        vmi := obj.(*v1.VirtualMachineInstance)
-        if vmi.Status.Phase == v1.Running {
-            c.collectVMIHypervisorInfo(vmi, ch)
-        }
+func onVMIUpdate(oldObj, newObj interface{}) {
+    oldVMI := oldObj.(*v1.VirtualMachineInstance)
+    newVMI := newObj.(*v1.VirtualMachineInstance)
+    
+    // Handle phase transitions
+    if oldVMI.Status.Phase != v1.Running && newVMI.Status.Phase == v1.Running {
+        updateHypervisorMetric(newVMI)
+    } else if oldVMI.Status.Phase == v1.Running && newVMI.Status.Phase != v1.Running {
+        removeHypervisorMetric(oldVMI)
     }
 }
 ```
 
-#### 3. Libvirt Integration Pattern
+#### 3. Hypervisor Detection Integration
 
 ```go
-// pkg/monitoring/metrics/virt-handler/hypervisor/detector.go (NEW)
-// Reusing established libvirt connection patterns from domainstats
+// pkg/monitoring/metrics/virt-handler/hypervisor_metrics.go (continued)
 
-type HypervisorDetector struct {
-    // Reuse connection management patterns from domainstats.Manager
-}
-
-func (d *HypervisorDetector) DetectHypervisorType(vmi *v1.VirtualMachineInstance) (string, error) {
-    // Use same domain lookup patterns as domainstats
-    domainName := api.VMINamespaceKeyFunc(vmi)
-    
-    // Leverage existing libvirt connection handling
-    domainXML, err := d.getDomainXML(domainName)
+func updateHypervisorMetric(vmi *v1.VirtualMachineInstance) {
+    hypervisorType, err := detectVMIHypervisorType(vmi)
     if err != nil {
-        return "unknown", err
+        log.Log.V(3).Infof("Cannot detect hypervisor for VMI %s/%s, using unknown: %v", 
+            vmi.Namespace, vmi.Name, err)
+        hypervisorType = "unknown"
     }
     
-    return parseHypervisorTypeFromXML(domainXML), nil
+    SetVMIHypervisorInfo(vmi.Namespace, vmi.Name, vmi.Status.NodeName, hypervisorType)
 }
 
-// Reuse libvirt error handling patterns from domainstats
-func (d *HypervisorDetector) getDomainXML(domainName string) (string, error) {
-    // Follow same libvirt connection and error handling as domainstats
-    // - Connection pool management
-    // - Domain lookup error handling  
-    // - XML retrieval patterns
+func removeHypervisorMetric(vmi *v1.VirtualMachineInstance) {
+    // Need to determine what hypervisor type was set to delete the right metric
+    // This is a limitation of the InfoVec pattern - we'll need to track or query all possible values
+    for _, hypervisorType := range []string{"kvm", "qemu-tcg", "unknown"} {
+        RemoveVMIHypervisorInfo(vmi.Namespace, vmi.Name, vmi.Status.NodeName, hypervisorType)
+    }
+}
+
+// Simple libvirt XML parsing - no need for complex connection management
+func detectVMIHypervisorType(vmi *v1.VirtualMachineInstance) (string, error) {
+    // Use existing libvirt patterns from virt-handler to get domain XML
+    // Much simpler than domainstats since we only need type attribute, not stats
+    domainName := api.VMINamespaceKeyFunc(vmi)
+    return getHypervisorTypeFromDomain(domainName)
 }
 ```
 

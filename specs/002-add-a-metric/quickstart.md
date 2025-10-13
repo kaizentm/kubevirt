@@ -10,9 +10,9 @@ Add Prometheus metric `kubevirt_vmi_hypervisor_info` to track hypervisor type (K
 
 ### Key Integration Points
 - **Framework**: KubeVirt's `pkg/monitoring/metrics/virt-handler/` infrastructure
-- **Pattern**: New collector following `domainstats` collector pattern
-- **Registration**: Integrate with existing `SetupMetrics()` function
-- **Dependencies**: Reuse VMI informer and libvirt connection patterns
+- **Pattern**: Static metric (like `versionInfo`, `machineTypeMetrics`) with VMI event handlers
+- **Registration**: Add to existing `operatormetrics.RegisterMetrics()` call in `SetupMetrics()`
+- **Updates**: Event-driven via VMI informer, not continuous collection
 
 ## Development Environment Setup
 
@@ -46,10 +46,10 @@ make test-functional WHAT=hypervisor-metric
 - [ ] Unit tests for detection logic
 
 ### Phase 2: Metric Integration
-- [ ] Extend virt-handler metrics collector with new InfoVec
-- [ ] Implement metric lifecycle (create/update/remove)
-- [ ] Add VMI informer event handlers
-- [ ] Integration tests with real VMIs
+- [ ] Create static hypervisor InfoVec metric in virt-handler
+- [ ] Implement VMI informer event handlers (Add/Update/Delete)
+- [ ] Register metric and handlers in SetupMetrics()
+- [ ] Integration tests with VMI lifecycle events
 
 ### Phase 3: Error Handling & Polish  
 - [ ] Handle libvirt connection failures gracefully
@@ -62,22 +62,19 @@ make test-functional WHAT=hypervisor-metric
 ### Primary Files to Modify
 ```text
 pkg/monitoring/metrics/virt-handler/
-├── hypervisor/               # NEW: Hypervisor metrics package
-│   ├── collector.go          # NEW: Prometheus collector (follows domainstats pattern)
-│   ├── detector.go           # NEW: Hypervisor detection logic
-│   ├── metrics.go            # NEW: Metric definitions
-│   └── collector_test.go     # NEW: Tests
-└── metrics.go                # MODIFY: Add hypervisor setup to SetupMetrics()
+├── hypervisor_metrics.go     # NEW: Static hypervisor InfoVec metric
+├── hypervisor_metrics_test.go # NEW: Tests for event handlers and detection
+└── metrics.go                # MODIFY: Add hypervisor metric registration
 ```
 
 ### Key Functions to Implement
 ```go
-// pkg/monitoring/metrics/virt-handler/hypervisor/collector.go
-func NewHypervisorInfoCollector(vmiInformer cache.SharedIndexInformer) *HypervisorInfoCollector
-func (c *HypervisorInfoCollector) Collect(ch chan<- prometheus.Metric)
-
-// pkg/monitoring/metrics/virt-handler/hypervisor/detector.go
-func DetectHypervisorType(vmi *v1.VirtualMachineInstance) (string, error)
+// pkg/monitoring/metrics/virt-handler/hypervisor_metrics.go
+func detectHypervisorType(vmi *v1.VirtualMachineInstance) (string, error)
+func updateHypervisorMetric(vmi *v1.VirtualMachineInstance, hypervisorType string)
+func handleVMIAdd(obj interface{})
+func handleVMIUpdate(oldObj, newObj interface{})
+func handleVMIDelete(obj interface{})
 
 // pkg/monitoring/metrics/virt-handler/metrics.go (modify)
 func SetupHypervisorMetrics() error // Add to existing SetupMetrics()

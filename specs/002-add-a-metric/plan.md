@@ -44,7 +44,7 @@
 
 ## Summary
 
-Add a Prometheus info metric `kubevirt_vmi_hypervisor_info` that tracks which hypervisor (KVM, QEMU-TCG, unknown) is being used for each running VirtualMachineInstance. The implementation extends KubeVirt's existing `pkg/monitoring/metrics/virt-handler/` infrastructure by adding a new hypervisor collector following the established domainstats pattern, reusing VMI informers and libvirt connection management. This enables cluster operators to monitor hypervisor distribution for performance analysis and capacity planning.
+Add a Prometheus info metric `kubevirt_vmi_hypervisor_info` that tracks which hypervisor (KVM, QEMU-TCG, unknown) is being used for each running VirtualMachineInstance. The implementation extends KubeVirt's existing `pkg/monitoring/metrics/virt-handler/` infrastructure by adding a static metric (like versionInfo/machineTypeMetrics) that is updated via VMI informer events, not a dynamic collector. This approach is more appropriate since hypervisor type is a static property that doesn't change during VMI lifetime.
 
 ## Technical Context
 
@@ -53,14 +53,14 @@ Add a Prometheus info metric `kubevirt_vmi_hypervisor_info` that tracks which hy
 **Kubernetes API**: Standard Kubernetes API (no new API changes required)  
 **Primary Dependencies**: operator-observability-toolkit (existing), libvirt (existing), shared VMI informer (existing)  
 **Host Dependencies**: libvirt daemon (already required by KubeVirt), no additional host requirements  
-**Component Architecture**: pkg/monitoring/metrics/virt-handler/ (new hypervisor package following domainstats pattern)  
+**Component Architecture**: pkg/monitoring/metrics/virt-handler/ (static metric pattern like versionInfo, event-driven updates)  
 **Testing Framework**: Ginkgo/Gomega (KubeVirt standard)  
 **Target Platform**: Linux Kubernetes clusters  
 **Feature Gate Strategy**: N/A - metrics addition does not require feature gate  
 **Performance Goals**: <1% CPU overhead to virt-handler, scales to 1000+ concurrent VMIs  
 **Security Constraints**: Standard Prometheus metrics endpoint security, no sensitive data exposure  
 **Scale/Scope**: Per-VMI metric, cluster-wide collection, node-level emission  
-**Integration Points**: pkg/monitoring/metrics/virt-handler/metrics.go SetupMetrics(), domainstats collector patterns, shared VMI informer
+**Integration Points**: pkg/monitoring/metrics/virt-handler/metrics.go SetupMetrics(), VMI informer event handlers, libvirt domain XML queries
 
 ## Constitution Check
 
