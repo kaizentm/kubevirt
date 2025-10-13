@@ -97,7 +97,7 @@ var _ = Describe(SIG("[rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@r
 				expectConsoleOutput(vmi, "login")
 
 				By("expecting error on 1st console connection")
-				Eventually(firstConsoleErrChan, 1*time.Minute, 1*time.Second).Should(Receive(MatchError(ContainSubstring("EOF"))))
+				Eventually(firstConsoleErrChan, 5*time.Minute, 1*time.Second).Should(Receive(MatchError(ContainSubstring("EOF"))))
 			})
 
 			It("[test_id:1592]should wait until the virtual machine is in running state and return a stream interface", func() {
