@@ -4,7 +4,6 @@
 
 - **Feature ID**: 002
 - **Feature Name**: VMI Hypervisor Tracking Metric
-- **Author(s)**: AI Assistant
 - **Created**: October 13, 2025
 - **Status**: Draft
 - **KubeVirt Version**: [TARGET_VERSION]
@@ -38,11 +37,20 @@
 
 ## Executive Summary
 
-**One-sentence description**: Add a Prometheus metric that tracks which hypervisor (QEMU/KVM, software emulation, etc.) is being used for each VirtualMachineInstance in KubeVirt.
 
 **Business justification**: Enables cluster operators to monitor hypervisor distribution across their VM workloads, supporting performance analysis, capacity planning, and troubleshooting of virtualization infrastructure.
 
 **User impact**: Cluster operators and monitoring teams gain visibility into hypervisor usage patterns, enabling better resource optimization and performance tuning decisions.
+
+## Clarifications
+
+### Session 2025-10-13
+
+- Q: What should the metric be named and what Prometheus metric type should it use? → A: kubevirt_vmi_hypervisor_info (info metric with hypervisor_type label)
+- Q: Which specific hypervisor types should the metric distinguish between? → A: Basic: kvm, qemu-tcg, unknown
+- Q: How should the hypervisor type be detected? → A: Query libvirt domain XML for accelerator configuration
+- Q: How frequently should the hypervisor type be checked and updated? → A: On VMI lifecycle events (startup, resume, etc.)
+- Q: Which KubeVirt component should be responsible for emitting this metric? → A: virt-handler (node agent with access to libvirt)
 
 ## Problem Statement
 
@@ -63,7 +71,7 @@
 ### Success Criteria
 
 - **Functional**: Metric accurately reflects the actual hypervisor being used by each running VMI
-- **Non-functional**: Metric collection has minimal performance overhead and updates promptly when hypervisor state changes
+- **Non-functional**: Metric collection has minimal performance overhead.
 - **User Experience**: Metric follows Prometheus best practices and integrates seamlessly with existing KubeVirt monitoring
 
 ---
@@ -114,7 +122,7 @@ When creating this spec from a user prompt:
 - **Acceptance Criteria**:
   - [ ] Metric shows accurate hypervisor type (e.g., "kvm", "qemu", "tcg") for each running VMI
   - [ ] Metric includes VMI name, namespace, and node labels for filtering and aggregation
-  - [ ] Metric updates within 30 seconds when hypervisor state changes
+  - [ ] Metric updates on VMI lifecycle events when hypervisor state changes
 
 **Story 2**: As a cluster operator, I want to monitor hypervisor distribution across my cluster, so that I can ensure optimal performance and identify nodes with hardware acceleration issues.
 
@@ -140,9 +148,9 @@ When creating this spec from a user prompt:
 
 ### Functional Requirements
 
-1. **REQ-F-001**: KubeVirt MUST expose a Prometheus metric that indicates the hypervisor type for each running VirtualMachineInstance
-2. **REQ-F-002**: Metric MUST include VMI identifying labels (name, namespace, node)  
-3. **REQ-F-003**: Metric MUST distinguish between major hypervisor types [NEEDS CLARIFICATION: specific hypervisor types to detect - KVM, QEMU-TCG, others?]
+1. **REQ-F-001**: KubeVirt MUST expose a Prometheus info metric named `kubevirt_vmi_hypervisor_info` that indicates the hypervisor type for each running VirtualMachineInstance
+2. **REQ-F-002**: Metric MUST include VMI identifying labels (name, namespace, node) and a `hypervisor_type` label  
+3. **REQ-F-003**: Metric MUST distinguish between hypervisor types: `kvm` (hardware acceleration), `qemu-tcg` (software emulation), and `unknown` (when type cannot be determined)
 4. **REQ-F-004**: Metric MUST only exist for VMIs in Running phase
 5. **REQ-F-005**: Metric MUST update when hypervisor state changes during VMI lifecycle
 
@@ -163,20 +171,20 @@ When creating this spec from a user prompt:
 ### Key Entities
 
 - **VMI Hypervisor Metric**: Represents the current hypervisor type for a running VMI, with labels for VMI identification and hypervisor classification
-- **Hypervisor Type**: Classification of virtualization backend (e.g., hardware-accelerated KVM, software-emulated QEMU)
+- **Hypervisor Type**: Classification of virtualization backend with values: `kvm` (hardware acceleration), `qemu-tcg` (software emulation), or `unknown` (undetermined)
 
 ## Dependencies and Prerequisites
 
 ### KubeVirt Component Impact
 
-- **virt-handler**: [NEEDS CLARIFICATION: likely source of hypervisor detection and metric emission]
+- **virt-handler**: Primary component responsible for detecting hypervisor type via libvirt domain XML and emitting the `kubevirt_vmi_hypervisor_info` metric
 - **virt-launcher**: May need to provide hypervisor information to virt-handler
 - **Existing metrics infrastructure**: Must integrate with current Prometheus metrics collection
 
 ### Hypervisor Detection Requirements
 
-- **Detection Method**: [NEEDS CLARIFICATION: mechanism to detect actual hypervisor type - libvirt API, QEMU monitor, /proc inspection?]
-- **Update Frequency**: [NEEDS CLARIFICATION: how often to check/update hypervisor type]
+- **Detection Method**: Query libvirt domain XML to check the domain type and accelerator configuration
+- **Update Frequency**: Hypervisor type detection triggered on VMI lifecycle events (startup, resume, migration, etc.)
 
 ## Security Considerations
 
@@ -200,7 +208,7 @@ When creating this spec from a user prompt:
 
 ### Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain (3 clarifications needed)
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous  
 - [x] Success criteria are measurable
 - [x] Scope is clearly bounded
@@ -222,10 +230,10 @@ When creating this spec from a user prompt:
 
 - [x] User description parsed
 - [x] Key concepts extracted
-- [x] Ambiguities marked (3 clarifications needed)
+- [x] Ambiguities marked and resolved (5 clarifications completed)
 - [x] User scenarios defined
 - [x] Requirements generated  
 - [x] Entities identified
-- [ ] Review checklist passed (pending clarifications)
+- [x] Review checklist passed
 
 ---
