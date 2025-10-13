@@ -1475,6 +1475,8 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 
 			time.Sleep(10 * time.Second) // sleep to increase time window between start and pause
 
+			time.Sleep(10 * time.Second) // sleep to increase time window between start and pause
+
 			By("Pausing VMI")
 			err := kubevirt.Client().VirtualMachineInstance(vmi.Namespace).Pause(context.Background(), vmi.Name, &v1.PauseOptions{})
 			Expect(err).ToNot(HaveOccurred())
