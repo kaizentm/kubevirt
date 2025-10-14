@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 #
+# This file is part of the KubeVirt project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Copyright 2021 Red Hat, Inc.
+#
+#
 # KubeVirt functional test retry helper.
 #
 # Purpose:
@@ -48,7 +65,7 @@ BASE_LABEL_EXCLUDES='!(single-replica)&&(!QUARANTINE)&&(!requireHugepages2Mi)&&(
 
 # Build the static label filter (excludes + flake suppression); test focusing handled via KUBEVIRT_E2E_FOCUS env.
 build_label_filter() {
-    echo "--label-filter=(!flake-check)&&(${BASE_LABEL_EXCLUDES})"
+    echo "--label-filter=(!flake-check)&&(${TEST_FOCUS}&&${BASE_LABEL_EXCLUDES})"
 }
 
 # Extract failing test names from JUnit file
@@ -72,13 +89,12 @@ while [[ ${run_number} -le ${MAX_ATTEMPTS} ]]; do
     echo "================ Functional Test Attempt ${run_number}/${MAX_ATTEMPTS} ================"
     rm -f "${JUNIT_REPORT_FILE}"
 
-    # Static label filter + optional --focus from TEST_FOCUS
     current_label_filter=$(build_label_filter)
-    echo "Running suite with label filter: ${current_label_filter} (TEST_FOCUS='${TEST_FOCUS:-}')"
+    echo "Running suite with label filter: ${current_label_filter} (LABEL_FILTER='${LABEL_FILTER:-}')"
 
     func_args="--no-color"
-    if [[ -n ${TEST_FOCUS:-} ]]; then
-        export KUBEVIRT_E2E_FOCUS="${TEST_FOCUS}"
+    if [[ -n ${LABEL_FILTER:-} ]]; then
+        export KUBEVIRT_E2E_FOCUS="${LABEL_FILTER}"
     else
         unset KUBEVIRT_E2E_FOCUS 2>/dev/null || true
     fi
@@ -112,11 +128,11 @@ while [[ ${run_number} -le ${MAX_ATTEMPTS} ]]; do
         break
     fi
 
-    # Derive new TEST_FOCUS from failing test names (regex OR group)
+    # Derive new LABEL_FILTER from failing test names (regex OR group)
     escaped_joined=$(printf '%s\n' "${failed_tests[@]}" | escape_regex | paste -sd '|' -)
-    TEST_FOCUS="(${escaped_joined})"
-    export TEST_FOCUS
-    echo "Updated TEST_FOCUS for next attempt to: ${TEST_FOCUS}"
+    LABEL_FILTER="(${escaped_joined})"
+    export LABEL_FILTER
+    echo "Updated LABEL_FILTER for next attempt to: ${LABEL_FILTER}"
 
     run_number=$((run_number + 1))
 done
