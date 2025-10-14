@@ -39,48 +39,50 @@ var _ = Describe("Hypervisor Metrics", func() {
 		operatormetrics.UnregisterMetrics(hypervisorMetrics)
 	})
 
-	Describe("detectHypervisorType", func() {
-		It("should detect KVM hypervisor type", func() {
-			domainXML := `<domain type="kvm"><name>test-domain</name></domain>`
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeKVM))
+	Describe("getHypervisorTypeForVMI", func() {
+		It("should return error when socket not found", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmi",
+					Namespace: "default",
+				},
+				Status: v1.VirtualMachineInstanceStatus{
+					NodeName: "test-node",
+				},
+			}
+
+			hypervisorType, err := getHypervisorTypeForVMI(vmi)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unable to find socket"))
+			Expect(hypervisorType).To(Equal(""))
 		})
 
-		It("should detect QEMU-TCG hypervisor type", func() {
-			domainXML := `<domain type="qemu"><name>test-domain</name></domain>`
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeQEMUTCG))
+		It("should handle nil VMI", func() {
+			hypervisorType, err := getHypervisorTypeForVMI(nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("VMI cannot be nil"))
+			Expect(hypervisorType).To(Equal(""))
 		})
 
-		It("should handle unknown hypervisor type", func() {
-			domainXML := `<domain type="xen"><name>test-domain</name></domain>`
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeUnknown))
+		It("should return proper error for VMI without socket", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "non-existent-vmi",
+					Namespace: "default",
+				},
+				Status: v1.VirtualMachineInstanceStatus{
+					NodeName: "test-node",
+				},
+			}
+
+			hypervisorType, err := getHypervisorTypeForVMI(vmi)
+			Expect(err).To(HaveOccurred())
+			Expect(hypervisorType).To(Equal(""))
 		})
 
-		It("should handle invalid XML", func() {
-			domainXML := `<invalid-xml>`
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeUnknown))
-		})
-
-		It("should handle empty XML", func() {
-			domainXML := ""
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeUnknown))
-		})
-
-		It("should handle missing type attribute", func() {
-			domainXML := `<domain><name>test-domain</name></domain>`
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeUnknown))
-		})
-
-		It("should handle case insensitive type values", func() {
-			domainXML := `<domain type="KVM"><name>test-domain</name></domain>`
-			hypervisorType := detectHypervisorType(domainXML)
-			Expect(hypervisorType).To(Equal(HypervisorTypeKVM))
-		})
+		// Note: Testing successful communication with cmd-client requires
+		// integration testing with actual virt-launcher pods, as unit tests
+		// cannot easily mock the unix socket communication
 	})
 
 	Describe("updateHypervisorMetric", func() {
@@ -100,7 +102,7 @@ var _ = Describe("Hypervisor Metrics", func() {
 				},
 			}
 
-			updateHypervisorMetric(vmi, HypervisorTypeKVM)
+			updateHypervisorMetric(vmi, "kvm")
 
 			// Verify metric was created (we can't easily verify the exact value in unit tests)
 			// but we can verify no panic occurred
@@ -118,12 +120,12 @@ var _ = Describe("Hypervisor Metrics", func() {
 			}
 
 			// Should not panic
-			updateHypervisorMetric(vmi, HypervisorTypeKVM)
+			updateHypervisorMetric(vmi, "kvm")
 		})
 
 		It("should handle nil VMI", func() {
 			// Should not panic
-			updateHypervisorMetric(nil, HypervisorTypeKVM)
+			updateHypervisorMetric(nil, "kvm")
 		})
 	})
 
@@ -399,86 +401,34 @@ var _ = Describe("Hypervisor Metrics", func() {
 		})
 	})
 
-	Describe("getDomainXMLForVMI", func() {
-		It("should return empty string for nil VMI", func() {
-			result := getDomainXMLForVMI(nil)
-			Expect(result).To(Equal(""))
+	Describe("hypervisor constants", func() {
+		It("should have correct HypervisorType constants", func() {
+			Expect(string(HypervisorTypeKVM)).To(Equal("kvm"))
+			Expect(string(HypervisorTypeHyperv)).To(Equal("hyperv"))
+			Expect(string(HypervisorTypeQEMU)).To(Equal("qemu"))
+			Expect(string(HypervisorTypeUnknown)).To(Equal("unknown"))
 		})
 
-		It("should return KVM domain XML for test annotation", func() {
-			vmi := &v1.VirtualMachineInstance{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmi",
-					Namespace: "default",
-					Annotations: map[string]string{
-						"kubevirt.io/test-hypervisor-type": "kvm",
-					},
-				},
-			}
-
-			result := getDomainXMLForVMI(vmi)
-			Expect(result).To(ContainSubstring(`<domain type="kvm"`))
-		})
-
-		It("should return QEMU domain XML for test annotation", func() {
-			vmi := &v1.VirtualMachineInstance{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmi",
-					Namespace: "default",
-					Annotations: map[string]string{
-						"kubevirt.io/test-hypervisor-type": "qemu-tcg",
-					},
-				},
-			}
-
-			result := getDomainXMLForVMI(vmi)
-			Expect(result).To(ContainSubstring(`<domain type="qemu"`))
-		})
-
-		It("should return unknown domain XML for unknown test annotation", func() {
-			vmi := &v1.VirtualMachineInstance{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmi",
-					Namespace: "default",
-					Annotations: map[string]string{
-						"kubevirt.io/test-hypervisor-type": "unknown",
-					},
-				},
-			}
-
-			result := getDomainXMLForVMI(vmi)
-			Expect(result).To(ContainSubstring(`<domain type="unknown"`))
-		})
-
-		It("should return default KVM XML for running VMI without annotations", func() {
+		It("should support expected hypervisor types", func() {
+			// Test that the constants work with the metric function
 			vmi := &v1.VirtualMachineInstance{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmi",
 					Namespace: "default",
 				},
 				Status: v1.VirtualMachineInstanceStatus{
-					Phase: v1.Running,
+					NodeName: "test-node",
 				},
 			}
 
-			result := getDomainXMLForVMI(vmi)
-			Expect(result).To(ContainSubstring(`<domain type="kvm"`))
-			Expect(result).To(ContainSubstring(`<name>test-vmi</name>`))
-		})
+			// Register metrics for testing
+			Expect(operatormetrics.RegisterMetrics(hypervisorMetrics)).To(Succeed())
 
-		It("should return empty string for non-running VMI without annotations", func() {
-			vmi := &v1.VirtualMachineInstance{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-vmi",
-					Namespace: "default",
-				},
-				Status: v1.VirtualMachineInstanceStatus{
-					Phase: v1.Pending,
-				},
-			}
-
-			result := getDomainXMLForVMI(vmi)
-			Expect(result).To(Equal(""))
+			// Test all hypervisor types work with updateHypervisorMetric
+			updateHypervisorMetric(vmi, string(HypervisorTypeKVM))
+			updateHypervisorMetric(vmi, string(HypervisorTypeHyperv))
+			updateHypervisorMetric(vmi, string(HypervisorTypeQEMU))
+			updateHypervisorMetric(vmi, string(HypervisorTypeUnknown))
 		})
 	})
 })

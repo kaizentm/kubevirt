@@ -25,6 +25,7 @@ import (
 	"github.com/rhobs/operator-observability-toolkit/pkg/operatormetrics"
 	"k8s.io/client-go/tools/cache"
 	v1 "kubevirt.io/api/core/v1"
+
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 )
 
@@ -153,6 +154,10 @@ func handleVMIUpdate(oldObj, newObj interface{}) {
 // TODO: In a complete implementation, this would integrate with the domain manager
 // to retrieve the actual domain XML from libvirt
 func getHypervisorTypeForVMI(vmi *v1.VirtualMachineInstance) (string, error) {
+	if vmi == nil {
+		return "", fmt.Errorf("VMI cannot be nil")
+	}
+
 	socketPath, err := cmdclient.FindSocket(vmi)
 	if err != nil {
 		// nothing to scrape...
