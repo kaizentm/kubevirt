@@ -20,6 +20,7 @@
 package virt_controller
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
@@ -59,6 +60,7 @@ var (
 			vmiMigrationStartTime,
 			vmiMigrationEndTime,
 			vmiVnicInfo,
+			vmiHypervisorType,
 		},
 		CollectCallback: vmiStatsCollectorCallback,
 	}
@@ -126,6 +128,14 @@ var (
 		},
 		[]string{"name", "namespace", "vnic_name", "binding_type", "network", "binding_name", "model"},
 	)
+
+	vmiHypervisorType = operatormetrics.NewGaugeVec(
+		operatormetrics.MetricOpts{
+			Name: "kubevirt_vmi_hypervisor_type",
+			Help: "The hypervisor type used by the VirtualMachineInstance. Value indicates whether the VMI is using hardware-accelerated virtualization (kvm, hyperv) or software emulation (qemu).",
+		},
+		[]string{"namespace", "name", "node", "hypervisor_type"},
+	)
 )
 
 func vmiStatsCollectorCallback() []operatormetrics.CollectorResult {
@@ -153,6 +163,7 @@ func reportVmisStats(vmis []*k6tv1.VirtualMachineInstance) []operatormetrics.Col
 		crs = append(crs, collectVMIInterfacesInfo(vmi)...)
 		crs = append(crs, collectVMIMigrationTime(vmi)...)
 		crs = append(crs, CollectVmisVnicInfo(vmi)...)
+		crs = append(crs, collectVMIHypervisorType(vmi))
 	}
 
 	return crs
@@ -471,4 +482,56 @@ func CollectVmisVnicInfo(vmi *k6tv1.VirtualMachineInstance) []operatormetrics.Co
 	}
 
 	return results
+}
+
+// getVMIHypervisorType determines the hypervisor type used by a VMI based on
+// node allocatable resources rather than querying libvirt directly
+func getVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) string {
+	// If VMI is not scheduled to a node, return unknown
+	if vmi.Status.NodeName == "" {
+		return "unknown"
+	}
+
+	// Get the node information to check allocatable resources
+	node, err := kubevirtClient.CoreV1().Nodes().Get(
+		context.TODO(),
+		vmi.Status.NodeName,
+		v1.GetOptions{},
+	)
+	if err != nil {
+		log.Log.Reason(err).Errorf("Failed to get node %s information for VMI %s/%s", vmi.Status.NodeName, vmi.Namespace, vmi.Name)
+		return "unknown"
+	}
+
+	// Check for hypervisor device availability in node allocatable resources
+	allocatable := node.Status.Allocatable
+
+	// Check for HyperV device
+	if hypervDevices, exists := allocatable["devices.kubevirt.io/hyperv"]; exists && !hypervDevices.IsZero() {
+		return "hyperv"
+	}
+
+	// Check for KVM device
+	if kvmDevices, exists := allocatable["devices.kubevirt.io/kvm"]; exists && !kvmDevices.IsZero() {
+		return "kvm"
+	}
+
+	// If no hypervisor devices are available, VMI must be using QEMU emulation
+	return "qemu"
+}
+
+// collectVMIHypervisorType collects the hypervisor type metric for a VMI
+func collectVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) operatormetrics.CollectorResult {
+	hypervisorType := getVMIHypervisorType(vmi)
+
+	return operatormetrics.CollectorResult{
+		Metric: vmiHypervisorType,
+		Labels: []string{
+			vmi.Namespace,
+			vmi.Name,
+			vmi.Status.NodeName,
+			hypervisorType,
+		},
+		Value: 1.0,
+	}
 }

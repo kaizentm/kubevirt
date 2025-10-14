@@ -25,7 +25,7 @@ The delta between the pod with highest memory working set or rss and its request
 List of deprecated machine types based on the capabilities of individual nodes, as detected by virt-handler. Type: Gauge.
 
 ### kubevirt_nodes_with_hypervisor
-The number of nodes in the cluster that have the configured hypervisor resource available (e.g., devices.kubevirt.io/kvm or devices.kubevirt.io/hyperv). Type: Gauge.
+The number of nodes in the cluster that have the configured hypervisor resource available. Type: Gauge.
 
 ### kubevirt_number_of_vms
 The number of VMs in the cluster by namespace. Type: Gauge.
@@ -155,6 +155,9 @@ Guest system load average over 5 minutes as reported by the guest agent. Load is
 
 ### kubevirt_vmi_guest_vcpu_queue
 Guest queue length. Type: Gauge.
+
+### kubevirt_vmi_hypervisor_type
+The hypervisor type used by the VirtualMachineInstance. Value indicates whether the VMI is using hardware-accelerated virtualization (kvm, hyperv) or software emulation (qemu). Type: Gauge.
 
 ### kubevirt_vmi_info
 Information about VirtualMachineInstances. Type: Gauge.
