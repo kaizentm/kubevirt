@@ -80,7 +80,7 @@ var _ = Describe("[rfe_id:588][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Waiting for VMI to be running")
-					Eventually(matcher.ThisVMIWith(vm.Namespace, vm.Name), 5*time.Minute, 1*time.Second).Should(matcher.BeRunning())
+					Eventually(matcher.ThisVMIWith(vm.Namespace, vm.Name), 2*time.Minute, 1*time.Second).Should(matcher.BeRunning())
 
 					By("Expecting to be able to login")
 					vmi, err := virtClient.VirtualMachineInstance(vm.Namespace).Get(context.TODO(), vm.Name, metav1.GetOptions{})
@@ -92,7 +92,7 @@ var _ = Describe("[rfe_id:588][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Waiting until the VirtualMachineInstance is gone")
-					libwait.WaitForVirtualMachineToDisappearWithTimeout(vmi, 180)
+					libwait.WaitForVirtualMachineToDisappearWithTimeout(vmi, 120)
 				}
 			})
 		})
