@@ -20,21 +20,22 @@
 package virt_handler
 
 import (
-	"encoding/xml"
-	"strings"
+	"fmt"
 
 	"github.com/rhobs/operator-observability-toolkit/pkg/operatormetrics"
 	"k8s.io/client-go/tools/cache"
 	v1 "kubevirt.io/api/core/v1"
+	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 )
 
 // HypervisorType represents the detected virtualization backend
 type HypervisorType string
 
 const (
-	HypervisorTypeKVM     HypervisorType = "kvm"      // Hardware acceleration
-	HypervisorTypeQEMUTCG HypervisorType = "qemu-tcg" // Software emulation
-	HypervisorTypeUnknown HypervisorType = "unknown"  // Cannot determine
+	HypervisorTypeKVM     HypervisorType = "kvm"     // KVM Hardware acceleration
+	HypervisorTypeHyperv  HypervisorType = "hyperv"  // MSHV Hardware acceleration
+	HypervisorTypeQEMU    HypervisorType = "qemu"    // Software emulation
+	HypervisorTypeUnknown HypervisorType = "unknown" // Cannot determine
 )
 
 var (
@@ -51,35 +52,8 @@ var (
 	)
 )
 
-// domainXMLStruct represents minimal structure needed to parse domain type
-type domainXMLStruct struct {
-	XMLName xml.Name `xml:"domain"`
-	Type    string   `xml:"type,attr"`
-}
-
-// detectHypervisorType parses libvirt domain XML to determine hypervisor type
-func detectHypervisorType(domainXML string) HypervisorType {
-	if domainXML == "" {
-		return HypervisorTypeUnknown
-	}
-
-	var domain domainXMLStruct
-	if err := xml.Unmarshal([]byte(domainXML), &domain); err != nil {
-		return HypervisorTypeUnknown
-	}
-
-	switch strings.ToLower(domain.Type) {
-	case "kvm":
-		return HypervisorTypeKVM
-	case "qemu":
-		return HypervisorTypeQEMUTCG
-	default:
-		return HypervisorTypeUnknown
-	}
-}
-
 // updateHypervisorMetric creates or updates the hypervisor metric for a VMI
-func updateHypervisorMetric(vmi *v1.VirtualMachineInstance, hypervisorType HypervisorType) {
+func updateHypervisorMetric(vmi *v1.VirtualMachineInstance, hypervisorType string) {
 	if vmi == nil {
 		return
 	}
@@ -134,9 +108,15 @@ func handleVMIAdd(obj interface{}) {
 	// TODO: In a complete implementation, this would query the domain manager
 	// to get the actual libvirt domain XML for the VMI
 	// For now, we'll use a placeholder detection
-	domainXML := getDomainXMLForVMI(vmi)
+	hypervisorType, err := getHypervisorTypeForVMI(vmi)
+	if err != nil {
+		// Log the error but do not set any metric
+		// This may happen if the VMI is not fully started yet
+		// or if there is a transient issue communicating with libvirt
+		fmt.Printf("Error getting domain XML for VMI %s/%s: %v\n", vmi.Namespace, vmi.Name, err)
+		return
+	}
 
-	hypervisorType := detectHypervisorType(domainXML)
 	updateHypervisorMetric(vmi, hypervisorType)
 }
 
@@ -169,40 +149,36 @@ func handleVMIUpdate(oldObj, newObj interface{}) {
 	// re-detect hypervisor type once set unless the VMI restarts
 }
 
-// getDomainXMLForVMI gets the libvirt domain XML for a VMI
+// getHypervisorTypeForVMI gets the libvirt domain XML for a VMI
 // TODO: In a complete implementation, this would integrate with the domain manager
 // to retrieve the actual domain XML from libvirt
-func getDomainXMLForVMI(vmi *v1.VirtualMachineInstance) string {
-	if vmi == nil {
-		return ""
+func getHypervisorTypeForVMI(vmi *v1.VirtualMachineInstance) (string, error) {
+	socketPath, err := cmdclient.FindSocket(vmi)
+	if err != nil {
+		// nothing to scrape...
+		// this means there's no socket or the socket
+		// is currently unreachable for this vmi.
+		return "", fmt.Errorf("unable to find socket: %w", err)
 	}
 
-	// For the integration tests and basic functionality, we'll simulate
-	// domain XML based on VMI annotations or spec
-	// In production, this would query: domainManager.GetDomainXML(vmi.Name)
-
-	// Check if there's a test annotation for hypervisor type
-	if annotations := vmi.GetAnnotations(); annotations != nil {
-		if testHypervisor, exists := annotations["kubevirt.io/test-hypervisor-type"]; exists {
-			// Return simulated domain XML for testing
-			switch testHypervisor {
-			case "kvm":
-				return `<domain type="kvm"><name>test</name></domain>`
-			case "qemu-tcg":
-				return `<domain type="qemu"><name>test</name></domain>`
-			default:
-				return `<domain type="unknown"><name>test</name></domain>`
-			}
-		}
+	cli, err := cmdclient.NewClient(socketPath)
+	if err != nil {
+		// Ignore failure to connect to client.
+		// These are all local connections via unix socket.
+		// A failure to connect means there's nothing on the other
+		// end listening.
+		return "", fmt.Errorf("failed to connect to cmd client socket: %w", err)
 	}
+	defer cli.Close()
 
-	// Default simulation - assume KVM if VMI is successfully running
-	// since that's the most common case in production KubeVirt
-	if vmi.Status.Phase == v1.Running {
-		return `<domain type="kvm"><name>` + vmi.Name + `</name></domain>`
+	domain, exists, err := cli.GetDomain()
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain XML: %w", err)
+	} else if !exists {
+		return "", fmt.Errorf("domain does not exist for VMI %s/%s", vmi.Namespace, vmi.Name)
+	} else {
+		return domain.Spec.Type, nil
 	}
-
-	return ""
 }
 
 // handleVMIDelete handles VMI cleanup
