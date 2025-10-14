@@ -28,7 +28,7 @@ func Register(namespace string, hypervisorName string) error {
 	if hypervisorName == "" {
 		hypervisorName = v1.KvmHypervisorName // Default to KVM for backwards compatibility
 	}
-	
+
 	return operatorrules.RegisterRecordingRules(
 		apiRecordingRules,
 		nodesRecordingRules(hypervisorName),

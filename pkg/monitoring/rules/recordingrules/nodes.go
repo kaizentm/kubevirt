@@ -38,30 +38,26 @@ func nodesRecordingRules(hypervisorName string) []operatorrules.RecordingRule {
 		},
 	}
 
-	// Generate hypervisor-specific metrics based on the configured hypervisor
+	// Generate generic hypervisor metric based on the configured hypervisor
+	var resourceName string
 	switch hypervisorName {
 	case v1.HyperVLayeredHypervisorName:
-		rules = append(rules, operatorrules.RecordingRule{
-			MetricsOpts: operatormetrics.MetricOpts{
-				Name: "kubevirt_nodes_with_hyperv",
-				Help: "The number of nodes in the cluster that have the devices.kubevirt.io/hyperv resource available.",
-			},
-			MetricType: operatormetrics.GaugeType,
-			Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"devices_kubevirt_io_hyperv\"} != 0) or vector(0)"),
-		})
+		resourceName = "devices_kubevirt_io_hyperv"
 	case v1.KvmHypervisorName:
 		fallthrough
 	default:
 		// Default to KVM for backwards compatibility
-		rules = append(rules, operatorrules.RecordingRule{
-			MetricsOpts: operatormetrics.MetricOpts{
-				Name: "kubevirt_nodes_with_kvm",
-				Help: "The number of nodes in the cluster that have the devices.kubevirt.io/kvm resource available.",
-			},
-			MetricType: operatormetrics.GaugeType,
-			Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"devices_kubevirt_io_kvm\"} != 0) or vector(0)"),
-		})
+		resourceName = "devices_kubevirt_io_kvm"
 	}
+
+	rules = append(rules, operatorrules.RecordingRule{
+		MetricsOpts: operatormetrics.MetricOpts{
+			Name: "kubevirt_nodes_with_hypervisor",
+			Help: "The number of nodes in the cluster that have the configured hypervisor resource available.",
+		},
+		MetricType: operatormetrics.GaugeType,
+		Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"" + resourceName + "\"} != 0) or vector(0)"),
+	})
 
 	return rules
 }

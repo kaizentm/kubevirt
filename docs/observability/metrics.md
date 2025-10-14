@@ -24,8 +24,8 @@ The delta between the pod with highest memory working set or rss and its request
 ### kubevirt_node_deprecated_machine_types
 List of deprecated machine types based on the capabilities of individual nodes, as detected by virt-handler. Type: Gauge.
 
-### kubevirt_nodes_with_kvm
-The number of nodes in the cluster that have the devices.kubevirt.io/kvm resource available. Type: Gauge.
+### kubevirt_nodes_with_hypervisor
+The number of nodes in the cluster that have the configured hypervisor resource available (e.g., devices.kubevirt.io/kvm or devices.kubevirt.io/hyperv). Type: Gauge.
 
 ### kubevirt_number_of_vms
 The number of VMs in the cluster by namespace. Type: Gauge.

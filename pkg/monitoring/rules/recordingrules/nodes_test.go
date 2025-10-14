@@ -26,39 +26,39 @@ import (
 )
 
 var _ = Describe("Nodes recording rules", func() {
-	It("should generate KVM metric when hypervisor is KVM", func() {
+	It("should generate generic hypervisor metric with KVM resource when hypervisor is KVM", func() {
 		rules := nodesRecordingRules(v1.KvmHypervisorName)
-		
+
 		Expect(rules).To(HaveLen(2))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
-		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_kvm"))
+		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
 	})
 
-	It("should generate HyperV metric when hypervisor is HyperV", func() {
+	It("should generate generic hypervisor metric with HyperV resource when hypervisor is HyperV", func() {
 		rules := nodesRecordingRules(v1.HyperVLayeredHypervisorName)
-		
+
 		Expect(rules).To(HaveLen(2))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
-		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hyperv"))
+		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_hyperv"))
 	})
 
-	It("should default to KVM metric when hypervisor is empty", func() {
+	It("should default to KVM resource when hypervisor is empty", func() {
 		rules := nodesRecordingRules("")
-		
+
 		Expect(rules).To(HaveLen(2))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
-		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_kvm"))
+		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
 	})
 
-	It("should default to KVM metric when hypervisor is unknown", func() {
+	It("should default to KVM resource when hypervisor is unknown", func() {
 		rules := nodesRecordingRules("unknown-hypervisor")
-		
+
 		Expect(rules).To(HaveLen(2))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
-		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_kvm"))
+		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
 	})
 })

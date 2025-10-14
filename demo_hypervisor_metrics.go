@@ -21,10 +21,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/rhobs/operator-observability-toolkit/pkg/operatorrules"
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/kubevirt/pkg/monitoring/rules"
-	"kubevirt.io/kubevirt/pkg/util/featuregate"
+	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 	operatorutil "kubevirt.io/kubevirt/pkg/virt-operator/util"
 )
 
@@ -111,12 +110,12 @@ func main() {
 		}
 
 		// Find and display the relevant metric
-		fmt.Println("Generated hypervisor-specific metrics:")
+		fmt.Println("Generated hypervisor metrics:")
 		for _, group := range prometheusRule.Spec.Groups {
 			for _, rule := range group.Rules {
-				if rule.Record != "" && 
-				   (rule.Record == "kubevirt_nodes_with_kvm" || 
-				    rule.Record == "kubevirt_nodes_with_hyperv") {
+				if rule.Record != "" &&
+					(rule.Record == "kubevirt_nodes_with_hypervisor" ||
+						rule.Record == "kubevirt_allocatable_nodes") {
 					fmt.Printf("  - %s: %s\n", rule.Record, rule.Expr.StrVal)
 				}
 			}

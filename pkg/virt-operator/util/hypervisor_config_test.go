@@ -32,7 +32,7 @@ var _ = Describe("KubeVirtDeploymentConfig hypervisor methods", func() {
 			config := &KubeVirtDeploymentConfig{
 				AdditionalProperties: make(map[string]string),
 			}
-			
+
 			hypervisor := config.GetHypervisorName()
 			Expect(hypervisor).To(Equal(v1.KvmHypervisorName))
 		})
@@ -43,7 +43,7 @@ var _ = Describe("KubeVirtDeploymentConfig hypervisor methods", func() {
 					AdditionalPropertiesHypervisorName: v1.HyperVLayeredHypervisorName,
 				},
 			}
-			
+
 			hypervisor := config.GetHypervisorName()
 			Expect(hypervisor).To(Equal(v1.HyperVLayeredHypervisorName))
 		})
@@ -54,7 +54,7 @@ var _ = Describe("KubeVirtDeploymentConfig hypervisor methods", func() {
 					AdditionalPropertiesHypervisorName: "",
 				},
 			}
-			
+
 			hypervisor := config.GetHypervisorName()
 			Expect(hypervisor).To(Equal(v1.KvmHypervisorName))
 		})
@@ -82,7 +82,7 @@ var _ = Describe("KubeVirtDeploymentConfig hypervisor methods", func() {
 			}
 
 			config := GetTargetConfigFromKVWithEnvVarManager(kv, envManager)
-			
+
 			Expect(config.GetHypervisorName()).To(Equal(v1.HyperVLayeredHypervisorName))
 		})
 
@@ -99,7 +99,7 @@ var _ = Describe("KubeVirtDeploymentConfig hypervisor methods", func() {
 			}
 
 			config := GetTargetConfigFromKVWithEnvVarManager(kv, envManager)
-			
+
 			Expect(config.GetHypervisorName()).To(Equal(v1.KvmHypervisorName))
 		})
 
@@ -118,7 +118,7 @@ var _ = Describe("KubeVirtDeploymentConfig hypervisor methods", func() {
 			}
 
 			config := GetTargetConfigFromKVWithEnvVarManager(kv, envManager)
-			
+
 			Expect(config.GetHypervisorName()).To(Equal(v1.KvmHypervisorName))
 		})
 	})
