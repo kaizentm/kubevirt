@@ -20,25 +20,13 @@
 # KubeVirt functional test retry helper.
 #
 # Purpose:
-#   Mitigate transient/flaky test failures by re-running only the failing tests
-#   up to 2 additional times (3 total attempts). This mirrors a common manual
-#   workflow: run full suite, capture failing specs, then focus reruns.
-#
-# Behavior:
-#   1. First attempt runs the full filtered suite exactly like the current
-#      GitHub Action (using TEST_FOCUS + default skip label filter logic).
-#   2. Parse the JUnit report (env: JUNIT_REPORT_FILE) for failing test names.
-#   3. If failures exist and attempts remain, build a Ginkgo focus regex from
-#      the failing test names and set KUBEVIRT_E2E_FOCUS for the next run while
-#      KEEPING the original label filter (skip expressions still apply).
-#   4. Stop early if a run produces zero failing tests.
-#   5. Exit with the last run's exit code (0 if eventually all passed).
+#   Mitigate transient/flaky test failures by re-running only the failing tests.
 #
 # Inputs (environment variables):
 #   TEST_FOCUS            Optional logical expression inserted into label filter on first run only.
 #   KUBEVIRT_E2E_SKIP     Optional regex passed as --skip (handled by hack/functests.sh).
 #   JUNIT_REPORT_FILE     Path to junit XML (default set by workflow/Makefile).
-#   MAX_ATTEMPTS          Override number of total attempts (default: 3, min 1).
+#   MAX_ATTEMPTS          Override number of total attempts (default: 5, min 1).
 #
 # Output:
 #   Updates JUNIT_REPORT_FILE on every attempt (previous content replaced).
@@ -68,12 +56,14 @@ build_label_filter() {
     echo "--label-filter=(!flake-check)&&(${TEST_FOCUS}&&${BASE_LABEL_EXCLUDES})"
 }
 
-# Extract failing test names from JUnit file
+# Extract failing test names from JUnit file and decode common XML/HTML entities.
 extract_failures() {
     local file="$1"
     [[ -s ${file} ]] || return 0
     # Each record ends at </testcase>; if the record contains <failure or <error we treat it as failed.
-    awk -v RS='</testcase>' 'index($0,"<failure")||index($0,"<error") { if (match($0,/name=\"([^\"]+)\"/,a)) print a[1] }' "${file}" | sed '/^$/d'
+    awk -v RS='</testcase>' 'index($0,"<failure")||index($0,"<error") { if (match($0,/name=\"([^\"]+)\"/,a)) print a[1] }' "${file}" |
+        sed '/^$/d' |
+        perl -pe 's/&quot;/"/g; s/&#39;/'"'"'/g; s/&apos;/'"'"'/g; s/&lt;/</g; s/&gt;/>/g; s/&amp;/&/g'
 }
 
 escape_regex() {
@@ -129,7 +119,8 @@ while [[ ${run_number} -le ${MAX_ATTEMPTS} ]]; do
     fi
 
     # Derive new LABEL_FILTER from failing test names (regex OR group)
-    escaped_joined=$(printf '%s\n' "${failed_tests[@]}" | escape_regex | paste -sd '|' -)
+    # Normalize (dedupe) after decoding to avoid redundant alternations.
+    escaped_joined=$(printf '%s\n' "${failed_tests[@]}" | sort -u | escape_regex | paste -sd '|' -)
     LABEL_FILTER="(${escaped_joined})"
     export LABEL_FILTER
     echo "Updated LABEL_FILTER for next attempt to: ${LABEL_FILTER}"
