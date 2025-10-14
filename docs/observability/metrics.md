@@ -156,6 +156,9 @@ Guest system load average over 5 minutes as reported by the guest agent. Load is
 ### kubevirt_vmi_guest_vcpu_queue
 Guest queue length. Type: Gauge.
 
+### kubevirt_vmi_hypervisor_info
+Information about the hypervisor type used by a VirtualMachineInstance. Provides the virtualization backend type (kvm, qemu-tcg, or unknown) for each running VMI. Labels include namespace, name, node, and hypervisor_type. This metric helps operators understand the virtualization capabilities and performance characteristics of their workloads. Type: Gauge.
+
 ### kubevirt_vmi_info
 Information about VirtualMachineInstances. Type: Gauge.
 

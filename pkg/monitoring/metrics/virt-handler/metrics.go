@@ -50,6 +50,10 @@ func SetupMetrics(nodeName string, MaxRequestsInFlight int, vmiInformer cache.Sh
 		return err
 	}
 
+	if err := SetupHypervisorMetrics(vmiInformer); err != nil {
+		return err
+	}
+
 	return operatormetrics.RegisterCollector(
 		domainstats.Collector,
 		domainstats.DomainDirtyRateStatsCollector,

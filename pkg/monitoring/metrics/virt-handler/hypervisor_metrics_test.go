@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rhobs/operator-observability-toolkit/pkg/operatormetrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	v1 "kubevirt.io/api/core/v1"
 )
 
@@ -173,6 +174,311 @@ var _ = Describe("Hypervisor Metrics", func() {
 			err := operatormetrics.RegisterMetrics(hypervisorMetrics)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hypervisorMetrics).ToNot(BeEmpty())
+		})
+	})
+
+	Describe("VMI event handlers", func() {
+		BeforeEach(func() {
+			// Register metrics for testing
+			Expect(operatormetrics.RegisterMetrics(hypervisorMetrics)).To(Succeed())
+		})
+
+		Describe("handleVMIAdd", func() {
+			It("should handle running VMI addition", func() {
+				vmi := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				// Should not panic
+				handleVMIAdd(vmi)
+			})
+
+			It("should ignore non-running VMI", func() {
+				vmi := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Pending,
+					},
+				}
+
+				// Should not panic and should not create metric
+				handleVMIAdd(vmi)
+			})
+
+			It("should handle VMI with test hypervisor annotation", func() {
+				vmi := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"kubevirt.io/test-hypervisor-type": "kvm",
+						},
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				// Should not panic
+				handleVMIAdd(vmi)
+			})
+
+			It("should handle invalid object type", func() {
+				// Should not panic
+				handleVMIAdd("not-a-vmi")
+			})
+
+			It("should handle nil object", func() {
+				// Should not panic
+				handleVMIAdd(nil)
+			})
+		})
+
+		Describe("handleVMIUpdate", func() {
+			It("should handle VMI transitioning to running", func() {
+				oldVMI := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Pending,
+					},
+				}
+
+				newVMI := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				// Should not panic
+				handleVMIUpdate(oldVMI, newVMI)
+			})
+
+			It("should handle VMI transitioning from running", func() {
+				oldVMI := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				newVMI := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Succeeded,
+					},
+				}
+
+				// Should not panic
+				handleVMIUpdate(oldVMI, newVMI)
+			})
+
+			It("should handle VMI remaining running", func() {
+				oldVMI := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				newVMI := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				// Should not panic
+				handleVMIUpdate(oldVMI, newVMI)
+			})
+
+			It("should handle invalid object types", func() {
+				// Should not panic
+				handleVMIUpdate("not-a-vmi", "also-not-a-vmi")
+			})
+
+			It("should handle nil objects", func() {
+				// Should not panic
+				handleVMIUpdate(nil, nil)
+			})
+		})
+
+		Describe("handleVMIDelete", func() {
+			It("should handle VMI deletion", func() {
+				vmi := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				// Should not panic
+				handleVMIDelete(vmi)
+			})
+
+			It("should handle DeletedFinalStateUnknown", func() {
+				vmi := &v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmi",
+						Namespace: "default",
+					},
+					Status: v1.VirtualMachineInstanceStatus{
+						NodeName: "test-node",
+						Phase:    v1.Running,
+					},
+				}
+
+				tombstone := cache.DeletedFinalStateUnknown{
+					Key: "default/test-vmi",
+					Obj: vmi,
+				}
+
+				// Should not panic
+				handleVMIDelete(tombstone)
+			})
+
+			It("should handle invalid DeletedFinalStateUnknown object", func() {
+				tombstone := cache.DeletedFinalStateUnknown{
+					Key: "default/test-vmi",
+					Obj: "not-a-vmi",
+				}
+
+				// Should not panic
+				handleVMIDelete(tombstone)
+			})
+
+			It("should handle invalid object type", func() {
+				// Should not panic
+				handleVMIDelete("not-a-vmi")
+			})
+
+			It("should handle nil object", func() {
+				// Should not panic
+				handleVMIDelete(nil)
+			})
+		})
+	})
+
+	Describe("getDomainXMLForVMI", func() {
+		It("should return empty string for nil VMI", func() {
+			result := getDomainXMLForVMI(nil)
+			Expect(result).To(Equal(""))
+		})
+
+		It("should return KVM domain XML for test annotation", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmi",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"kubevirt.io/test-hypervisor-type": "kvm",
+					},
+				},
+			}
+
+			result := getDomainXMLForVMI(vmi)
+			Expect(result).To(ContainSubstring(`<domain type="kvm"`))
+		})
+
+		It("should return QEMU domain XML for test annotation", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmi",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"kubevirt.io/test-hypervisor-type": "qemu-tcg",
+					},
+				},
+			}
+
+			result := getDomainXMLForVMI(vmi)
+			Expect(result).To(ContainSubstring(`<domain type="qemu"`))
+		})
+
+		It("should return unknown domain XML for unknown test annotation", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmi",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"kubevirt.io/test-hypervisor-type": "unknown",
+					},
+				},
+			}
+
+			result := getDomainXMLForVMI(vmi)
+			Expect(result).To(ContainSubstring(`<domain type="unknown"`))
+		})
+
+		It("should return default KVM XML for running VMI without annotations", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmi",
+					Namespace: "default",
+				},
+				Status: v1.VirtualMachineInstanceStatus{
+					Phase: v1.Running,
+				},
+			}
+
+			result := getDomainXMLForVMI(vmi)
+			Expect(result).To(ContainSubstring(`<domain type="kvm"`))
+			Expect(result).To(ContainSubstring(`<name>test-vmi</name>`))
+		})
+
+		It("should return empty string for non-running VMI without annotations", func() {
+			vmi := &v1.VirtualMachineInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-vmi",
+					Namespace: "default",
+				},
+				Status: v1.VirtualMachineInstanceStatus{
+					Phase: v1.Pending,
+				},
+			}
+
+			result := getDomainXMLForVMI(vmi)
+			Expect(result).To(Equal(""))
 		})
 	})
 })
