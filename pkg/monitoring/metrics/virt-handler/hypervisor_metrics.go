@@ -108,13 +108,12 @@ func removeHypervisorMetric(vmi *v1.VirtualMachineInstance) {
 		return
 	}
 
-	// For Info metrics, we need to iterate through possible hypervisor types to clean up
-	for _, hypervisorType := range []HypervisorType{HypervisorTypeKVM, HypervisorTypeQEMUTCG, HypervisorTypeUnknown} {
-		hypervisorInfoMetric.DeleteLabelValues(
-			vmi.Namespace,
-			vmi.Name,
-			node,
-			string(hypervisorType),
-		)
-	}
+	// Use DeletePartialMatch to remove all metrics for this specific VMI
+	// This will match and delete metrics with namespace, name, and node labels
+	// regardless of the hypervisor_type value
+	hypervisorInfoMetric.DeletePartialMatch(map[string]string{
+		"namespace": vmi.Namespace,
+		"name":      vmi.Name,
+		"node":      node,
+	})
 }
