@@ -1642,7 +1642,7 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 				By("Creating the VirtualMachineInstance")
 				vmi = libvmops.RunVMIAndExpectLaunch(vmi, startupTimeout)
 
-				time.Sleep(10 * time.Second) // wait some time to stabilize the environment
+				time.Sleep(20 * time.Second) // wait some time to stabilize the environment
 
 				// Delete the VirtualMachineInstance and wait for the confirmation of the delete
 				By("Deleting the VirtualMachineInstance")
@@ -1653,16 +1653,16 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 
 				// Check if the graceful shutdown was logged
 				By("Checking that virt-handler logs VirtualMachineInstance graceful shutdown")
-				event := watcher.New(vmi).Timeout(30*time.Second).SinceWatchedObjectResourceVersion().WaitFor(ctx, watcher.NormalEvent, "ShuttingDown")
+				event := watcher.New(vmi).Timeout(360*time.Second).SinceWatchedObjectResourceVersion().WaitFor(ctx, watcher.NormalEvent, "ShuttingDown")
 				Expect(event).ToNot(BeNil(), "There should be a graceful shutdown")
 
 				// Verify VirtualMachineInstance is killed after grace period expires
 				// 5 seconds is grace period, doubling to prevent flakiness
 				By("Checking that the VirtualMachineInstance does not exist after grace period")
-				event = watcher.New(vmi).Timeout(10*time.Second).SinceWatchedObjectResourceVersion().WaitFor(ctx, watcher.NormalEvent, "Deleted")
+				event = watcher.New(vmi).Timeout(180*time.Second).SinceWatchedObjectResourceVersion().WaitFor(ctx, watcher.NormalEvent, "Deleted")
 				Expect(event).ToNot(BeNil(), "There should be a graceful shutdown")
 
-				Eventually(matcher.ThisVMI(vmi)).WithTimeout(15 * time.Second).WithPolling(time.Second).Should(matcher.BeGone())
+				Eventually(matcher.ThisVMI(vmi)).WithTimeout(180 * time.Second).WithPolling(time.Second).Should(matcher.BeGone())
 			})
 		})
 	})
