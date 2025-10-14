@@ -22,23 +22,46 @@ import (
 	"github.com/rhobs/operator-observability-toolkit/pkg/operatormetrics"
 	"github.com/rhobs/operator-observability-toolkit/pkg/operatorrules"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	v1 "kubevirt.io/api/core/v1"
 )
 
-var nodesRecordingRules = []operatorrules.RecordingRule{
-	{
-		MetricsOpts: operatormetrics.MetricOpts{
-			Name: "kubevirt_allocatable_nodes",
-			Help: "The number of allocatable nodes in the cluster.",
+func nodesRecordingRules(hypervisorName string) []operatorrules.RecordingRule {
+	rules := []operatorrules.RecordingRule{
+		{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "kubevirt_allocatable_nodes",
+				Help: "The number of allocatable nodes in the cluster.",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString("count(count (kube_node_status_allocatable) by (node))"),
 		},
-		MetricType: operatormetrics.GaugeType,
-		Expr:       intstr.FromString("count(count (kube_node_status_allocatable) by (node))"),
-	},
-	{
-		MetricsOpts: operatormetrics.MetricOpts{
-			Name: "kubevirt_nodes_with_kvm",
-			Help: "The number of nodes in the cluster that have the devices.kubevirt.io/kvm resource available.",
-		},
-		MetricType: operatormetrics.GaugeType,
-		Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"devices_kubevirt_io_kvm\"} != 0) or vector(0)"),
-	},
+	}
+
+	// Generate hypervisor-specific metrics based on the configured hypervisor
+	switch hypervisorName {
+	case v1.HyperVLayeredHypervisorName:
+		rules = append(rules, operatorrules.RecordingRule{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "kubevirt_nodes_with_hyperv",
+				Help: "The number of nodes in the cluster that have the devices.kubevirt.io/hyperv resource available.",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"devices_kubevirt_io_hyperv\"} != 0) or vector(0)"),
+		})
+	case v1.KvmHypervisorName:
+		fallthrough
+	default:
+		// Default to KVM for backwards compatibility
+		rules = append(rules, operatorrules.RecordingRule{
+			MetricsOpts: operatormetrics.MetricOpts{
+				Name: "kubevirt_nodes_with_kvm",
+				Help: "The number of nodes in the cluster that have the devices.kubevirt.io/kvm resource available.",
+			},
+			MetricType: operatormetrics.GaugeType,
+			Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"devices_kubevirt_io_kvm\"} != 0) or vector(0)"),
+		})
+	}
+
+	return rules
 }
