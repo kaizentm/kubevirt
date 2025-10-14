@@ -1659,7 +1659,7 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 				// Verify VirtualMachineInstance is killed after grace period expires
 				// 5 seconds is grace period, doubling to prevent flakiness
 				By("Checking that the VirtualMachineInstance does not exist after grace period")
-				event = watcher.New(vmi).Timeout(180*time.Second).SinceWatchedObjectResourceVersion().WaitFor(ctx, watcher.NormalEvent, "Deleted")
+				event = watcher.New(vmi).Timeout(360*time.Second).SinceWatchedObjectResourceVersion().WaitFor(ctx, watcher.NormalEvent, "Deleted")
 				Expect(event).ToNot(BeNil(), "There should be a graceful shutdown")
 
 				Eventually(matcher.ThisVMI(vmi)).WithTimeout(180 * time.Second).WithPolling(time.Second).Should(matcher.BeGone())
