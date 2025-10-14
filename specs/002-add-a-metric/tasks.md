@@ -124,22 +124,22 @@ CONSTITUTIONAL COMPLIANCE VERIFIED ✅ - PROCEED WITH IMPLEMENTATION
 
 CRITICAL: Integration and E2E tests MUST be written first and MUST FAIL before implementation
 
-- [ ] T006 [P] **Integration Test - VMI Lifecycle Events**
+- [x] T006 [P] **Integration Test - VMI Lifecycle Events**
   - File: `tests/hypervisor_metric_test.go`
   - Test: Metric appears when VMI enters Running phase
   - Test: Metric disappears when VMI is deleted
 
-- [ ] T007 [P] **Integration Test - Hypervisor Type Accuracy**
+- [x] T007 [P] **Integration Test - Hypervisor Type Accuracy**
   - File: `tests/hypervisor_metric_test.go`  
   - Test: KVM-enabled VMIs show hypervisor_type="kvm"
   - Test: Software emulation VMIs show hypervisor_type="qemu-tcg"
 
-- [ ] T008 [P] **Integration Test - Multi-Node Scenarios**
+- [x] T008 [P] **Integration Test - Multi-Node Scenarios**
   - File: `tests/hypervisor_metric_test.go`
   - Test: VMI migration updates node label correctly
   - Test: Multiple VMIs on same node have separate metrics
 
-- [ ] T009 [P] **Integration Test - Error Handling**
+- [x] T009 [P] **Integration Test - Error Handling**
   - File: `tests/hypervisor_metric_test.go`
   - Test: VMI without libvirt domain shows hypervisor_type="unknown"
   - Test: libvirt connection failures handled gracefully
