@@ -35,13 +35,13 @@ var _ = Describe("Nodes recording rules", func() {
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
 	})
 
-	It("should generate generic hypervisor metric with HyperV resource when hypervisor is HyperV", func() {
+	It("should generate generic hypervisor metric with MSHV resource when hypervisor is HyperV", func() {
 		rules := nodesRecordingRules(v1.HyperVLayeredHypervisorName)
 
 		Expect(rules).To(HaveLen(2))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
 		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
-		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_hyperv"))
+		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_mshv"))
 	})
 
 	It("should default to KVM resource when hypervisor is empty", func() {

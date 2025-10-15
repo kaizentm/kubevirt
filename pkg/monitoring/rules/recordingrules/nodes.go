@@ -23,7 +23,7 @@ import (
 	"github.com/rhobs/operator-observability-toolkit/pkg/operatorrules"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 )
 
 func nodesRecordingRules(hypervisorName string) []operatorrules.RecordingRule {
@@ -39,16 +39,8 @@ func nodesRecordingRules(hypervisorName string) []operatorrules.RecordingRule {
 	}
 
 	// Generate generic hypervisor metric based on the configured hypervisor
-	var resourceName string
-	switch hypervisorName {
-	case v1.HyperVLayeredHypervisorName:
-		resourceName = "devices_kubevirt_io_hyperv"
-	case v1.KvmHypervisorName:
-		fallthrough
-	default:
-		// Default to KVM for backwards compatibility
-		resourceName = "devices_kubevirt_io_kvm"
-	}
+	hypervisorDevice := hypervisor.NewHypervisor(hypervisorName).GetDevice()
+	resourceName := "devices_kubevirt_io_" + hypervisorDevice
 
 	rules = append(rules, operatorrules.RecordingRule{
 		MetricsOpts: operatormetrics.MetricOpts{
