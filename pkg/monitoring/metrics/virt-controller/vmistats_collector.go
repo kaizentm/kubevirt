@@ -35,6 +35,7 @@ import (
 	k6tv1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/kubevirt/pkg/controller"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/util/migrations"
 )
 
@@ -44,6 +45,8 @@ const (
 
 	annotationPrefix        = "vm.kubevirt.io/"
 	instancetypeVendorLabel = "instancetype.kubevirt.io/vendor"
+
+	QemuVmiHypervisorType = "qemu"
 )
 
 var (
@@ -503,21 +506,19 @@ func getVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) string {
 		return "unknown"
 	}
 
+	hypervisorDevice := hypervisor.NewHypervisor(clusterConfig.GetHypervisor().Name).GetDevice()
+	hypervisorDeviceKey := k8sv1.ResourceName("devices.kubevirt.io/" + hypervisorDevice)
+
 	// Check for hypervisor device availability in node allocatable resources
 	allocatable := node.Status.Allocatable
 
-	// Check for HyperV device
-	if hypervDevices, exists := allocatable["devices.kubevirt.io/hyperv"]; exists && !hypervDevices.IsZero() {
-		return "hyperv"
-	}
-
-	// Check for KVM device
-	if kvmDevices, exists := allocatable["devices.kubevirt.io/kvm"]; exists && !kvmDevices.IsZero() {
-		return "kvm"
+	// Check for hypervisor device in node's allocatable resources
+	if allocatableHypervisorDevices, exists := allocatable[hypervisorDeviceKey]; exists && !allocatableHypervisorDevices.IsZero() {
+		return hypervisorDevice
 	}
 
 	// If no hypervisor devices are available, VMI must be using QEMU emulation
-	return "qemu"
+	return QemuVmiHypervisorType
 }
 
 // collectVMIHypervisorType collects the hypervisor type metric for a VMI
