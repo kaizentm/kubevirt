@@ -46,6 +46,9 @@ func nodesRecordingRules(hypervisorName string) []operatorrules.RecordingRule {
 		MetricsOpts: operatormetrics.MetricOpts{
 			Name: "kubevirt_nodes_with_hypervisor",
 			Help: "The number of nodes in the cluster that have the configured hypervisor resource available.",
+			ConstLabels: map[string]string{
+				"hypervisor": hypervisorName,
+			},
 		},
 		MetricType: operatormetrics.GaugeType,
 		Expr:       intstr.FromString("count(kube_node_status_allocatable{resource=\"" + resourceName + "\"} != 0) or vector(0)"),
