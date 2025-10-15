@@ -488,7 +488,7 @@ func CollectVmisVnicInfo(vmi *k6tv1.VirtualMachineInstance) []operatormetrics.Co
 }
 
 // getVMIHypervisorType determines the hypervisor type used by a VMI based on
-// node allocatable resources rather than querying libvirt directly
+// node allocatable resources
 func getVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) string {
 	// If VMI is not scheduled to a node, return unknown
 	if vmi.Status.NodeName == "" {
