@@ -81,6 +81,10 @@ var _ = Describe("[HyperVLayered] HyperVLayered integration tests", decorators.H
 			// Wait for VMI to be running
 			vmi = libwait.WaitForSuccessfulVMIStart(vmi)
 
+			By("Wait for the login to make sure the guest is fully booted")
+			libwait.WaitUntilVMIReady(vmi, console.LoginToFedora)
+
+
 			// Get the virt-launcher pod
 			// Check the compute container resources
 			computeContainer, err := libpod.LookupComputeContainerFromVmi(vmi)
