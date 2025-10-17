@@ -135,7 +135,7 @@ var (
 	vmiHypervisorType = operatormetrics.NewGaugeVec(
 		operatormetrics.MetricOpts{
 			Name: "kubevirt_vmi_hypervisor_type",
-			Help: "The hypervisor type used by the VirtualMachineInstance. Value indicates whether the VMI is using hardware-accelerated virtualization (kvm, mshv) or software emulation (qemu).",
+			Help: "The hypervisor type used by the VirtualMachineInstance. Value indicates whether the VMI is using hardware-accelerated virtualization (kvm, mshv) or software emulation (qemu). In case of an error retrieving hypervisor type, the value of unknown is used.",
 		},
 		[]string{"namespace", "name", "node", "hypervisor_type"},
 	)
