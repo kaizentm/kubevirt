@@ -1509,7 +1509,7 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 		domainVCPUTopologyForHotplug(vmi, domain)
 	}
 
-	// L1VH: Hypervisor device detection and selection logic
+	// Hypervisor device detection and selection logic
 	hypervisorPath := "/dev/kvm"
 	hypervisorType := v1.KvmHypervisorName
 	if c.Hypervisor != nil {
@@ -1518,25 +1518,25 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 		if c.Hypervisor.GetDevice() == "mshv" {
 			hypervisorType = v1.HyperVLayeredHypervisorName
 		}
-		log.Log.Object(vmi).Infof("L1VH: Hypervisor type selected: %s, device path: %s", hypervisorType, hypervisorPath)
+		log.Log.Object(vmi).Infof("Hypervisor type selected: %s, device path: %s", hypervisorType, hypervisorPath)
 	} else {
-		log.Log.Object(vmi).Infof("L1VH: No hypervisor specified, defaulting to KVM with device path: %s", hypervisorPath)
+		log.Log.Object(vmi).Infof("No hypervisor specified, defaulting to KVM with device path: %s", hypervisorPath)
 	}
 
 	if _, err := os.Stat(hypervisorPath); errors.Is(err, os.ErrNotExist) {
 		if c.AllowEmulation {
 			logger := log.DefaultLogger()
-			logger.Infof("L1VH: Hardware emulation device '%s' not present. Falling back to software emulation (qemu). Hypervisor type: %s. Remediation: Verify hypervisor device availability or ensure AllowEmulation is intentional.", hypervisorPath, hypervisorType)
+			logger.Infof("Hardware emulation device '%s' not present. Falling back to software emulation (qemu). Hypervisor type: %s. Remediation: Verify hypervisor device availability or ensure AllowEmulation is intentional.", hypervisorPath, hypervisorType)
 			domain.Spec.Type = "qemu"
 		} else {
-			log.Log.Object(vmi).Errorf("L1VH: Hardware emulation device '%s' not present and software emulation not allowed. Hypervisor type: %s. Remediation: Ensure the correct hypervisor device is available on the node or enable software emulation.", hypervisorPath, hypervisorType)
+			log.Log.Object(vmi).Errorf("Hardware emulation device '%s' not present and software emulation not allowed. Hypervisor type: %s. Remediation: Ensure the correct hypervisor device is available on the node or enable software emulation.", hypervisorPath, hypervisorType)
 			return fmt.Errorf("hardware emulation device '%s' not present", hypervisorPath)
 		}
 	} else if err != nil {
-		log.Log.Object(vmi).Reason(err).Errorf("L1VH: Failed to access hypervisor device '%s'. Hypervisor type: %s. Remediation: Check device permissions and availability.", hypervisorPath, hypervisorType)
+		log.Log.Object(vmi).Reason(err).Errorf("Failed to access hypervisor device '%s'. Hypervisor type: %s. Remediation: Check device permissions and availability.", hypervisorPath, hypervisorType)
 		return err
 	} else {
-		log.Log.Object(vmi).Infof("L1VH: Successfully detected hypervisor device '%s' for hypervisor type: %s", hypervisorPath, hypervisorType)
+		log.Log.Object(vmi).Infof("Successfully detected hypervisor device '%s' for hypervisor type: %s", hypervisorPath, hypervisorType)
 	}
 
 	newChannel := Add_Agent_To_api_Channel()
@@ -2053,9 +2053,9 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 	if c.Hypervisor != nil {
 		hypervisorDevice := c.Hypervisor.GetDevice()
-		log.Log.Object(vmi).Infof("L1VH: Applying hypervisor-specific domain adjustments. Device: %s, Domain type before adjustment: %s", hypervisorDevice, domain.Spec.Type)
+		log.Log.Object(vmi).Infof("Applying hypervisor-specific domain adjustments. Device: %s, Domain type before adjustment: %s", hypervisorDevice, domain.Spec.Type)
 		c.Hypervisor.AdjustDomain(vmi, domain)
-		log.Log.Object(vmi).Infof("L1VH: Hypervisor-specific domain adjustments completed. Device: %s, Domain type after adjustment: %s", hypervisorDevice, domain.Spec.Type)
+		log.Log.Object(vmi).Infof("Hypervisor-specific domain adjustments completed. Device: %s, Domain type after adjustment: %s", hypervisorDevice, domain.Spec.Type)
 	}
 
 	return nil
