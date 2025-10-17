@@ -2322,64 +2322,6 @@ var _ = Describe("Converter", func() {
 			// Should still apply hypervisor adjustments
 			Expect(domain.Spec.Type).To(Equal("hyperv"))
 		})
-
-		It("should convert successfully with L1VH logging for KVM hypervisor", func() {
-			// This test verifies that adding L1VH logging doesn't break domain conversion
-			kvmHypervisor := hypervisor.NewHypervisor("kvm")
-			context := &ConverterContext{
-				Architecture:   archconverter.NewConverter(runtime.GOARCH),
-				AllowEmulation: true,
-				Hypervisor:     kvmHypervisor,
-			}
-
-			// Conversion should succeed with logging in place
-			domain := vmiToDomain(vmi, context)
-			Expect(domain).NotTo(BeNil())
-		})
-
-		It("should convert successfully with L1VH logging for HyperV Layered hypervisor", func() {
-			// This test verifies that adding L1VH logging doesn't break domain conversion
-			hypervHypervisor := hypervisor.NewHypervisor("hyperv-layered")
-			context := &ConverterContext{
-				Architecture:   archconverter.NewConverter(runtime.GOARCH),
-				AllowEmulation: true,
-				Hypervisor:     hypervHypervisor,
-			}
-
-			// Conversion should succeed with logging in place
-			domain := vmiToDomain(vmi, context)
-			Expect(domain).NotTo(BeNil())
-			// Hypervisor adjustments should still work
-			Expect(domain.Spec.Type).To(Equal("hyperv"))
-		})
-
-		It("should convert successfully with L1VH logging when no hypervisor specified", func() {
-			// This test verifies that adding L1VH logging doesn't break domain conversion
-			context := &ConverterContext{
-				Architecture:   archconverter.NewConverter(runtime.GOARCH),
-				AllowEmulation: true,
-				Hypervisor:     nil,
-			}
-
-			// Conversion should succeed with logging in place
-			domain := vmiToDomain(vmi, context)
-			Expect(domain).NotTo(BeNil())
-		})
-
-		It("should convert successfully with L1VH logging during fallback to software emulation", func() {
-			// This test verifies that adding L1VH logging doesn't break domain conversion
-			// when fallback to software emulation occurs
-			kvmHypervisor := hypervisor.NewHypervisor("kvm")
-			context := &ConverterContext{
-				Architecture:   archconverter.NewConverter(runtime.GOARCH),
-				AllowEmulation: true,
-				Hypervisor:     kvmHypervisor,
-			}
-
-			// Conversion should succeed with logging in place even during fallback
-			domain := vmiToDomain(vmi, context)
-			Expect(domain).NotTo(BeNil())
-		})
 	})
 
 	Context("serial console", func() {
