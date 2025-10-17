@@ -29,10 +29,13 @@ var _ = Describe("Nodes recording rules", func() {
 	It("should generate generic hypervisor metric with KVM resource when hypervisor is KVM", func() {
 		rules := nodesRecordingRules(v1.KvmHypervisorName)
 
-		Expect(rules).To(HaveLen(2))
+		Expect(rules).To(HaveLen(3))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
 		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
+		Expect(rules[2].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_kvm"))
+		Expect(rules[2].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
+		Expect(rules[2].MetricsOpts.ConstLabels["deprecated"]).To(Equal("true"))
 	})
 
 	It("should generate generic hypervisor metric with MSHV resource when hypervisor is HyperV", func() {
@@ -47,18 +50,24 @@ var _ = Describe("Nodes recording rules", func() {
 	It("should default to KVM resource when hypervisor is empty", func() {
 		rules := nodesRecordingRules("")
 
-		Expect(rules).To(HaveLen(2))
+		Expect(rules).To(HaveLen(3))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
 		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
+		Expect(rules[2].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_kvm"))
+		Expect(rules[2].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
+		Expect(rules[2].MetricsOpts.ConstLabels["deprecated"]).To(Equal("true"))
 	})
 
 	It("should default to KVM resource when hypervisor is unknown", func() {
 		rules := nodesRecordingRules("unknown-hypervisor")
 
-		Expect(rules).To(HaveLen(2))
+		Expect(rules).To(HaveLen(3))
 		Expect(rules[0].MetricsOpts.Name).To(Equal("kubevirt_allocatable_nodes"))
 		Expect(rules[1].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_hypervisor"))
 		Expect(rules[1].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
+		Expect(rules[2].MetricsOpts.Name).To(Equal("kubevirt_nodes_with_kvm"))
+		Expect(rules[2].Expr.StrVal).To(ContainSubstring("devices_kubevirt_io_kvm"))
+		Expect(rules[2].MetricsOpts.ConstLabels["deprecated"]).To(Equal("true"))
 	})
 })
