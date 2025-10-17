@@ -157,7 +157,7 @@ Guest system load average over 5 minutes as reported by the guest agent. Load is
 Guest queue length. Type: Gauge.
 
 ### kubevirt_vmi_hypervisor_type
-The hypervisor type used by the VirtualMachineInstance. Value indicates whether the VMI is using hardware-accelerated virtualization (kvm, hyperv) or software emulation (qemu). In case of an error retrieving hypervisor type, the value of "unknown" is used. Type: Gauge. Labels: `namespace`, `name`, `node`, `type`.
+The hypervisor type used by the VirtualMachineInstance. Value indicates whether the VMI is using hardware-accelerated virtualization (kvm, mshv) or software emulation (qemu). In case of an error retrieving hypervisor type, the value of "unknown" is used. Type: Gauge. Labels: `namespace`, `name`, `node`, `hypervisor_type`.
 
 ### kubevirt_vmi_info
 Information about VirtualMachineInstances. Type: Gauge.
