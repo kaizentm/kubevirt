@@ -166,7 +166,7 @@ func reportVmisStats(vmis []*k6tv1.VirtualMachineInstance) []operatormetrics.Col
 		crs = append(crs, collectVMIInterfacesInfo(vmi)...)
 		crs = append(crs, collectVMIMigrationTime(vmi)...)
 		crs = append(crs, CollectVmisVnicInfo(vmi)...)
-		crs = append(crs, collectVMIHypervisorType(vmi))
+		crs = append(crs, collectVMIHypervisorType(vmi)...)
 	}
 
 	return crs
@@ -490,9 +490,9 @@ func CollectVmisVnicInfo(vmi *k6tv1.VirtualMachineInstance) []operatormetrics.Co
 // getVMIHypervisorType determines the hypervisor type used by a VMI based on
 // node allocatable resources
 func getVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) string {
-	// If VMI is not scheduled to a node, return unknown
+	// If VMI is not scheduled to a node, return empty string
 	if vmi.Status.NodeName == "" {
-		return "unknown"
+		return ""
 	}
 
 	// Get the node information to check allocatable resources
@@ -522,17 +522,22 @@ func getVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) string {
 }
 
 // collectVMIHypervisorType collects the hypervisor type metric for a VMI
-func collectVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) operatormetrics.CollectorResult {
-	hypervisorType := getVMIHypervisorType(vmi)
+func collectVMIHypervisorType(vmi *k6tv1.VirtualMachineInstance) []operatormetrics.CollectorResult {
+	var crs []operatormetrics.CollectorResult
 
-	return operatormetrics.CollectorResult{
-		Metric: vmiHypervisorType,
-		Labels: []string{
-			vmi.Namespace,
-			vmi.Name,
-			vmi.Status.NodeName,
-			hypervisorType,
-		},
-		Value: 1.0,
+	hypervisorType := getVMIHypervisorType(vmi)
+	if hypervisorType != "" {
+		crs = append(crs, operatormetrics.CollectorResult{
+			Metric: vmiHypervisorType,
+			Labels: []string{
+				vmi.Namespace,
+				vmi.Name,
+				vmi.Status.NodeName,
+				hypervisorType,
+			},
+			Value: 1.0,
+		})
 	}
+
+	return crs
 }
