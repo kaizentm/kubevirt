@@ -50,6 +50,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/controller"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/pointer"
+	"kubevirt.io/kubevirt/pkg/testutils"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 	device_manager "kubevirt.io/kubevirt/pkg/virt-handler/device-manager"
 	"kubevirt.io/kubevirt/tests/console"
@@ -1400,6 +1401,16 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 			// the legacy root bus (00:xx) so Linux can enumerate them without ACPI, allowing the VM to
 			// boot while still keeping ACPI disabled for the purpose of isolating the agent-based reboot
 			// mechanism. Remove only if q35 topology changes to make ACPI-less enumeration viable again.
+
+			kv := libkubevirt.GetCurrentKv(kubevirt.Client())
+			clusterConfig, _, _ := testutils.NewFakeClusterConfigUsingKVConfig(&kv.Spec.Configuration)
+			hypervisorConfig := clusterConfig.GetHypervisor()
+			if hypervisorConfig.Name == v1.HyperVLayeredHypervisorName {
+				Skip(fmt.Sprintf(
+					"Skipping soft reboot test with agent: hypervisor.Name=%q",
+					hypervisorConfig.Name,
+				))
+			}
 
 			vmi := libvmifact.NewFedora(withoutACPI(),
 				libvmi.WithAnnotation(v1.PlacePCIDevicesOnRootComplex, "true"))
