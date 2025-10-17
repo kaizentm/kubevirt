@@ -46,7 +46,7 @@ func SetupRulesWithHypervisor(namespace string, hypervisorName string) error {
 		return err
 	}
 
-	err = alerts.Register(namespace)
+	err = alerts.Register(namespace, hypervisorName)
 	if err != nil {
 		return err
 	}
