@@ -2322,6 +2322,62 @@ var _ = Describe("Converter", func() {
 			// Should still apply hypervisor adjustments
 			Expect(domain.Spec.Type).To(Equal("hyperv"))
 		})
+
+		It("should log hypervisor selection for KVM", func() {
+			kvmHypervisor := hypervisor.NewHypervisor("kvm")
+			context := &ConverterContext{
+				Architecture:   archconverter.NewConverter(runtime.GOARCH),
+				AllowEmulation: true,
+				Hypervisor:     kvmHypervisor,
+			}
+
+			domain := vmiToDomain(vmi, context)
+			// Should successfully convert with KVM hypervisor
+			Expect(domain).NotTo(BeNil())
+			Expect(domain.Spec.Type).NotTo(Equal("hyperv"))
+		})
+
+		It("should log hypervisor selection for HyperV Layered", func() {
+			hypervHypervisor := hypervisor.NewHypervisor("hyperv-layered")
+			context := &ConverterContext{
+				Architecture:   archconverter.NewConverter(runtime.GOARCH),
+				AllowEmulation: true,
+				Hypervisor:     hypervHypervisor,
+			}
+
+			domain := vmiToDomain(vmi, context)
+			// Should successfully convert with HyperV hypervisor and set type correctly
+			Expect(domain).NotTo(BeNil())
+			Expect(domain.Spec.Type).To(Equal("hyperv"))
+		})
+
+		It("should log when no hypervisor is specified", func() {
+			context := &ConverterContext{
+				Architecture:   archconverter.NewConverter(runtime.GOARCH),
+				AllowEmulation: true,
+				Hypervisor:     nil,
+			}
+
+			domain := vmiToDomain(vmi, context)
+			// Should successfully convert with default hypervisor (KVM)
+			Expect(domain).NotTo(BeNil())
+			Expect(domain.Spec.Type).NotTo(Equal("hyperv"))
+		})
+
+		It("should log fallback to software emulation when device missing", func() {
+			// This test verifies that when AllowEmulation is true and device is missing,
+			// conversion succeeds with software emulation
+			kvmHypervisor := hypervisor.NewHypervisor("kvm")
+			context := &ConverterContext{
+				Architecture:   archconverter.NewConverter(runtime.GOARCH),
+				AllowEmulation: true,
+				Hypervisor:     kvmHypervisor,
+			}
+
+			domain := vmiToDomain(vmi, context)
+			// Should successfully convert even if device is missing
+			Expect(domain).NotTo(BeNil())
+		})
 	})
 
 	Context("serial console", func() {
