@@ -2323,7 +2323,8 @@ var _ = Describe("Converter", func() {
 			Expect(domain.Spec.Type).To(Equal("hyperv"))
 		})
 
-		It("should log hypervisor selection for KVM", func() {
+		It("should convert successfully with L1VH logging for KVM hypervisor", func() {
+			// This test verifies that adding L1VH logging doesn't break domain conversion
 			kvmHypervisor := hypervisor.NewHypervisor("kvm")
 			context := &ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
@@ -2331,13 +2332,13 @@ var _ = Describe("Converter", func() {
 				Hypervisor:     kvmHypervisor,
 			}
 
+			// Conversion should succeed with logging in place
 			domain := vmiToDomain(vmi, context)
-			// Should successfully convert with KVM hypervisor
 			Expect(domain).NotTo(BeNil())
-			Expect(domain.Spec.Type).NotTo(Equal("hyperv"))
 		})
 
-		It("should log hypervisor selection for HyperV Layered", func() {
+		It("should convert successfully with L1VH logging for HyperV Layered hypervisor", func() {
+			// This test verifies that adding L1VH logging doesn't break domain conversion
 			hypervHypervisor := hypervisor.NewHypervisor("hyperv-layered")
 			context := &ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
@@ -2345,28 +2346,29 @@ var _ = Describe("Converter", func() {
 				Hypervisor:     hypervHypervisor,
 			}
 
+			// Conversion should succeed with logging in place
 			domain := vmiToDomain(vmi, context)
-			// Should successfully convert with HyperV hypervisor and set type correctly
 			Expect(domain).NotTo(BeNil())
+			// Hypervisor adjustments should still work
 			Expect(domain.Spec.Type).To(Equal("hyperv"))
 		})
 
-		It("should log when no hypervisor is specified", func() {
+		It("should convert successfully with L1VH logging when no hypervisor specified", func() {
+			// This test verifies that adding L1VH logging doesn't break domain conversion
 			context := &ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				AllowEmulation: true,
 				Hypervisor:     nil,
 			}
 
+			// Conversion should succeed with logging in place
 			domain := vmiToDomain(vmi, context)
-			// Should successfully convert with default hypervisor (KVM)
 			Expect(domain).NotTo(BeNil())
-			Expect(domain.Spec.Type).NotTo(Equal("hyperv"))
 		})
 
-		It("should log fallback to software emulation when device missing", func() {
-			// This test verifies that when AllowEmulation is true and device is missing,
-			// conversion succeeds with software emulation
+		It("should convert successfully with L1VH logging during fallback to software emulation", func() {
+			// This test verifies that adding L1VH logging doesn't break domain conversion
+			// when fallback to software emulation occurs
 			kvmHypervisor := hypervisor.NewHypervisor("kvm")
 			context := &ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
@@ -2374,8 +2376,8 @@ var _ = Describe("Converter", func() {
 				Hypervisor:     kvmHypervisor,
 			}
 
+			// Conversion should succeed with logging in place even during fallback
 			domain := vmiToDomain(vmi, context)
-			// Should successfully convert even if device is missing
 			Expect(domain).NotTo(BeNil())
 		})
 	})

@@ -1511,12 +1511,12 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 
 	// L1VH: Hypervisor device detection and selection logic
 	hypervisorPath := "/dev/kvm"
-	hypervisorType := "kvm"
+	hypervisorType := v1.KvmHypervisorName
 	if c.Hypervisor != nil {
 		hypervisorPath = fmt.Sprintf("/dev/%s", c.Hypervisor.GetDevice())
 		// Determine hypervisor type based on device name
 		if c.Hypervisor.GetDevice() == "mshv" {
-			hypervisorType = "hyperv-layered"
+			hypervisorType = v1.HyperVLayeredHypervisorName
 		}
 		log.Log.Object(vmi).Infof("L1VH: Hypervisor type selected: %s, device path: %s", hypervisorType, hypervisorPath)
 	} else {
