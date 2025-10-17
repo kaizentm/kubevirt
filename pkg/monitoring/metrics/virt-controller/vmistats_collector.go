@@ -177,7 +177,10 @@ func buildNodeAllocatableMap() (map[string]k8sv1.ResourceList, error) {
 func reportVmisStats(vmis []*k6tv1.VirtualMachineInstance) []operatormetrics.CollectorResult {
 	var crs []operatormetrics.CollectorResult
 
-	nodeAllocatableMap, _ := buildNodeAllocatableMap()
+	nodeAllocatableMap, err := buildNodeAllocatableMap()
+	if err != nil {
+		log.Log.Errorf("Failed to build node allocatable map: %v. VMIs' hypervisor type will be set to unknown.", err)
+	}
 
 	for _, vmi := range vmis {
 		crs = append(crs, collectVMIInfo(vmi))
