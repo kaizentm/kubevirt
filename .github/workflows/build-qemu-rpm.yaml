@@ -11,8 +11,8 @@ env:
   QEMU_REPO: https://github.com/kaizentm/qemu
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
-  QEMU_VERSION: 10.1.50.mshv.v5
-  RPM_IMAGE_TAG: qemu-mshv
+  QEMU_VERSION: 10.1.50.mshv.v6
+  RPM_IMAGE_TAG: mkulke-qemu-vfio
 
 jobs:
   build-rpms:

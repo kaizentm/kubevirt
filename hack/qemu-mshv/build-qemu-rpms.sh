@@ -22,7 +22,9 @@ cd qemu-src/
 
 sed -i "s/Version:.*$/Version: ${QEMU_VERSION}/" qemu.spec
 
-curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
+git clone -b mkulke/test-vfio https://github.com/mkulke/qemu qemu-${QEMU_VERSION}
+tar -cvzf qemu-${QEMU_VERSION}.tar.xz qemu-${QEMU_VERSION}
+#curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
 
 docker rm -f qemu-build
 
