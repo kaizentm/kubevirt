@@ -22,8 +22,15 @@ cd qemu-src/
 
 sed -i "s/Version:.*$/Version: ${QEMU_VERSION}/" qemu.spec
 
-git clone -b mkulke/test-vfio https://github.com/mkulke/qemu qemu-${QEMU_VERSION}
+# FOllowing 2 lines are for building cherrypicked QEMU
+git clone -b guptaharshit/v10.1.50.mshv.v5-mkulke-vfio-patches https://github.com/kaizentm/qemu qemu-${QEMU_VERSION}
 tar -cvzf qemu-${QEMU_VERSION}.tar.xz qemu-${QEMU_VERSION}
+
+# FOllowing 2 lines are for building from mkulke's fork
+#git clone -b mkulke/test-vfio https://github.com/mkulke/qemu qemu-${QEMU_VERSION}
+#tar -cvzf qemu-${QEMU_VERSION}.tar.xz qemu-${QEMU_VERSION}
+
+# Following command is the original one (from ise branch)
 #curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
 
 docker rm -f qemu-build
