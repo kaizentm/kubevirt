@@ -6193,7 +6193,7 @@ Global test cleanup ended.
 </system-out>
       </testcase>
       <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with default cpu model should add node selector to virt-launcher when setting default cpuModel in kubevirtCR" classname="KubeVirt Tests Suite" time="20.649005378" />
-      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with default cpu model should prefer node selector of the vmi if cpuModel field is set in kubevirtCR and in the vmi" classname="KubeVirt Tests Suite" time="189.900136187" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with default cpu model should prefer node selector of the vmi if cpuModel field is set in kubevirtCR and in the vmi" classname="KubeVirt Tests Suite" time="189.900136187" failure_category="STUCK_IN_SCHEDULING_CANNOT_REPRO" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_lifecycle_test.go:955
 Unexpected Warning event received: testvmi-gfdl4,3389c18d-1d17-4f3f-b9d4-22a3d39be735: server error. command SyncVMI failed: "LibvirtError(Code=1, Domain=10, Message='internal error: QEMU unexpectedly closed the monitor (vm='kubevirt-test-default1_testvmi-gfdl4'): 2025-11-05T18:20:06.971739Z qemu-system-x86_64: -device {\"driver\":\"pcie-root-port\",\"port\":8,\"chassis\":1,\"id\":\"pci.1\",\"bus\":\"pcie.0\",\"multifunction\":true,\"addr\":\"0x1\"}: MSI-X is not supported by interrupt controller')"
 Expected
@@ -6253,7 +6253,8 @@ Global test cleanup ended.
 </system-out>
       </testcase>
       <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with node feature discovery [test_id:1639]the vmi with cpu.model matching a nfd label on a node should be scheduled" classname="KubeVirt Tests Suite" time="92.038100946" />
-      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with node feature discovery [test_id:1640]the vmi with cpu.model that cannot match an nfd label on node should not be scheduled" classname="KubeVirt Tests Suite" time="154.000953434" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with node feature discovery [test_id:1640]the vmi with cpu.model that cannot match an nfd label on node should not be scheduled" classname="KubeVirt Tests Suite" time="154.000953434" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running" additional_errs="qemu-system-x86_64: -device {\"driver\":\"pcie-root-port\",\"port\":8,\"chassis\":1,\"id\":\"pci.1\",\"bus\":\"pcie.0\",\"multifunction\":true,\"addr\":\
+"0x1\"}: MSI-X is not supported by interrupt controller">
           <failure type="Failure">tests/vmi_lifecycle_test.go:1028
 Timed out after 60.001s.
 VMI should be unchedulable
