@@ -8899,7 +8899,7 @@ Global test cleanup started.
 Global test cleanup ended.
 </system-out>
       </testcase>
-      <testcase name="[rfe_id:1177][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachine A valid VirtualMachine given Using RunStrategyAlways [test_id:7743]should not migrate a running vm if dry-run option is passed" classname="KubeVirt Tests Suite" time="17.451227357" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:1177][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachine A valid VirtualMachine given Using RunStrategyAlways [test_id:7743]should not migrate a running vm if dry-run option is passed" classname="KubeVirt Tests Suite" time="17.451227357" failure_category="MULTIPLE_NODES_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vm_test.go:792
 Migration tests require at least 2 nodes
 tests/vm_test.go:795</failure>
