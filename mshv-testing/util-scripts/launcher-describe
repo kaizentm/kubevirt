@@ -1,0 +1,7 @@
+#!/bin/bash
+
+export NAMESPACE=${NAMESPACE:-"default"}
+export KUBECONFIG=${KUBECONFIG:-""}
+
+pod=$(kubectl get pod -n $NAMESPACE -o name)
+kubectl describe -n $NAMESPACE $pod

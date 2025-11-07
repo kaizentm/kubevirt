@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -x
+
+export NAMESPACE=${NAMESPACE:-"default"}
+export KUBECONFIG=${KUBECONFIG:-""}
+
+vmi=$(kubectl get vmi -n $NAMESPACE -o name)
+kubectl get -n $NAMESPACE $vmi -o yaml
