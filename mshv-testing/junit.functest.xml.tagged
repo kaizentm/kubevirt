@@ -10427,7 +10427,7 @@ Global test cleanup ended.
           <skipped />
       </testcase>
       <testcase name="[sig-compute]PortForward should successfully open connection to guest" classname="KubeVirt Tests Suite" time="41.175920373" />
-      <testcase name="[rfe_id:1177][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachine A valid VirtualMachine given [test_id:1521]should remove VirtualMachineInstance once the VM is marked for deletion [storage-req]with Filesystem Disk" classname="KubeVirt Tests Suite" time="379.147337061" failure_category="STORAGE_CLASS_LOCAL_REQ" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:1177][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachine A valid VirtualMachine given [test_id:1521]should remove VirtualMachineInstance once the VM is marked for deletion [storage-req]with Filesystem Disk" classname="KubeVirt Tests Suite" time="379.147337061" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vm_test.go:266
 Timed out after 360.001s.
 Expected
