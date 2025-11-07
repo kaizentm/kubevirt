@@ -6253,8 +6253,7 @@ Global test cleanup ended.
 </system-out>
       </testcase>
       <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with node feature discovery [test_id:1639]the vmi with cpu.model matching a nfd label on a node should be scheduled" classname="KubeVirt Tests Suite" time="92.038100946" />
-      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with node feature discovery [test_id:1640]the vmi with cpu.model that cannot match an nfd label on node should not be scheduled" classname="KubeVirt Tests Suite" time="154.000953434" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running" additional_errs="qemu-system-x86_64: -device {\"driver\":\"pcie-root-port\",\"port\":8,\"chassis\":1,\"id\":\"pci.1\",\"bus\":\"pcie.0\",\"multifunction\":true,\"addr\":\
-"0x1\"}: MSI-X is not supported by interrupt controller">
+      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle [rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component]Creating a VirtualMachineInstance with node feature discovery [test_id:1640]the vmi with cpu.model that cannot match an nfd label on node should not be scheduled" classname="KubeVirt Tests Suite" time="154.000953434" failure_category="NFD_REQUIRED" failure_search_key="phase is not Running" additional_errs="qemu-system-x86_64: -device driver:pcie-root-port,port:8,chassis:1,id:pci.1,bus:pcie.0,multifunction:true,addr:0x1: MSI-X is not supported by interrupt controller">
           <failure type="Failure">tests/vmi_lifecycle_test.go:1028
 Timed out after 60.001s.
 VMI should be unchedulable
