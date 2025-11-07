@@ -30,6 +30,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,7 +130,10 @@ var _ = Describe("[sig-compute]VirtualMachinePool", decorators.SigCompute, func(
 
 		dataVolume := libdv.NewDataVolume(
 			libdv.WithRegistryURLSource(cd.DataVolumeImportUrlForContainerDisk(cd.ContainerDiskCirros)),
-			libdv.WithStorage(libdv.StorageWithStorageClass(sc)),
+			libdv.WithStorage(
+				libdv.StorageWithStorageClass(sc),
+				libdv.StorageWithAccessMode(k8sv1.ReadWriteOnce),
+			),
 		)
 
 		vm := libvmi.NewVirtualMachine(

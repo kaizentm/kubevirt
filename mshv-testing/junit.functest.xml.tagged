@@ -9415,7 +9415,7 @@ Global test cleanup ended.
       <testcase name="[sig-compute]VirtualMachinePool should be rejected on POST if spec is invalid" classname="KubeVirt Tests Suite" time="7.461899491" />
       <testcase name="[sig-compute]VirtualMachinePool should reject POST if vmi spec is invalid" classname="KubeVirt Tests Suite" time="7.442696375" />
       <testcase name="[sig-compute]VirtualMachinePool should remove VMs once they are marked for deletion" classname="KubeVirt Tests Suite" time="26.285009969" />
-      <testcase name="[sig-compute]VirtualMachinePool should handle pool with dataVolumeTemplates" classname="KubeVirt Tests Suite" time="117.117846169" failure_category="DATAVOLUME_MISSING_ACCESSMODE" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]VirtualMachinePool should handle pool with dataVolumeTemplates" classname="KubeVirt Tests Suite" time="117.117846169" failure_category="STORAGE_CLASS_LOCAL_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/pool_test.go:225
 Timed out after 90.001s.
 Expected
