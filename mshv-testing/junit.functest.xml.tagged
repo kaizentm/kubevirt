@@ -20414,7 +20414,7 @@ Global test cleanup ended.
       <testcase name="[sig-compute]Configurations VirtualMachineInstance definition [rfe_id:893][crit:medium][vendor:cnv-qe@redhat.com][level:component]with rng [test_id:1675]should not have the virtio rng device when not present" classname="KubeVirt Tests Suite" time="30.608701622" />
       <testcase name="[sig-compute]Configurations VirtualMachineInstance definition [rfe_id:140][crit:medium][vendor:cnv-qe@redhat.com][level:component]with guestAgent [test_id:4627]should return the whole data when agent is present" classname="KubeVirt Tests Suite" time="42.658549472" />
       <testcase name="[sig-compute]Configurations VirtualMachineInstance definition [rfe_id:140][crit:medium][vendor:cnv-qe@redhat.com][level:component]with serial-number [test_id:3121]should have serial-number set when present" classname="KubeVirt Tests Suite" time="24.890241877" />
-      <testcase name="[sig-compute]Configurations VirtualMachineInstance definition with TSC timer [test_id:6843]should set a TSC frequency and have the CPU flag available in the guest" classname="KubeVirt Tests Suite" time="17.919318065" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]Configurations VirtualMachineInstance definition with TSC timer [test_id:6843]should set a TSC frequency and have the CPU flag available in the guest" classname="KubeVirt Tests Suite" time="17.919318065" failure_category="NODE_INVTSC_FEATURE_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_configuration_test.go:1170
 To run this test at least one node should support invtsc feature
 Expected
