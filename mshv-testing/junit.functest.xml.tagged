@@ -13748,7 +13748,7 @@ Global test cleanup started.
 Global test cleanup ended.
 </system-out>
       </testcase>
-      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle Pausing/Unpausing a VirtualMachineInstance [test_id:3090]should result in a difference in the uptime after pause" classname="KubeVirt Tests Suite" time="75.017333893" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle Pausing/Unpausing a VirtualMachineInstance [test_id:3090]should result in a difference in the uptime after pause" classname="KubeVirt Tests Suite" time="75.017333893" failure_category="UPTIME_MISMATCH" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_lifecycle_test.go:1509
 guest should be paused for at least 6 seconds
 Expected
