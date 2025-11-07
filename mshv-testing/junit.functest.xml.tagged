@@ -18599,7 +18599,7 @@ Global test cleanup ended.
       <testcase name="[crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute] Instancetype and Preferences Instancetype and preference application [test_id:CNV-9302] should apply preferences to default network interface" classname="KubeVirt Tests Suite" time="13.055299592" />
       <testcase name="[crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute] Instancetype and Preferences with inferFromVolume should infer defaults from existing DataVolume with labels" classname="KubeVirt Tests Suite" time="29.865356251" />
       <testcase name="[crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute] Instancetype and Preferences with inferFromVolume should infer defaults from DataVolumeTemplates , DataVolumeSourceRef and DataSource with labels" classname="KubeVirt Tests Suite" time="37.317112118" />
-      <testcase name="[crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute] Instancetype and Preferences instance type with dedicatedCPUPlacement enabled should be accepted and result in running VirtualMachineInstance" classname="KubeVirt Tests Suite" time="380.037925117" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute] Instancetype and Preferences instance type with dedicatedCPUPlacement enabled should be accepted and result in running VirtualMachineInstance" classname="KubeVirt Tests Suite" time="380.037925117" failure_category="CPUMANAGER_STATIC_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/instancetype/instancetype.go:1022
 Timed out after 360.000s.
 Expected
