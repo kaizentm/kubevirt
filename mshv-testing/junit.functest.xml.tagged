@@ -249,7 +249,7 @@ Global test cleanup ended.
       <testcase name="[rfe_id:588][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachineInstanceReplicaSet [test_id:1416]should remove owner references on the VirtualMachineInstance if it is orphan deleted" classname="KubeVirt Tests Suite" time="9.411434689" />
       <testcase name="[rfe_id:588][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachineInstanceReplicaSet should replace a VMI immediately when a virt-launcher pod gets deleted" classname="KubeVirt Tests Suite" time="16.979413381" />
       <testcase name="[sig-compute] [rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@redhat.com][level:component]Console [rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@redhat.com][level:component]A new VirtualMachineInstance with a serial console [test_id:1590]should be able to reconnect to console multiple times" classname="KubeVirt Tests Suite" time="25.759905103" />
-      <testcase name="[sig-compute]MultiQueue MultiQueue Behavior should be able to successfully boot fedora to the login prompt with multi-queue without being blocked by selinux with e1000 interface" classname="KubeVirt Tests Suite" time="373.472538428" failure_category="E1000_INTERFACE_NOT_SUPPORTED" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]MultiQueue MultiQueue Behavior should be able to successfully boot fedora to the login prompt with multi-queue without being blocked by selinux with e1000 interface" classname="KubeVirt Tests Suite" time="373.472538428" failure_category="MULTIQUEUE_SELINUX" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_multiqueue_test.go:88
 Expected success, but got an error:
     &lt;expect.TimeoutError&gt;: 
@@ -20345,7 +20345,7 @@ Global test cleanup ended.
       <testcase name="[sig-storage] Declarative Hotplug Hotplug disks Should add and remove a hotplug disk" classname="KubeVirt Tests Suite" time="0">
           <skipped />
       </testcase>
-      <testcase name="[sig-compute]MultiQueue MultiQueue Behavior should be able to successfully boot fedora to the login prompt with multi-queue without being blocked by selinux [test_id:4599] with default virtio interface" classname="KubeVirt Tests Suite" time="373.663421545" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]MultiQueue MultiQueue Behavior should be able to successfully boot fedora to the login prompt with multi-queue without being blocked by selinux [test_id:4599] with default virtio interface" classname="KubeVirt Tests Suite" time="373.663421545" failure_category="MULTIQUEUE_SELINUX" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_multiqueue_test.go:87
 Expected success, but got an error:
     &lt;expect.TimeoutError&gt;: 
