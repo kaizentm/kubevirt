@@ -1465,7 +1465,7 @@ Global test cleanup ended.
       <testcase name="[sig-compute]Configurations Custom PCI Addresses configuration should configure custom pci address [test_id:5270]across all available PCI functions of a single slot" classname="KubeVirt Tests Suite" time="67.905697755" />
       <testcase name="[sig-compute] VMIDefaults MemBalloon defaults [test_id:4556]Should be present in domain" classname="KubeVirt Tests Suite" time="12.222043883" />
       <testcase name="[sig-compute] VMIDefaults Input defaults [test_id:TODO]Should be applied to a device added by AutoattachInputDevice" classname="KubeVirt Tests Suite" time="7.719001033" />
-      <testcase name="[sig-compute]Migration recovery should successfully defer a migration success" classname="KubeVirt Tests Suite" time="83.165093628" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]Migration recovery should successfully defer a migration success" classname="KubeVirt Tests Suite" time="83.165093628" failure_category="STORAGE_CLASS_LOCAL_REQ" failure_search_key="rand">
           <failure type="Failure">tests/migration/recovery.go:152
 Unexpected error:
     &lt;*errors.errorString | 0xc00318c360&gt;: 
