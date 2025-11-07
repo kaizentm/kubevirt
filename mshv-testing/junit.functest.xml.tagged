@@ -14913,7 +14913,7 @@ Global test cleanup ended.
       <testcase name="[virtctl] [sig-compute]create vm [test_id:11651]Complex example with sysprep volume" classname="KubeVirt Tests Suite" time="7.5977597249999995" />
       <testcase name="[virtctl] [sig-compute]create vm [test_id:11653]Complex example with access credentials" classname="KubeVirt Tests Suite" time="63.579753375" />
       <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with SM BIOS hook sidecar [test_id:3157]should call Collect and OnDefineDomain on the hook sidecar" classname="KubeVirt Tests Suite" time="18.357180094" />
-      <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with sidecar-shim migrate VMI with sidecar Terminates properly on migration with &gt;= v1alpha3" classname="KubeVirt Tests Suite" time="307.229477061" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with sidecar-shim migrate VMI with sidecar Terminates properly on migration with &gt;= v1alpha3" classname="KubeVirt Tests Suite" time="307.229477061" failure_category="MULTIPLE_NODES_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_hook_sidecar_test.go:260
 Timed out after 240.001s.
 migration should succeed after 240 s
@@ -19419,7 +19419,7 @@ Global test cleanup ended.
       <testcase name="[virtctl] [sig-compute]create vm [test_id:11654]Failure of implicit inference does not fail the VM creation" classname="KubeVirt Tests Suite" time="7.534509465" />
       <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with SM BIOS hook sidecar [test_id:3156]should successfully start with hook sidecar annotation for v1alpha2" classname="KubeVirt Tests Suite" time="23.29786243" />
       <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with SM BIOS hook sidecar should not start with hook sidecar annotation when the version is not provided" classname="KubeVirt Tests Suite" time="15.202927823" />
-      <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with sidecar-shim migrate VMI with sidecar Fails to terminate on migration with &lt; v1alpha3" classname="KubeVirt Tests Suite" time="318.841489515" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]HookSidecars [rfe_id:2667][crit:medium][vendor:cnv-qe@redhat.com][level:component] VMI definition with sidecar-shim migrate VMI with sidecar Fails to terminate on migration with &lt; v1alpha3" classname="KubeVirt Tests Suite" time="318.841489515" failure_category="MULTIPLE_NODES_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_hook_sidecar_test.go:259
 Timed out after 240.000s.
 migration should succeed after 240 s
