@@ -19353,7 +19353,7 @@ Global test cleanup ended.
 </system-out>
       </testcase>
       <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle Freeze/Unfreeze a VirtualMachineInstance Freeze without Unfreeze should trigger unfreeze after timeout" classname="KubeVirt Tests Suite" time="57.030636056" />
-      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle Softreboot a VirtualMachineInstance soft reboot vmi should fail to soft reboot a paused vmi" classname="KubeVirt Tests Suite" time="199.530750603" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:component][sig-compute]VMIlifecycle Softreboot a VirtualMachineInstance soft reboot vmi should fail to soft reboot a paused vmi" classname="KubeVirt Tests Suite" time="199.530750603" failure_category="SOFT_REBOOT_NOT_SUPPORTED"" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_lifecycle_test.go:1446
 Expected success, but got an error:
     &lt;*errors.errorString | 0xc003b48000&gt;: 
