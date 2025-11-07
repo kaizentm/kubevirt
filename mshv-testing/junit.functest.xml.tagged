@@ -15759,7 +15759,7 @@ Global test cleanup ended.
       <testcase name="[sig-compute]VM Tolerations Updating VMs tolerations should successfully live update tolerations" classname="KubeVirt Tests Suite" time="13.407710084" />
       <testcase name="[sig-compute] [rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@redhat.com][level:component]Console [rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@redhat.com][level:component]A new VirtualMachineInstance with a serial console [test_id:1592]should wait until the virtual machine is in running state and return a stream interface" classname="KubeVirt Tests Suite" time="16.757454626" />
       <testcase name="[sig-compute] [rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@redhat.com][level:component]Console [rfe_id:127][posneg:negative][crit:medium][vendor:cnv-qe@redhat.com][level:component]A new VirtualMachineInstance with a serial console [test_id:1593]should not be connected if scheduled to non-existing host" classname="KubeVirt Tests Suite" time="37.750830037" />
-      <testcase name="[sig-compute]SecurityFeatures The VMI SELinux context status Should get set and stay the the same after a migration" classname="KubeVirt Tests Suite" time="75.271177746" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]SecurityFeatures The VMI SELinux context status Should get set and stay the the same after a migration" classname="KubeVirt Tests Suite" time="75.271177746" failure_category="MULTIPLE_NODES_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/security_features_test.go:197
 Expected
     &lt;string&gt;: drwxr-xr-x 1 root root ? 4096 Nov  5 17:38 /
