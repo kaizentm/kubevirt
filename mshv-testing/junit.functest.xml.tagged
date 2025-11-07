@@ -9508,7 +9508,7 @@ Global test cleanup started.
 Global test cleanup ended.
 </system-out>
       </testcase>
-      <testcase name="[sig-compute] Hyper-V enlightenments VMI with HyperV re-enlightenment enabled when TSC frequency is exposed on the cluster should be able to migrate" classname="KubeVirt Tests Suite" time="20.34067228" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute] Hyper-V enlightenments VMI with HyperV re-enlightenment enabled when TSC frequency is exposed on the cluster should be able to migrate" classname="KubeVirt Tests Suite" time="20.34067228" failure_category="NODE_MISSING_TSC_FREQUENCY_LABEL" failure_search_key="phase is not Running">
           <failure type="Failure">tests/hyperv_test.go:58
 TSC frequency is not exposed on the cluster
 tests/hyperv_test.go:60</failure>
