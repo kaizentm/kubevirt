@@ -21,7 +21,7 @@ make cluster-up
 
 export FUNC_TEST_LABEL_FILTER='--label-filter=(!flake-check)&&((sig-compute && !(GPU,VGPU,sig-compute-migrations,sig-storage) && !(SEV, SEVES))&&(!Windows)&&(!Sysprep)&&(!requires-s390x)&&(!requires-arm64)&&(!RequiresVolumeExpansion)&&!(single-replica)&&(!requireHugepages2Mi)&&(!requireHugepages1Gi)&&(!SwapTest))'
 
-export KUBEVIRT_FUNC_TEST_SUITE_ARGS="${KUBEVIRT_FUNC_TEST_SUITE_ARGS} --ginkgo.focus=\[sig\-compute\]Configurations\s\[rfe_id:140\]\[crit:medium\]\[vendor:cnv\-qe@redhat\.com\]\[level:component\]with\sCPU\sspec\s\[rfe_id:140\]\[crit:medium\]\[vendor:cnv\-qe@redhat\.com\]\[level:component\]when\sCPU\smodel\sdefined\s\[test_id:1678\]should\sreport\sdefined\sCPU\smodel"
-
+export KUBEVIRT_E2E_PARALLEL=false # DOnt run parallel since were only running 1 test at a time
+export KUBEVIRT_FUNC_TEST_SUITE_ARGS="${KUBEVIRT_FUNC_TEST_SUITE_ARGS} --ginkgo.focus=\[sig\-compute\]Migration\srecovery\sshould\ssuccessfully\sdefer\sa\smigration\sfailure"
 make functest 
 
