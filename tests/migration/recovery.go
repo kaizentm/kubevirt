@@ -55,7 +55,7 @@ import (
 	"kubevirt.io/kubevirt/tests/testsuite"
 )
 
-var _ = Describe("[sig-compute]Migration recovery", decorators.SigCompute, decorators.RequiresRWOFsVMStateStorageClass, func() {
+var _ = Describe("[sig-compute]Migration recovery", decorators.SigCompute, decorators.RequiresRWOFsVMStateStorageClass, decorators.RequiresTwoSchedulableNodes, func() {
 	DescribeTable("should successfully defer a migration", func(fakeSuccess, flakeCheck bool) {
 		virtClient, err := kubecli.GetKubevirtClient()
 		Expect(err).NotTo(HaveOccurred())

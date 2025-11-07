@@ -16556,7 +16556,7 @@ Global test cleanup ended.
       </testcase>
       <testcase name="[sig-compute] VMIDefaults Disk defaults [test_id:4115]Should be applied to VMIs" classname="KubeVirt Tests Suite" time="7.869304949" />
       <testcase name="[sig-compute] VMIDefaults MemBalloon defaults [test_id:4559]Should not be present in domain " classname="KubeVirt Tests Suite" time="12.341155809" />
-      <testcase name="[sig-compute]Migration recovery should successfully defer a migration failure" classname="KubeVirt Tests Suite" time="193.559558825" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]Migration recovery should successfully defer a migration failure" classname="KubeVirt Tests Suite" time="193.559558825" failure_category="MULTIPLE_NODES_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/migration/recovery.go:151
 Timed out after 60.001s.
 VirtualMachineInstanceMigration/test-migration-cvx7m expected phase is 'Running' but got 'Scheduling'
