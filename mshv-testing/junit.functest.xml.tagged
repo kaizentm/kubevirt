@@ -80,7 +80,7 @@
       <testcase name="[sig-compute]IOThreads IOThreads Policies [test_id:4122]Should honor shared ioThreadsPolicy for single disk" classname="KubeVirt Tests Suite" time="17.737230305" />
       <testcase name="[sig-compute]IOThreads IOThreads Policies [ref_id:2065] should honor auto ioThreadPolicy [test_id:3097]for one CPU" classname="KubeVirt Tests Suite" time="33.307682261" />
       <testcase name="[sig-compute]IOThreads IOThreads Policies [ref_id:2065] should honor auto ioThreadPolicy [test_id:3095] for three CPUs" classname="KubeVirt Tests Suite" time="32.178174293" />
-      <testcase name="[sig-compute]IOThreads IOThreads Policies [test_id:4025]Should place io and emulator threads on the same pcpu with auto ioThreadsPolicy" classname="KubeVirt Tests Suite" time="381.036098069" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[sig-compute]IOThreads IOThreads Policies [test_id:4025]Should place io and emulator threads on the same pcpu with auto ioThreadsPolicy" classname="KubeVirt Tests Suite" time="381.036098069" failure_category="MULTIPLE_NODES_REQ" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vmi_iothreads_test.go:216
 Timed out after 360.001s.
 Timed out waiting for VMI testvmi-cqjld to enter [Running] phase(s)
