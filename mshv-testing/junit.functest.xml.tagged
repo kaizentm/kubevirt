@@ -8915,7 +8915,7 @@ Global test cleanup started.
 Global test cleanup ended.
 </system-out>
       </testcase>
-      <testcase name="[rfe_id:1177][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachine A valid VirtualMachine given Using RunStrategyRerunOnFailure should restart a failed VMI" classname="KubeVirt Tests Suite" time="88.361005758" failure_category="STUCK_IN_SCHEDULING" failure_search_key="phase is not Running">
+      <testcase name="[rfe_id:1177][crit:medium][vendor:cnv-qe@redhat.com][level:component][sig-compute]VirtualMachine A valid VirtualMachine given Using RunStrategyRerunOnFailure should restart a failed VMI" classname="KubeVirt Tests Suite" time="88.361005758" failure_category="STUCK_IN_SCHEDULING_CANNOT_REPRO" failure_search_key="phase is not Running">
           <failure type="Failure">tests/vm_test.go:845
 Waited for 60 seconds on the event stream to match a specific event: event type Warning, reason = Stopped
 tests/watcher/watcher.go:233</failure>
