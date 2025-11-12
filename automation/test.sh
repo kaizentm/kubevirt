@@ -45,7 +45,7 @@ if [[ ${CI} == "true" ]]; then
   if [[ ! $TARGET =~ .*kind.* ]] && [[ ! $TARGET =~ .*k3d.* ]]; then
     _delay="$(( ( RANDOM % 180 )))"
     echo "INFO: Sleeping for ${_delay}s to randomize job startup slighty"
-    sleep ${_delay}
+    # TODO Uncomment this line sleep ${_delay}
   fi
 fi
 
