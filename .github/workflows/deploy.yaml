@@ -65,7 +65,6 @@ jobs:
       - name: Test
         run: |
           rm -f $JUNIT_REPORT_FILE
-          make cluster-up
           hack/retry-functests.sh
         env:          
           TEST_FOCUS: ${{ vars.TEST_FOCUS }}
