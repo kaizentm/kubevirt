@@ -13,6 +13,7 @@ fi
 
 echo "Using container runtime: ${KUBEVIRT_CRI}"
 docker ps
+whoami
 
 fail_if_cri_bin_missing
 
