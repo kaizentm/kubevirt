@@ -21,7 +21,7 @@ make cluster-up
 
 export FUNC_TEST_LABEL_FILTER='--label-filter=(!flake-check)&&((sig-compute && !(GPU,VGPU,sig-compute-migrations,sig-storage) && !(SEV, SEVES))&&(!Windows)&&(!Sysprep)&&(!requires-s390x)&&(!requires-arm64)&&(!RequiresVolumeExpansion)&&!(single-replica)&&(!requireHugepages2Mi)&&(!requireHugepages1Gi)&&(!SwapTest))'
 
-export FUNC_TEST_LABEL_FILTER="${FUNC_TEST_LABEL_FILTER}&&(!requires-two-schedulable-nodes)&&(!requires-node-with-cpu-manager)"
+export FUNC_TEST_LABEL_FILTER="${FUNC_TEST_LABEL_FILTER}&&(!requires-two-schedulable-nodes)&&(!requires-node-with-cpu-manager)&&(!requires-two-worker-nodes-with-cpu-manager)"
 
 export KUBEVIRT_E2E_PARALLEL=false # DOnt run parallel since were only running 1 test at a time
 
