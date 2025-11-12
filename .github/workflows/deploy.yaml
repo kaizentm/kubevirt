@@ -15,61 +15,27 @@ on:
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ inputs.image_tag }}
-  KUBEVIRT_PROVIDER: external
+  KUBEVIRT_PROVIDER: k8s-1.32
   KUBECONFIG: ${{ github.workspace }}/kube-config
   KUBEVIRT_WITH_ETC_IN_MEMORY: "true"
+  KUBEVIRT_PROVIDER_EXTRA_ARGS: "--usb 30M --usb 40M"
   JUNIT_REPORT_FILE: _out/artifacts/junit.functest.xml
   KUBEVIRT_E2E_PARALLEL: "true"
+  TARGET: "k8s-1.32-sig-compute-parallel"
 
   
 jobs:
   Deploy_and_Test:
     environment: ${{ inputs.environment }}
-    runs-on: [self-hosted, azurelinux-cr-dev-sub]
+    runs-on: [self-hosted, azurelinux-cr-dev-sub, large]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Generate Manifests with configured Feature Gates
-        run: |          
-          make manifests
-        env: 
-          FEATURE_GATES: ${{ vars.FEATURE_GATES }}  
-      
-      - name: Upload Manifests
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.environment }}-manifests
-          path: ${{ github.workspace }}/_out/manifests
-
-      - name: Configure kubeconfig
+      - name: automation-test
         run: |
-          echo "$KUBE_CONFIG_CONTENT" > $KUBECONFIG          
-        env:
-          KUBE_CONFIG_CONTENT: ${{ secrets.KUBE_CONFIG }}             
-
-      - name: Deploy
-        run: |
-          make cluster-up
-          make cluster-deploy
-
-          # if KUBEVIRT_CR env varaibale is set, deploy the custom KubeVirt CR
-          if [ -n "${KUBEVIRT_CR:-}" ]; then
-            echo "Applying custom KubeVirt CR from KUBEVIRT_CR environment variable"
-            echo "$KUBEVIRT_CR" | ./kubevirtci/cluster-up/kubectl.sh apply -f -
-          fi
-          
-        env:
-          KUBEVIRT_CR: ${{ vars.KUBEVIRT_CR }}  
-
-      - name: Test
-        run: |
-          rm -f $JUNIT_REPORT_FILE
-          make cluster-up
-          hack/retry-functests.sh
-        env:          
-          TEST_FOCUS: ${{ vars.TEST_FOCUS }}
-          KUBEVIRT_E2E_SKIP: ${{ vars.TEST_SKIP }}
+          set -eux
+          ./automation/test.sh
           
       - name: Upload Test Results
         if: always()
@@ -88,5 +54,3 @@ jobs:
           reporter: java-junit
           fail-on-error: false
           max-annotations: 50
-
-
