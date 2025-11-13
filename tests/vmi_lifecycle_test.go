@@ -601,6 +601,9 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 				pod, err := libnode.GetVirtHandlerPod(kubevirt.Client(), nodeName)
 				Expect(err).ToNot(HaveOccurred())
 
+				// Fetch the hypervisor device name, e.g., kvm, mshv, etc.
+				hypervisorDeviceName := hypervisor.GetDevice(kubevirt.Client())
+
 				_, _, err = exec.ExecuteCommandOnPodWithResults(pod,
 					"virt-handler",
 					[]string{
@@ -608,7 +611,7 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 						// We want to fail if the file does not exist, but don't want to be asked
 						// if we really want to remove write-protected files
 						"--interactive=never",
-						device_manager.SocketPath("kvm"),
+						device_manager.SocketPath(hypervisorDeviceName),
 					})
 				Expect(err).ToNot(HaveOccurred())
 
@@ -626,7 +629,7 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 					return string(data)
 				}, 60, 1).Should(
 					ContainSubstring(
-						fmt.Sprintf("device socket file for device %s was removed, kubelet probably restarted.", "kvm"),
+						fmt.Sprintf("device socket file for device %s was removed, kubelet probably restarted.", hypervisorDeviceName),
 					), "Should log device plugin restart")
 
 				// This is a little bit arbitrar
