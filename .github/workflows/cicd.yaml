@@ -12,7 +12,7 @@ env:
   CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
 
 jobs:
-  # quality-check:
+  #quality-check:
   #  uses: ./.github/workflows/pr.yaml
 
   Build_Push_Images:
