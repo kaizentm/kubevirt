@@ -16,7 +16,7 @@ jobs:
   #  uses: ./.github/workflows/pr.yaml
 
   Build_Push_Images:
-    runs-on: [self-hosted]
+    runs-on: self-hosted
     permissions: write-all
     steps:
       - name: Checkout
@@ -63,7 +63,6 @@ jobs:
       environment: dev
       image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
       kubevirt_provider: external
-      runner_tags: [self-hosted]
     secrets: inherit
     needs: [Build_Push_Images]
 
@@ -73,7 +72,7 @@ jobs:
       environment: test-kvm
       image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
       kubevirt_provider: k8s-1.32
-      runner_tags: [self-hosted, large]
+      runner_tags: '["self-hosted", "large"]'
     secrets: inherit
     needs: [dev]
 
@@ -83,6 +82,5 @@ jobs:
      environment: test-mshv
      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
      kubevirt_provider: external
-     runner_tags: [self-hosted]
    secrets: inherit
    needs: [dev]

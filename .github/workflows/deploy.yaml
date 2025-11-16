@@ -18,8 +18,8 @@ on:
       runner_tags:
         description: 'The runner tags to use'
         required: false
-        type: array
-        default: ['self-hosted']
+        type: string
+        default: 'self-hosted'
 
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
