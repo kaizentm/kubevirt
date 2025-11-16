@@ -21,7 +21,7 @@ env:
   JUNIT_REPORT_FILE: _out/artifacts/junit.functest.xml
   KUBEVIRT_E2E_PARALLEL: "true"
   KUBEVIRT_NUM_NODES: 2
-
+  KUBEVIRT_MEMORY_SIZE: 11264M
   
 jobs:
   Deploy_and_Test:
