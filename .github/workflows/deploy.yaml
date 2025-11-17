@@ -19,7 +19,7 @@ on:
         description: 'The runner tags to use'
         required: false
         type: string
-        default: 'self-hosted'
+        default: '["self-hosted"]'
 
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
@@ -35,7 +35,7 @@ env:
 jobs:
   Deploy_and_Test:
     environment: ${{ inputs.environment }}
-    runs-on: ${{ inputs.runner_tags }}
+    runs-on: ${{ fromJSON(inputs.runner_tags) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
