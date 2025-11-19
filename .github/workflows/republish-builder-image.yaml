@@ -3,7 +3,7 @@ name: Republish KubeVirt Builder Image to ACR
 on:
   workflow_dispatch:
   push:
-    branches: ["ise"]
+    branches: ["guptaharshit/migrate-to-acr"] # TODO Revert to "ise" after testing
 
 env:
   QEMU_REPO: https://github.com/kaizentm/qemu
