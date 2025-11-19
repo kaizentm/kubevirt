@@ -6,11 +6,7 @@ on:
     branches: ["guptaharshit/migrate-to-acr"] # TODO Revert to "ise" after testing
 
 env:
-  QEMU_REPO: https://github.com/kaizentm/qemu
   REGISTRY: acrafoimages.azurecr.io
-  IMAGE_NAME: ${{ github.repository }}/kubevirt-l1vh/qemu-rpms
-  QEMU_VERSION: 10.1.50.mshv.v5
-  RPM_IMAGE_TAG: qemu-mshv
 
 jobs:
   build-rpms:
@@ -18,7 +14,7 @@ jobs:
     environment: build
     permissions:
       contents: read
-      packages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +43,6 @@ jobs:
 
           upstream_builder_image="quay.io/kubevirt/builder:${BUILDER_VERSION}"
           docker pull $upstream_builder_image
-          republished_image="${{ env.IMAGE_NAME }}:${BUILDER_VERSION}"
+          republished_image="${{ env.REGISTRY }}/kubevirt/builder:${BUILDER_VERSION}"
           docker tag $upstream_builder_image $republished_image
           docker push $republished_image
