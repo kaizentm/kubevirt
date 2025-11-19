@@ -9,7 +9,7 @@ env:
   REGISTRY: acrafoimages.azurecr.io
 
 jobs:
-  build-rpms:
+  republish-builder-image:
     runs-on: ubuntu-latest
     environment: build
     permissions:
