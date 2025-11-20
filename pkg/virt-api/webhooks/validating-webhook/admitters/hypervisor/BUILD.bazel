@@ -1,16 +1,16 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "validator.go",
-    ],
+    srcs = ["validator.go"],
     importpath = "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/kvm:go_default_library",
+        "//pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/mshv:go_default_library",
         "//pkg/virt-config:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/kubevirt.io/api/core/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/validation/field:go_default_library",
     ],
 )
