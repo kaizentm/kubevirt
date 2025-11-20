@@ -7,6 +7,9 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/downwardmetrics:go_default_library",
+        "//pkg/dra/admitter:go_default_library",
+        "//pkg/network/admitter:go_default_library",
+        "//pkg/network/vmispec:go_default_library",
         "//pkg/storage/admitters:go_default_library",
         "//pkg/storage/reservation:go_default_library",
         "//pkg/storage/types:go_default_library",

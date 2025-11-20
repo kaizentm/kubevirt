@@ -19,6 +19,9 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/kubevirt/pkg/downwardmetrics"
+	draadmitter "kubevirt.io/kubevirt/pkg/dra/admitter"
+	netadmitter "kubevirt.io/kubevirt/pkg/network/admitter"
+	"kubevirt.io/kubevirt/pkg/network/vmispec"
 	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
 	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	"kubevirt.io/kubevirt/pkg/storage/types"
@@ -62,7 +65,70 @@ type BaseValidator struct {
 }
 
 func (bv *BaseValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
-	return []metav1.StatusCause{}
+	var causes []metav1.StatusCause
+
+	causes = append(causes, bv.ValidateHostNameNotConformingToDNSLabelRules(field, spec)...)
+	causes = append(causes, bv.ValidateSubdomainDNSSubdomainRules(field, spec)...)
+	causes = append(causes, bv.ValidateMemoryRequestsNegativeOrNull(field, spec)...)
+	causes = append(causes, bv.ValidateMemoryLimitsNegativeOrNull(field, spec)...)
+	causes = append(causes, bv.ValidateHugepagesMemoryRequests(field, spec)...)
+	causes = append(causes, bv.ValidateGuestMemoryLimit(field, spec, config)...)
+	causes = append(causes, bv.ValidateEmulatedMachine(field, spec, config)...)
+	causes = append(causes, bv.ValidateFirmwareACPI(field.Child("acpi"), spec)...)
+	causes = append(causes, bv.ValidateCPURequestNotNegative(field, spec)...)
+	causes = append(causes, bv.ValidateCPULimitNotNegative(field, spec)...)
+	causes = append(causes, bv.ValidateCpuRequestDoesNotExceedLimit(field, spec)...)
+	causes = append(causes, bv.ValidateCpuPinning(field, spec, config)...)
+	causes = append(causes, bv.ValidateNUMA(field, spec, config)...)
+	causes = append(causes, bv.ValidateCPUIsolatorThread(field, spec)...)
+	causes = append(causes, bv.ValidateCPUFeaturePolicies(field, spec)...)
+	causes = append(causes, bv.ValidateCPUHotplug(field, spec)...)
+	causes = append(causes, bv.ValidateStartStrategy(field, spec)...)
+	causes = append(causes, bv.ValidateRealtime(field, spec)...)
+	causes = append(causes, bv.ValidateSpecAffinity(field, spec)...)
+	causes = append(causes, bv.ValidateSpecTopologySpreadConstraints(field, spec)...)
+	causes = append(causes, bv.ValidateArchitecture(field, spec, config)...)
+
+	netValidator := netadmitter.NewValidator(field, spec, config)
+	causes = append(causes, netValidator.Validate()...)
+
+	causes = append(causes, draadmitter.ValidateCreation(field, spec, config)...)
+
+	causes = append(causes, bv.ValidateBootOrder(field, spec, config)...)
+
+	causes = append(causes, bv.ValidateInputDevices(field, spec)...)
+	causes = append(causes, bv.ValidateIOThreadsPolicy(field, spec)...)
+	causes = append(causes, bv.ValidateProbe(field.Child("readinessProbe"), spec.ReadinessProbe)...)
+	causes = append(causes, bv.ValidateProbe(field.Child("livenessProbe"), spec.LivenessProbe)...)
+
+	if podNetwork := vmispec.LookupPodNetwork(spec.Networks); podNetwork == nil {
+		causes = appendStatusCauseForProbeNotAllowedWithNoPodNetworkPresent(field.Child("readinessProbe"), spec.ReadinessProbe, causes)
+		causes = appendStatusCauseForProbeNotAllowedWithNoPodNetworkPresent(field.Child("livenessProbe"), spec.LivenessProbe, causes)
+	}
+
+	causes = append(causes, bv.ValidateDomainSpec(field.Child("domain"), &spec.Domain)...)
+	causes = append(causes, bv.ValidateVolumes(field.Child("volumes"), spec.Volumes, config)...)
+	causes = append(causes, storageadmitters.ValidateContainerDisks(field, spec)...)
+
+	causes = append(causes, bv.ValidateAccessCredentials(field.Child("accessCredentials"), spec.AccessCredentials, spec.Volumes)...)
+
+	if spec.DNSPolicy != "" {
+		causes = append(causes, bv.ValidateDNSPolicy(&spec.DNSPolicy, field.Child("dnsPolicy"))...)
+	}
+	causes = append(causes, bv.ValidatePodDNSConfig(spec.DNSConfig, &spec.DNSPolicy, field.Child("dnsConfig"))...)
+	causes = append(causes, bv.ValidateLiveMigration(field, spec, config)...)
+	causes = append(causes, bv.ValidateMDEVRamFB(field, spec)...)
+	causes = append(causes, bv.ValidateHostDevicesWithPassthroughEnabled(field, spec, config)...)
+	causes = append(causes, bv.ValidateSoundDevices(field, spec)...)
+	causes = append(causes, bv.ValidateLaunchSecurity(field, spec, config)...)
+	causes = append(causes, bv.ValidateVSOCK(field, spec, config)...)
+	causes = append(causes, bv.ValidatePersistentReservation(field, spec, config)...)
+	causes = append(causes, bv.ValidateDownwardMetrics(field, spec, config)...)
+	causes = append(causes, bv.ValidateFilesystemsWithVirtIOFSEnabled(field, spec, config)...)
+	causes = append(causes, bv.ValidateVideoConfig(field, spec, config)...)
+	causes = append(causes, bv.ValidatePanicDevices(field, spec, config)...)
+
+	return causes
 }
 
 func (bv *BaseValidator) ValidateHotplug(oldVmi *v1.VirtualMachineInstance, newVmi *v1.VirtualMachineInstance, cc *virtconfig.ClusterConfig) *admissionv1.AdmissionResponse {
@@ -1969,4 +2035,27 @@ func secureBootEnabled(firmware *v1.Firmware) bool {
 
 func smmFeatureEnabled(features *v1.Features) bool {
 	return features != nil && features.SMM != nil && (features.SMM.Enabled == nil || *features.SMM.Enabled)
+}
+
+func appendStatusCauseForProbeNotAllowedWithNoPodNetworkPresent(field *k8sfield.Path, probe *v1.Probe, causes []metav1.StatusCause) []metav1.StatusCause {
+	if probe == nil {
+		return causes
+	}
+
+	if probe.HTTPGet != nil {
+		causes = append(causes, podNetworkRequiredStatusCause(field.Child("httpGet")))
+	}
+
+	if probe.TCPSocket != nil {
+		causes = append(causes, podNetworkRequiredStatusCause(field.Child("tcpSocket")))
+	}
+	return causes
+}
+
+func podNetworkRequiredStatusCause(field *k8sfield.Path) metav1.StatusCause {
+	return metav1.StatusCause{
+		Type:    metav1.CauseTypeFieldValueInvalid,
+		Message: fmt.Sprintf("%s is only allowed if the Pod Network is attached", field.String()),
+		Field:   field.String(),
+	}
 }
