@@ -76,6 +76,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 	kubeVirtServiceAccounts := webhooks.KubeVirtServiceAccounts(kubeVirtNamespace)
 	hypervisor := config.GetHypervisor()
 	validator := hypervisor_validator.NewValidator(hypervisor.Name)
+	baseValidator := base_validator.BaseValidator{}
 	vmiCreateAdmitter := &VMICreateAdmitter{ClusterConfig: config, KubeVirtServiceAccounts: kubeVirtServiceAccounts}
 
 	dnsConfigTestOption := "test"
@@ -642,7 +643,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 				},
 			})
 
-			causes := validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
+			causes := baseValidator.ValidateVirtualMachineInstanceSpecVolumeDisks(k8sfield.NewPath("fake"), &vmi.Spec)
 			Expect(causes).To(HaveLen(1))
 			Expect(causes[0].Field).To(Equal("fake.domain.volumes[0].name"))
 		})
@@ -2162,14 +2163,14 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 
 		It("should accept when the feature gate is enabled", func() {
 			enableFeatureGates(featuregate.MultiArchitecture, featuregate.SecureExecution)
-			causes := validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
+			causes := validator.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("fake"), &vmi.Spec, config)
 			Expect(causes).To(BeEmpty())
 		})
 
 		It("should reject when the feature gate is disabled", func() {
 			enableFeatureGates(featuregate.MultiArchitecture)
 
-			causes := validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
+			causes := validator.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("fake"), &vmi.Spec, config)
 			Expect(causes).To(HaveLen(1))
 			Expect(causes[0].Message).To(ContainSubstring(fmt.Sprintf("%s feature gate is not enabled", featuregate.SecureExecution)))
 		})
@@ -2984,7 +2985,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 		DescribeTable("should accept supported video models per architecture", func(arch, videoType string) {
 			vmi.Spec.Domain.Devices.Video.Type = videoType
 			vmi.Spec.Architecture = arch
-			causes := validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
+			causes := validator.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("fake"), &vmi.Spec, config)
 			Expect(causes).To(BeEmpty(), fmt.Sprintf("expected video type %s to be valid on arch %s", videoType, arch))
 		},
 			Entry("amd64 allows vga", "amd64", "vga"),
@@ -3002,7 +3003,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 		DescribeTable("should reject unsupported video models per architecture", func(arch, videoType string) {
 			vmi.Spec.Domain.Devices.Video.Type = videoType
 			vmi.Spec.Architecture = arch
-			causes := validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
+			causes := validator.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("fake"), &vmi.Spec, config)
 			Expect(causes).ToNot(BeEmpty(), fmt.Sprintf("expected video type %s to be invalid on arch %s", videoType, arch))
 			Expect(causes[0].Field).To(Equal("fake.domain.devices.video.type"))
 		},

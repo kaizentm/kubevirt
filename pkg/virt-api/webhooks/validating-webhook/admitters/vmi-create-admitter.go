@@ -31,7 +31,9 @@ import (
 
 	"kubevirt.io/kubevirt/pkg/hooks"
 	webhookutils "kubevirt.io/kubevirt/pkg/util/webhooks"
+	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
 	hypervisor_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor"
+	base_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/base"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 )
@@ -78,7 +80,14 @@ func (admitter *VMICreateAdmitter) Admit(_ context.Context, ar *admissionv1.Admi
 
 	hypervisor := admitter.ClusterConfig.GetHypervisor()
 	validator := hypervisor_validator.NewValidator(hypervisor.Name)
+	baseValidator := base_validator.BaseValidator{}
 	causes = append(causes, validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("spec"), &vmi.Spec, admitter.ClusterConfig)...)
+	causes = append(causes, validator.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("spec"), &vmi.Spec, admitter.ClusterConfig)...)
+
+	causes = append(causes, baseValidator.ValidateVirtualMachineInstanceSpecVolumeDisks(k8sfield.NewPath("spec"), &vmi.Spec)...)
+	causes = append(causes, baseValidator.ValidateVirtualMachineInstanceMandatoryFields(k8sfield.NewPath("spec"), &vmi.Spec)...)
+	// TODO Why is hyperv validation logic in a separate location?
+	causes = append(causes, webhooks.ValidateVirtualMachineInstanceHyperv(k8sfield.NewPath("spec").Child("domain").Child("features").Child("hyperv"), &vmi.Spec)...)
 
 	_, isKubeVirtServiceAccount := admitter.KubeVirtServiceAccounts[ar.Request.UserInfo.Username]
 	causes = append(causes, ValidateVirtualMachineInstanceMetadata(k8sfield.NewPath("metadata"), &vmi.ObjectMeta, admitter.ClusterConfig, isKubeVirtServiceAccount)...)

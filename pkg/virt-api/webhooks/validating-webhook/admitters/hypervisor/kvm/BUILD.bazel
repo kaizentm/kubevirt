@@ -10,7 +10,6 @@ go_library(
         "//pkg/network/admitter:go_default_library",
         "//pkg/network/vmispec:go_default_library",
         "//pkg/storage/admitters:go_default_library",
-        "//pkg/virt-api/webhooks:go_default_library",
         "//pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/base:go_default_library",
         "//pkg/virt-config:go_default_library",
         "//staging/src/kubevirt.io/api/core/v1:go_default_library",

@@ -12,7 +12,6 @@ import (
 	netadmitter "kubevirt.io/kubevirt/pkg/network/admitter"
 	"kubevirt.io/kubevirt/pkg/network/vmispec"
 	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
-	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
 	base_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/base"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 )
@@ -84,14 +83,6 @@ func (kv *KvmValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path,
 	causes = append(causes, kv.ValidateFilesystemsWithVirtIOFSEnabled(field, spec, config)...)
 	causes = append(causes, kv.ValidateVideoConfig(field, spec, config)...)
 	causes = append(causes, kv.ValidatePanicDevices(field, spec, config)...)
-
-	// We only want to validate that volumes are mapped to disks or filesystems during VMI admittance, thus this logic is seperated from the above call that is shared with the VM admitter.
-	causes = append(causes, kv.ValidateVirtualMachineInstanceSpecVolumeDisks(k8sfield.NewPath("spec"), spec)...)
-	causes = append(causes, kv.ValidateVirtualMachineInstanceMandatoryFields(k8sfield.NewPath("spec"), spec)...)
-
-	// TODO Why is hyperv validation logic in a separate location?
-	causes = append(causes, webhooks.ValidateVirtualMachineInstanceHyperv(k8sfield.NewPath("spec").Child("domain").Child("features").Child("hyperv"), spec)...)
-	causes = append(causes, kv.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("spec"), spec, config)...)
 
 	return causes
 }
