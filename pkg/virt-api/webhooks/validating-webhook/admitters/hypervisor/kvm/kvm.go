@@ -1,10 +1,15 @@
 package kvm_validator
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfield "k8s.io/apimachinery/pkg/util/validation/field"
 	v1 "kubevirt.io/api/core/v1"
+	draadmitter "kubevirt.io/kubevirt/pkg/dra/admitter"
+	netadmitter "kubevirt.io/kubevirt/pkg/network/admitter"
 	"kubevirt.io/kubevirt/pkg/network/vmispec"
+	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
 	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
 	base_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/base"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
@@ -87,7 +92,7 @@ func (kv *KvmValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path,
 	causes = append(causes, kv.ValidateVirtualMachineInstanceMandatoryFields(k8sfield.NewPath("spec"), spec)...)
 
 	// TODO Why is hyperv validation logic in a separate location?
-	causes = append(causes, webhooks.ValidateVirtualMachineInstanceHyperv(k8sfield.NewPath("spec").Child("domain").Child("features").Child("hyperv"), &vmi.Spec)...)
+	causes = append(causes, webhooks.ValidateVirtualMachineInstanceHyperv(k8sfield.NewPath("spec").Child("domain").Child("features").Child("hyperv"), spec)...)
 	causes = append(causes, kv.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("spec"), spec)...)
 
 	return causes
@@ -95,4 +100,27 @@ func (kv *KvmValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path,
 
 func (kv *KvmValidator) ValidateHotplug(oldVmi *v1.VirtualMachineInstance, newVmi *v1.VirtualMachineInstance, cc *virtconfig.ClusterConfig) []metav1.StatusCause {
 	return []metav1.StatusCause{}
+}
+
+func appendStatusCauseForProbeNotAllowedWithNoPodNetworkPresent(field *k8sfield.Path, probe *v1.Probe, causes []metav1.StatusCause) []metav1.StatusCause {
+	if probe == nil {
+		return causes
+	}
+
+	if probe.HTTPGet != nil {
+		causes = append(causes, podNetworkRequiredStatusCause(field.Child("httpGet")))
+	}
+
+	if probe.TCPSocket != nil {
+		causes = append(causes, podNetworkRequiredStatusCause(field.Child("tcpSocket")))
+	}
+	return causes
+}
+
+func podNetworkRequiredStatusCause(field *k8sfield.Path) metav1.StatusCause {
+	return metav1.StatusCause{
+		Type:    metav1.CauseTypeFieldValueInvalid,
+		Message: fmt.Sprintf("%s is only allowed if the Pod Network is attached", field.String()),
+		Field:   field.String(),
+	}
 }
