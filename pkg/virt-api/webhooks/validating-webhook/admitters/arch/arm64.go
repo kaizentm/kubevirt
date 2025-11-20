@@ -21,7 +21,7 @@
  * arm64 utilities are in the webhooks package because they are used both
  * by validation and mutation webhooks.
  */
-package webhooks
+package arch_validators
 
 import (
 	"fmt"
@@ -31,10 +31,14 @@ import (
 	k8sfield "k8s.io/apimachinery/pkg/util/validation/field"
 
 	v1 "kubevirt.io/api/core/v1"
+
+	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 )
 
+type Arm64Validator struct{}
+
 // ValidateVirtualMachineInstanceArm64Setting is a validation function for validating-webhook to filter unsupported setting on Arm64
-func ValidateVirtualMachineInstanceArm64Setting(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec) []metav1.StatusCause {
+func (v *Arm64Validator) ValidateVirtualMachineInstanceArchSetting(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, cc *virtconfig.ClusterConfig) []metav1.StatusCause {
 	var statusCauses []metav1.StatusCause
 	validateBootOptions(field, spec, &statusCauses)
 	validateCPUModel(field, spec, &statusCauses)

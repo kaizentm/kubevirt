@@ -91,7 +91,7 @@ func (kv *KvmValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path,
 
 	// TODO Why is hyperv validation logic in a separate location?
 	causes = append(causes, webhooks.ValidateVirtualMachineInstanceHyperv(k8sfield.NewPath("spec").Child("domain").Child("features").Child("hyperv"), spec)...)
-	causes = append(causes, kv.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("spec"), spec)...)
+	causes = append(causes, kv.ValidateVirtualMachineInstancePerArch(k8sfield.NewPath("spec"), spec, config)...)
 
 	return causes
 }

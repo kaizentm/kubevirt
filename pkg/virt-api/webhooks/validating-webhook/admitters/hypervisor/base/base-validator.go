@@ -25,7 +25,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/storage/utils"
 	hwutil "kubevirt.io/kubevirt/pkg/util/hardware"
 	webhookutils "kubevirt.io/kubevirt/pkg/util/webhooks"
-	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
+	arch_validators "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/arch"
 	admitter_utils "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/util"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
@@ -33,9 +33,9 @@ import (
 
 const requiredFieldFmt = "%s is a required field"
 
-var validIOThreadsPolicies = []v1.IOThreadsPolicy{v1.IOThreadsPolicyShared, v1.IOThreadsPolicyAuto, v1.IOThreadsPolicySupplementalPool}
-var validCPUFeaturePolicies = map[string]*struct{}{"": nil, "force": nil, "require": nil, "optional": nil, "disable": nil, "forbid": nil}
-var validPanicDeviceModels = []v1.PanicDeviceModel{v1.Hyperv, v1.Isa, v1.Pvpanic}
+var ValidIOThreadsPolicies = []v1.IOThreadsPolicy{v1.IOThreadsPolicyShared, v1.IOThreadsPolicyAuto, v1.IOThreadsPolicySupplementalPool}
+var ValidCPUFeaturePolicies = map[string]*struct{}{"": nil, "force": nil, "require": nil, "optional": nil, "disable": nil, "forbid": nil}
+var ValidPanicDeviceModels = []v1.PanicDeviceModel{v1.Hyperv, v1.Isa, v1.Pvpanic}
 
 const (
 	// cloudInitNetworkMaxLen and CloudInitUserMaxLen are being limited
@@ -46,9 +46,9 @@ const (
 	cloudInitNetworkMaxLen = 2048
 
 	// Copied from kubernetes/pkg/apis/core/validation/validation.go
-	maxDNSNameservers     = 3
-	maxDNSSearchPaths     = 6
-	maxDNSSearchListChars = 256
+	MaxDNSNameservers     = 3
+	MaxDNSSearchPaths     = 6
+	MaxDNSSearchListChars = 256
 )
 
 const (
@@ -56,7 +56,7 @@ const (
 	valueMustBePositiveMessagePattern = "%s '%s': must be greater than or equal to 0."
 )
 
-var invalidPanicDeviceModelErrFmt = "invalid PanicDeviceModel(%s)"
+var InvalidPanicDeviceModelErrFmt = "invalid PanicDeviceModel(%s)"
 
 type BaseValidator struct {
 }
@@ -388,10 +388,10 @@ func (bv *BaseValidator) ValidatePodDNSConfig(dnsConfig *k8sv1.PodDNSConfig, dns
 		return causes
 	}
 	// Validate nameservers.
-	if len(dnsConfig.Nameservers) > maxDNSNameservers {
+	if len(dnsConfig.Nameservers) > MaxDNSNameservers {
 		causes = append(causes, metav1.StatusCause{
 			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("must not have more than %v nameservers: %s", maxDNSNameservers, dnsConfig.Nameservers),
+			Message: fmt.Sprintf("must not have more than %v nameservers: %s", MaxDNSNameservers, dnsConfig.Nameservers),
 			Field:   "nameservers",
 		})
 	}
@@ -405,18 +405,18 @@ func (bv *BaseValidator) ValidatePodDNSConfig(dnsConfig *k8sv1.PodDNSConfig, dns
 		}
 	}
 	// Validate searches.
-	if len(dnsConfig.Searches) > maxDNSSearchPaths {
+	if len(dnsConfig.Searches) > MaxDNSSearchPaths {
 		causes = append(causes, metav1.StatusCause{
 			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("must not have more than %v search paths", maxDNSSearchPaths),
+			Message: fmt.Sprintf("must not have more than %v search paths", MaxDNSSearchPaths),
 			Field:   "searchDomains",
 		})
 	}
 	// Include the space between search paths.
-	if len(strings.Join(dnsConfig.Searches, " ")) > maxDNSSearchListChars {
+	if len(strings.Join(dnsConfig.Searches, " ")) > MaxDNSSearchListChars {
 		causes = append(causes, metav1.StatusCause{
 			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("must not have more than %v characters (including spaces) in the search list", maxDNSSearchListChars),
+			Message: fmt.Sprintf("must not have more than %v characters (including spaces) in the search list", MaxDNSSearchListChars),
 			Field:   "searchDomains",
 		})
 	}
@@ -600,7 +600,7 @@ func (bv *BaseValidator) ValidateCPUFeaturePolicies(field *k8sfield.Path, spec *
 	var causes []metav1.StatusCause
 	if spec.Domain.CPU != nil && spec.Domain.CPU.Features != nil {
 		for idx, feature := range spec.Domain.CPU.Features {
-			if _, exists := validCPUFeaturePolicies[feature.Policy]; !exists {
+			if _, exists := ValidCPUFeaturePolicies[feature.Policy]; !exists {
 				causes = append(causes, metav1.StatusCause{
 					Type:    metav1.CauseTypeFieldValueNotSupported,
 					Message: fmt.Sprintf("CPU feature %s uses policy %s that is not supported.", feature.Name, feature.Policy),
@@ -838,10 +838,10 @@ func (bv *BaseValidator) ValidatePanicDeviceModel(field *k8sfield.Path, model *v
 	if model == nil {
 		return nil
 	}
-	if !slices.Contains(validPanicDeviceModels, *model) {
+	if !slices.Contains(ValidPanicDeviceModels, *model) {
 		return &metav1.StatusCause{
 			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf(invalidPanicDeviceModelErrFmt, *model),
+			Message: fmt.Sprintf(InvalidPanicDeviceModelErrFmt, *model),
 			Field:   field.String(),
 		}
 	}
@@ -966,13 +966,7 @@ func (bv *BaseValidator) ValidateLaunchSecurity(field *k8sfield.Path, spec *v1.V
 	if launchSecurity == nil {
 		return causes
 	}
-	if !config.SecureExecutionEnabled() && webhooks.IsS390X(spec) {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("%s feature gate is not enabled in kubevirt-config", featuregate.SecureExecution),
-			Field:   field.Child("launchSecurity").String(),
-		})
-	}
+
 	if !config.WorkloadEncryptionSEVEnabled() && launchSecurity.SEV != nil {
 		causes = append(causes, metav1.StatusCause{
 			Type:    metav1.CauseTypeFieldValueInvalid,
@@ -1273,7 +1267,7 @@ func (bv *BaseValidator) ValidateIOThreadsPolicy(field *k8sfield.Path, spec *v1.
 		return causes
 	}
 	isValidPolicy := func(policy v1.IOThreadsPolicy) bool {
-		for _, p := range validIOThreadsPolicies {
+		for _, p := range ValidIOThreadsPolicies {
 			if policy == p {
 				return true
 			}
@@ -1804,25 +1798,20 @@ func (bv *BaseValidator) ValidateVirtualMachineInstanceMandatoryFields(field *k8
 	return causes
 }
 
-func (bv *BaseValidator) ValidateVirtualMachineInstancePerArch(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec) []metav1.StatusCause {
+func (bv *BaseValidator) ValidateVirtualMachineInstancePerArch(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, cc *virtconfig.ClusterConfig) []metav1.StatusCause {
 	var causes []metav1.StatusCause
+	archValidator := arch_validators.NewArchValidator(spec.Architecture)
 	arch := spec.Architecture
 
-	switch arch {
-	case "amd64":
-		causes = append(causes, webhooks.ValidateVirtualMachineInstanceAmd64Setting(field, spec)...)
-	case "s390x":
-		causes = append(causes, webhooks.ValidateVirtualMachineInstanceS390XSetting(field, spec)...)
-	case "arm64":
-		causes = append(causes, webhooks.ValidateVirtualMachineInstanceArm64Setting(field, spec)...)
-	default:
+	if archValidator != nil {
+		causes = append(causes, archValidator.ValidateVirtualMachineInstanceArchSetting(field, spec, cc)...)
+	} else {
 		causes = append(causes, metav1.StatusCause{
 			Type:    metav1.CauseTypeFieldValueInvalid,
 			Message: fmt.Sprintf("unsupported architecture: %s", arch),
 			Field:   field.Child("architecture").String(),
 		})
 	}
-
 	return causes
 }
 

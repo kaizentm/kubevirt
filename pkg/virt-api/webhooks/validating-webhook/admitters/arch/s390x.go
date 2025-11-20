@@ -17,7 +17,7 @@
  *
  */
 
-package webhooks
+package arch_validators
 
 import (
 	"fmt"
@@ -27,13 +27,19 @@ import (
 	k8sfield "k8s.io/apimachinery/pkg/util/validation/field"
 
 	v1 "kubevirt.io/api/core/v1"
+
+	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
+	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 )
 
-// ValidateVirtualMachineInstanceS390xSetting is a validation function for validating-webhook on s390x
-func ValidateVirtualMachineInstanceS390XSetting(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec) []metav1.StatusCause {
+type S390xValidator struct{}
+
+// ValidateVirtualMachineInstanceArchSetting is a validation function for validating-webhook on s390x
+func (v *S390xValidator) ValidateVirtualMachineInstanceArchSetting(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, cc *virtconfig.ClusterConfig) []metav1.StatusCause {
 	var statusCauses []metav1.StatusCause
 	validateWatchdogS390x(field, spec, &statusCauses)
 	validateVideoTypeS390x(field, spec, &statusCauses)
+	validateLaunchSecurity(field, spec, cc, &statusCauses)
 	return statusCauses
 }
 
@@ -73,6 +79,13 @@ func isOnlyDiag288Watchdog(watchdog *v1.Watchdog) bool {
 	return watchdog.WatchdogDevice.Diag288 != nil && watchdog.WatchdogDevice.I6300ESB == nil
 }
 
-func IsS390X(spec *v1.VirtualMachineInstanceSpec) bool {
-	return spec.Architecture == "s390x"
+func validateLaunchSecurity(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig, causes *[]metav1.StatusCause) {
+	launchSecurity := spec.Domain.LaunchSecurity
+	if launchSecurity != nil && !config.SecureExecutionEnabled() {
+		*causes = append(*causes, metav1.StatusCause{
+			Type:    metav1.CauseTypeFieldValueInvalid,
+			Message: fmt.Sprintf("%s feature gate is not enabled in kubevirt-config", featuregate.SecureExecution),
+			Field:   field.Child("launchSecurity").String(),
+		})
+	}
 }
