@@ -1331,7 +1331,7 @@ func (bv *BaseValidator) ValidateDomainSpec(field *k8sfield.Path, spec *v1.Domai
 	var causes []metav1.StatusCause
 
 	causes = append(causes, storageadmitters.ValidateDisks(field.Child("devices").Child("disks"), spec.Devices.Disks)...)
-	causes = append(causes, bv.ValidateFirmware(field.Child("firmware"), spec.Firmware)...)
+	causes = append(causes, admitter_utils.ValidateFirmware(field.Child("firmware"), spec.Firmware)...)
 
 	if secureBootEnabled(spec.Firmware) && !smmFeatureEnabled(spec.Features) {
 		causes = append(causes, metav1.StatusCause{
