@@ -24,7 +24,7 @@ this makes it easier to copy and maintain instead of vendoring in kubernetes or
 creating dry runs of the pod object during admission validation.
 */
 
-package admitters
+package admitter_utils
 
 import (
 	"fmt"
@@ -53,8 +53,8 @@ var nodeFieldSelectorValidators = map[string]func(string, bool) []string{
 	metav1.ObjectNameField: ValidateNodeName,
 }
 
-// validateAffinity checks if given affinities are valid
-func validateAffinity(affinity *core.Affinity, fldPath *field.Path) field.ErrorList {
+// ValidateAffinity checks if given affinities are valid
+func ValidateAffinity(affinity *core.Affinity, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if affinity != nil {
@@ -267,8 +267,8 @@ var (
 	supportedScheduleActions = sets.NewString(string(core.DoNotSchedule), string(core.ScheduleAnyway))
 )
 
-// validateTopologySpreadConstraints validates given TopologySpreadConstraints.
-func validateTopologySpreadConstraints(constraints []core.TopologySpreadConstraint, fldPath *field.Path) field.ErrorList {
+// ValidateTopologySpreadConstraints validates given TopologySpreadConstraints.
+func ValidateTopologySpreadConstraints(constraints []core.TopologySpreadConstraint, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for i, constraint := range constraints {
