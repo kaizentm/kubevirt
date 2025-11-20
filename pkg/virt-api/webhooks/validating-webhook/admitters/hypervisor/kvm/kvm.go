@@ -21,10 +21,6 @@ type KvmValidator struct {
 	*base_validator.BaseValidator
 }
 
-func (kv *KvmValidator) ValidateVirtualMachineSpec(field *k8sfield.Path, spec *v1.VirtualMachineSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
-	return []metav1.StatusCause{}
-}
-
 func (kv *KvmValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
 	var causes []metav1.StatusCause
 

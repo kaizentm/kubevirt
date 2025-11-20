@@ -14,9 +14,6 @@ import (
 )
 
 type Validator interface {
-	// Validate spec of VirtualMachine
-	ValidateVirtualMachineSpec(field *k8sfield.Path, spec *v1.VirtualMachineSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause
-
 	// Validate spec of VirtualMachineInstance
 	ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause
 
@@ -26,7 +23,7 @@ type Validator interface {
 
 func NewValidator(hypervisor string) Validator {
 	switch hypervisor {
-	case "mshv": // TODO Improve this
+	case v1.HyperVLayeredHypervisorName:
 		return &mshv_validator.MshvValidator{}
 	default:
 		return &kvm_validator.KvmValidator{}

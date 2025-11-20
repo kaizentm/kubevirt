@@ -61,10 +61,6 @@ var invalidPanicDeviceModelErrFmt = "invalid PanicDeviceModel(%s)"
 type BaseValidator struct {
 }
 
-func (bv *BaseValidator) ValidateVirtualMachineSpec(field *k8sfield.Path, spec *v1.VirtualMachineSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
-	return []metav1.StatusCause{}
-}
-
 func (bv *BaseValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
 	return []metav1.StatusCause{}
 }
