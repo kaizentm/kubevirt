@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +24,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/storage/types"
 	"kubevirt.io/kubevirt/pkg/storage/utils"
 	hwutil "kubevirt.io/kubevirt/pkg/util/hardware"
+	webhookutils "kubevirt.io/kubevirt/pkg/util/webhooks"
 	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
 	admitter_utils "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/util"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
@@ -67,8 +69,57 @@ func (bv *BaseValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path
 	return []metav1.StatusCause{}
 }
 
-func (bv *BaseValidator) ValidateHotplug(oldVmi *v1.VirtualMachineInstance, newVmi *v1.VirtualMachineInstance, cc *virtconfig.ClusterConfig) []metav1.StatusCause {
-	return []metav1.StatusCause{}
+func (bv *BaseValidator) ValidateHotplug(oldVmi *v1.VirtualMachineInstance, newVmi *v1.VirtualMachineInstance, cc *virtconfig.ClusterConfig) *admissionv1.AdmissionResponse {
+	if response := admitHotplugCPU(oldVmi.Spec.Domain.CPU, newVmi.Spec.Domain.CPU); response != nil {
+		return response
+	}
+
+	if response := admitHotplugMemory(oldVmi.Spec.Domain.Memory, newVmi.Spec.Domain.Memory); response != nil {
+		return response
+	}
+
+	return storageadmitters.AdmitHotplugStorage(
+		newVmi.Spec.Volumes,
+		oldVmi.Spec.Volumes,
+		newVmi.Spec.Domain.Devices.Disks,
+		oldVmi.Spec.Domain.Devices.Disks,
+		oldVmi.Status.VolumeStatus,
+		newVmi,
+		cc)
+}
+
+func admitHotplugCPU(oldCPUTopology, newCPUTopology *v1.CPU) *admissionv1.AdmissionResponse {
+
+	if oldCPUTopology.MaxSockets != newCPUTopology.MaxSockets {
+		return webhookutils.ToAdmissionResponse([]metav1.StatusCause{
+			{
+				Type:    metav1.CauseTypeFieldValueInvalid,
+				Message: "CPU topology maxSockets changed",
+			},
+		})
+	}
+
+	return nil
+}
+
+func admitHotplugMemory(oldMemory, newMemory *v1.Memory) *admissionv1.AdmissionResponse {
+	if oldMemory == nil ||
+		oldMemory.MaxGuest == nil ||
+		newMemory == nil ||
+		newMemory.MaxGuest == nil {
+		return nil
+	}
+
+	if !oldMemory.MaxGuest.Equal(*newMemory.MaxGuest) {
+		return webhookutils.ToAdmissionResponse([]metav1.StatusCause{
+			{
+				Type:    metav1.CauseTypeFieldValueInvalid,
+				Message: "Memory maxGuest changed",
+			},
+		})
+	}
+
+	return nil
 }
 
 func (bv *BaseValidator) validateNUMA(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {

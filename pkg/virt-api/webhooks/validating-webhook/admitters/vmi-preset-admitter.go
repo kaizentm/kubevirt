@@ -80,6 +80,7 @@ func ValidateVMIPresetSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstance
 
 	causes = append(causes, storageadmitters.ValidateDisks(field.Child("domain").Child("devices").Child("disks"), spec.Domain.Devices.Disks)...)
 	bv := base_validator.BaseValidator{}
+	// TODO This can be made better by exposing specific validators (e.g., FirmwareValidator) as independent interfaces. Or we can expose each validation function from the Validator interface
 	causes = append(causes, bv.ValidateFirmware(field.Child("domain").Child("firmware"), spec.Domain.Firmware)...)
 	return causes
 }

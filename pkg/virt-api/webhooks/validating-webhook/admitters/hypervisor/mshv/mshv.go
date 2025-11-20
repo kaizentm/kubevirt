@@ -3,6 +3,7 @@ package mshv_validator
 import (
 	"fmt"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfield "k8s.io/apimachinery/pkg/util/validation/field"
 	v1 "kubevirt.io/api/core/v1"
@@ -95,8 +96,8 @@ func (mv *MshvValidator) ValidateVirtualMachineInstanceSpec(field *k8sfield.Path
 	return causes
 }
 
-func (mv *MshvValidator) ValidateHotplug(oldVmi *v1.VirtualMachineInstance, newVmi *v1.VirtualMachineInstance, cc *virtconfig.ClusterConfig) []metav1.StatusCause {
-	return []metav1.StatusCause{}
+func (mv *MshvValidator) ValidateHotplug(oldVmi *v1.VirtualMachineInstance, newVmi *v1.VirtualMachineInstance, cc *virtconfig.ClusterConfig) *admissionv1.AdmissionResponse {
+	return mv.BaseValidator.ValidateHotplug(oldVmi, newVmi, cc)
 }
 
 func appendStatusCauseForProbeNotAllowedWithNoPodNetworkPresent(field *k8sfield.Path, probe *v1.Probe, causes []metav1.StatusCause) []metav1.StatusCause {
