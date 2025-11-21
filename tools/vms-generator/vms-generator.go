@@ -43,6 +43,7 @@ import (
 
 	"kubevirt.io/kubevirt/pkg/testutils"
 	validating_webhook "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters"
+	hypervisor_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor"
 	"kubevirt.io/kubevirt/tools/vms-generator/utils"
 )
 
@@ -195,8 +196,10 @@ func main() {
 		handleError(dumpObject(name, *obj))
 	}
 
+	hypervisor := config.GetHypervisor()
+	validator := hypervisor_validator.NewValidator(hypervisor.Name)
 	for name, obj := range vmis {
-		causes := validating_webhook.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("spec"), &obj.Spec, config)
+		causes := validator.ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("spec"), &obj.Spec, config)
 		handleCauses(causes, name, "vmi")
 		handleError(dumpObject(name, *obj))
 	}

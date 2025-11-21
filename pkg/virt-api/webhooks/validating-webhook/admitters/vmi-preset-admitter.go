@@ -33,6 +33,7 @@ import (
 	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
 	webhookutils "kubevirt.io/kubevirt/pkg/util/webhooks"
 	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
+	base_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor/base"
 )
 
 type VMIPresetAdmitter struct {
@@ -78,6 +79,8 @@ func ValidateVMIPresetSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstance
 	}
 
 	causes = append(causes, storageadmitters.ValidateDisks(field.Child("domain").Child("devices").Child("disks"), spec.Domain.Devices.Disks)...)
-	causes = append(causes, validateFirmware(field.Child("domain").Child("firmware"), spec.Domain.Firmware)...)
+	bv := base_validator.BaseValidator{}
+	// TODO This can be made better by exposing specific validators (e.g., FirmwareValidator) as independent interfaces. Or we can expose each validation function from the Validator interface
+	causes = append(causes, bv.ValidateFirmware(field.Child("domain").Child("firmware"), spec.Domain.Firmware)...)
 	return causes
 }

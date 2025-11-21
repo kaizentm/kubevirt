@@ -29,8 +29,8 @@ import (
 
 	v1 "kubevirt.io/api/core/v1"
 
-	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
 	webhookutils "kubevirt.io/kubevirt/pkg/util/webhooks"
+	hypervisor_validator "kubevirt.io/kubevirt/pkg/virt-api/webhooks/validating-webhook/admitters/hypervisor"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/generate/components"
 )
@@ -103,7 +103,9 @@ func (admitter *VMIUpdateAdmitter) Admit(_ context.Context, ar *admissionv1.Admi
 	if !equality.Semantic.DeepEqual(newVMI.Spec, oldVMI.Spec) {
 		// Only allow the KubeVirt SA to modify the VMI spec, since that means it went through the sub resource.
 		if isKubeVirtServiceAccount {
-			hotplugResponse := admitHotplug(oldVMI, newVMI, admitter.clusterConfig)
+			hypervisor := admitter.clusterConfig.GetHypervisor()
+			validator := hypervisor_validator.NewValidator(hypervisor.Name)
+			hotplugResponse := validator.ValidateHotplug(oldVMI, newVMI, admitter.clusterConfig)
 			if hotplugResponse != nil {
 				return hotplugResponse
 			}
@@ -161,64 +163,6 @@ func filterKubevirtLabels(labels map[string]string) map[string]string {
 	}
 
 	return m
-}
-
-func admitHotplug(
-	oldVMI, newVMI *v1.VirtualMachineInstance,
-	clusterConfig *virtconfig.ClusterConfig,
-) *admissionv1.AdmissionResponse {
-
-	if response := admitHotplugCPU(oldVMI.Spec.Domain.CPU, newVMI.Spec.Domain.CPU); response != nil {
-		return response
-	}
-
-	if response := admitHotplugMemory(oldVMI.Spec.Domain.Memory, newVMI.Spec.Domain.Memory); response != nil {
-		return response
-	}
-
-	return storageadmitters.AdmitHotplugStorage(
-		newVMI.Spec.Volumes,
-		oldVMI.Spec.Volumes,
-		newVMI.Spec.Domain.Devices.Disks,
-		oldVMI.Spec.Domain.Devices.Disks,
-		oldVMI.Status.VolumeStatus,
-		newVMI,
-		clusterConfig)
-
-}
-
-func admitHotplugCPU(oldCPUTopology, newCPUTopology *v1.CPU) *admissionv1.AdmissionResponse {
-
-	if oldCPUTopology.MaxSockets != newCPUTopology.MaxSockets {
-		return webhookutils.ToAdmissionResponse([]metav1.StatusCause{
-			{
-				Type:    metav1.CauseTypeFieldValueInvalid,
-				Message: "CPU topology maxSockets changed",
-			},
-		})
-	}
-
-	return nil
-}
-
-func admitHotplugMemory(oldMemory, newMemory *v1.Memory) *admissionv1.AdmissionResponse {
-	if oldMemory == nil ||
-		oldMemory.MaxGuest == nil ||
-		newMemory == nil ||
-		newMemory.MaxGuest == nil {
-		return nil
-	}
-
-	if !oldMemory.MaxGuest.Equal(*newMemory.MaxGuest) {
-		return webhookutils.ToAdmissionResponse([]metav1.StatusCause{
-			{
-				Type:    metav1.CauseTypeFieldValueInvalid,
-				Message: "Memory maxGuest changed",
-			},
-		})
-	}
-
-	return nil
 }
 
 func hasRequestOriginatedFromVirtHandler(requestUsername string, kubeVirtServiceAccounts map[string]struct{}) bool {
