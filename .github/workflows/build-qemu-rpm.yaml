@@ -11,7 +11,7 @@ env:
   QEMU_REPO: https://github.com/kaizentm/qemu
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
-  QEMU_VERSION: 10.1.50.mshv.v7
+  QEMU_VERSION: 10.1.50.mshv.v8
   RPM_IMAGE_TAG: mkulke-qemu-cherrypicked
 
 jobs:
