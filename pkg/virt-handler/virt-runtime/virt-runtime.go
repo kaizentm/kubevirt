@@ -11,7 +11,7 @@ import (
 
 type VirtRuntime interface {
 	HandleHousekeeping(vmi *v1.VirtualMachineInstance, cgroupManager cgroup.Manager, domain *api.Domain) error
-	AdjustQemuProcessMemoryLimits(podIsoDetector isolation.PodIsolationDetector, vmi *v1.VirtualMachineInstance, additionalOverheadRatio *string) error
+	AdjustResources(podIsoDetector isolation.PodIsolationDetector, vmi *v1.VirtualMachineInstance, config *v1.KubeVirtConfiguration) error
 }
 
 func GetVirtRuntime(podIsolationDetector isolation.PodIsolationDetector) VirtRuntime {

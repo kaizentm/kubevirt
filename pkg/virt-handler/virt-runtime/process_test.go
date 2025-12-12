@@ -17,7 +17,7 @@
  *
  */
 
-package isolation
+package virtruntime
 
 import (
 	"github.com/mitchellh/go-ps"

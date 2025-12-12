@@ -1,16 +1,19 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "kvm-runtime.go",
+        "process.go",
         "setsched.go",
         "virt-runtime.go",
     ],
     importpath = "kubevirt.io/kubevirt/pkg/virt-handler/virt-runtime",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/util:go_default_library",
         "//pkg/util/hardware:go_default_library",
+        "//pkg/virt-controller/services:go_default_library",
         "//pkg/virt-handler/cgroup:go_default_library",
         "//pkg/virt-handler/isolation:go_default_library",
         "//pkg/virt-launcher/virtwrap/api:go_default_library",
