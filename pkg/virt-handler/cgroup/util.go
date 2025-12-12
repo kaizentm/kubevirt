@@ -233,6 +233,7 @@ func GenerateDefaultDeviceRules() []*devices.Rule {
 			Permissions: permissions,
 			Allow:       toAllow,
 		},
+		// TODO L1VH the below device will need to be parameterized for different hypervisors
 		{ // /dev/kvm (hardware virtualization extensions)
 			Type:        devices.CharDevice,
 			Major:       10,
