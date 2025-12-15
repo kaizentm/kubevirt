@@ -6,6 +6,7 @@ go_library(
         "kvm-runtime.go",
         "process.go",
         "setsched.go",
+        "util.go",
         "virt-runtime.go",
     ],
     importpath = "kubevirt.io/kubevirt/pkg/virt-handler/virt-runtime",
