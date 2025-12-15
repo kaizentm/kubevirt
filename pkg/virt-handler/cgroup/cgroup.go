@@ -35,6 +35,7 @@ import (
 
 	v1 "kubevirt.io/api/core/v1"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	cgroupconsts "kubevirt.io/kubevirt/pkg/virt-handler/cgroup/constants"
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 )
@@ -149,13 +150,6 @@ func NewManagerFromVM(vmi *v1.VirtualMachineInstance, host string, hypervisorCon
 		return nil, err
 	}
 
-	var hypervisorDeviceMinorNumber int64
-	switch hypervisorConfiguration.Name {
-	default:
-		// /dev/kvm (hardware virtualization extensions)
-		hypervisorDeviceMinorNumber = 232
-	}
-
 	const toAllow = true
 	var permissions devices.Permissions
 	if cgroups.IsCgroup2UnifiedMode() {
@@ -168,7 +162,7 @@ func NewManagerFromVM(vmi *v1.VirtualMachineInstance, host string, hypervisorCon
 		&devices.Rule{
 			Type:        devices.CharDevice,
 			Major:       10,
-			Minor:       hypervisorDeviceMinorNumber,
+			Minor:       hypervisor.NewHypervisor(hypervisorConfiguration.Name).GetDeviceMinorNumber(),
 			Permissions: permissions,
 			Allow:       toAllow,
 		})

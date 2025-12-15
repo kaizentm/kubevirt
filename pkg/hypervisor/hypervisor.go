@@ -31,6 +31,8 @@ type Hypervisor interface {
 
 	// Returns the hypervisor device
 	GetDevice() string
+
+	GetDeviceMinorNumber() int64
 }
 
 func NewHypervisor(hypervisor string) Hypervisor {
