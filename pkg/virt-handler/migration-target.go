@@ -153,7 +153,7 @@ func NewMigrationTargetController(
 		netBindingPluginMemoryCalculator: netBindingPluginMemoryCalculator,
 		netConf:                          netConf,
 		passtRepairHandler:               passtRepairHandler,
-		hypervisorRuntime:                virtruntime.GetVirtRuntime(podIsolationDetector), // TODO L1VH: Extend this to return different VirtRuntimes based on the hypervisor used
+		hypervisorRuntime:                virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	}
 
 	_, err = vmiInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{

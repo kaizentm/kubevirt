@@ -14,7 +14,9 @@ type VirtRuntime interface {
 	AdjustResources(podIsoDetector isolation.PodIsolationDetector, vmi *v1.VirtualMachineInstance, config *v1.KubeVirtConfiguration) error
 }
 
-func GetVirtRuntime(podIsolationDetector isolation.PodIsolationDetector) VirtRuntime {
-	// TODO L1VH: Extend this to return different VirtRuntimes based on the hypervisor used
-	return &KvmVirtRuntime{podIsolationDetector: podIsolationDetector, logger: log.Log.With("controller", "vm")}
+func GetVirtRuntime(podIsolationDetector isolation.PodIsolationDetector, hypervisorConfig *v1.HypervisorConfiguration) VirtRuntime {
+	switch hypervisorConfig.Name {
+	default:
+		return &KvmVirtRuntime{podIsolationDetector: podIsolationDetector, logger: log.Log.With("controller", "vm")}
+	}
 }
