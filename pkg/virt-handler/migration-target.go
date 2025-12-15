@@ -85,7 +85,6 @@ type MigrationTargetController struct {
 	netBindingPluginMemoryCalculator netBindingPluginMemoryCalculator
 	netConf                          netconf
 	passtRepairHandler               passtRepairTargetHandler
-	hypervisorRuntime                virtruntime.VirtRuntime // TODO L1VH: Move this to BaseController
 }
 
 func NewMigrationTargetController(
@@ -129,6 +128,7 @@ func NewMigrationTargetController(
 		migrationProxy,
 		virtLauncherFSRunDirPattern,
 		netStat,
+		virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	)
 	if err != nil {
 		return nil, err
@@ -153,7 +153,6 @@ func NewMigrationTargetController(
 		netBindingPluginMemoryCalculator: netBindingPluginMemoryCalculator,
 		netConf:                          netConf,
 		passtRepairHandler:               passtRepairHandler,
-		hypervisorRuntime:                virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	}
 
 	_, err = vmiInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{

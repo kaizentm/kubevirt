@@ -111,7 +111,6 @@ type VirtualMachineController struct {
 	vmiExpectations          *controller.UIDTrackingControllerExpectations
 	vmiGlobalStore           cache.Store
 	multipathSocketMonitor   *multipathmonitor.MultipathSocketMonitor
-	hypervisorRuntime        virtruntime.VirtRuntime // TODO L1VH: Move this to BaseController
 }
 
 var getCgroupManager = func(vmi *v1.VirtualMachineInstance, host string, hypervisorConfiguration *v1.HypervisorConfiguration) (cgroup.Manager, error) {
@@ -160,6 +159,7 @@ func NewVirtualMachineController(
 		migrationProxy,
 		"/proc/%d/root/var/run",
 		netStat,
+		virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	)
 	if err != nil {
 		return nil, err
@@ -190,7 +190,6 @@ func NewVirtualMachineController(
 		vmiExpectations:          controller.NewUIDTrackingControllerExpectations(controller.NewControllerExpectations()),
 		vmiGlobalStore:           vmiGlobalStore,
 		multipathSocketMonitor:   multipathmonitor.NewMultipathSocketMonitor(),
-		hypervisorRuntime:        virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	}
 
 	_, err = vmiInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{

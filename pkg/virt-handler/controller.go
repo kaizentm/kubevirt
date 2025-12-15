@@ -44,6 +44,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 	launcherclients "kubevirt.io/kubevirt/pkg/virt-handler/launcher-clients"
 	migrationproxy "kubevirt.io/kubevirt/pkg/virt-handler/migration-proxy"
+	virtruntime "kubevirt.io/kubevirt/pkg/virt-handler/virt-runtime"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virtiofs"
 )
@@ -109,6 +110,7 @@ type BaseController struct {
 	netStat                     netstat
 	recorder                    record.EventRecorder
 	hasSynced                   func() bool
+	hypervisorRuntime           virtruntime.VirtRuntime
 }
 
 func NewBaseController(
@@ -125,6 +127,7 @@ func NewBaseController(
 	migrationProxy migrationproxy.ProxyManager,
 	virtLauncherFSRunDirPattern string,
 	netStat netstat,
+	hypervisorRuntime virtruntime.VirtRuntime,
 ) (*BaseController, error) {
 
 	c := &BaseController{
@@ -141,6 +144,7 @@ func NewBaseController(
 		migrationProxy:              migrationProxy,
 		virtLauncherFSRunDirPattern: virtLauncherFSRunDirPattern,
 		netStat:                     netStat,
+		hypervisorRuntime:           hypervisorRuntime,
 		hasSynced:                   func() bool { return domainInformer.HasSynced() && vmiInformer.HasSynced() },
 	}
 
