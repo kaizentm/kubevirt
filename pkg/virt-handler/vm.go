@@ -114,8 +114,8 @@ type VirtualMachineController struct {
 	hypervisorRuntime        virtruntime.VirtRuntime // TODO L1VH: Move this to BaseController
 }
 
-var getCgroupManager = func(vmi *v1.VirtualMachineInstance, host string) (cgroup.Manager, error) {
-	return cgroup.NewManagerFromVM(vmi, host)
+var getCgroupManager = func(vmi *v1.VirtualMachineInstance, host string, hypervisorConfiguration *v1.HypervisorConfiguration) (cgroup.Manager, error) {
+	return cgroup.NewManagerFromVM(vmi, host, hypervisorConfiguration)
 }
 
 func NewVirtualMachineController(
@@ -1524,7 +1524,7 @@ func (c *VirtualMachineController) processVmCleanup(vmi *v1.VirtualMachineInstan
 
 	// UnmountAll does the cleanup on the "best effort" basis: it is
 	// safe to pass a nil cgroupManager.
-	cgroupManager, _ := getCgroupManager(vmi, c.host)
+	cgroupManager, _ := getCgroupManager(vmi, c.host, c.clusterConfig.GetHypervisor())
 	if err := c.hotplugVolumeMounter.UnmountAll(vmi, cgroupManager); err != nil {
 		return err
 	}
@@ -1834,7 +1834,7 @@ func (c *VirtualMachineController) vmUpdateHelperDefault(vmi *v1.VirtualMachineI
 		return err
 	}
 
-	cgroupManager, err := getCgroupManager(vmi, c.host)
+	cgroupManager, err := getCgroupManager(vmi, c.host, c.clusterConfig.GetHypervisor())
 	if err != nil {
 		return err
 	}
