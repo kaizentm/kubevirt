@@ -64,6 +64,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 	launcherclients "kubevirt.io/kubevirt/pkg/virt-handler/launcher-clients"
 	migrationproxy "kubevirt.io/kubevirt/pkg/virt-handler/migration-proxy"
+	virtruntime "kubevirt.io/kubevirt/pkg/virt-handler/virt-runtime"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
@@ -127,6 +128,7 @@ func NewMigrationTargetController(
 		migrationProxy,
 		virtLauncherFSRunDirPattern,
 		netStat,
+		virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	)
 	if err != nil {
 		return nil, err
@@ -233,7 +235,7 @@ func (c *MigrationTargetController) updateStatus(vmi *v1.VirtualMachineInstance,
 
 		// adjust QEMU process memlock limits in order to enable old virt-launcher pod's to
 		// perform host-devices hotplug post migration.
-		if err := isolation.AdjustQemuProcessMemoryLimits(c.podIsolationDetector, vmi, c.clusterConfig.GetConfig().AdditionalGuestMemoryOverheadRatio); err != nil {
+		if err := c.hypervisorRuntime.AdjustResources(c.podIsolationDetector, vmi, c.clusterConfig.GetConfig()); err != nil {
 			c.recorder.Event(vmi, k8sv1.EventTypeWarning, err.Error(), "Failed to update target node qemu memory limits during live migration")
 		}
 	}
@@ -635,7 +637,7 @@ func (c *MigrationTargetController) syncVolumes(vmi *v1.VirtualMachineInstance) 
 
 	// Mount hotplug disks
 	if attachmentPodUID := vmi.Status.MigrationState.TargetAttachmentPodUID; attachmentPodUID != "" {
-		cgroupManager, err := getCgroupManager(vmi, c.host)
+		cgroupManager, err := getCgroupManager(vmi, c.host, c.clusterConfig.GetHypervisor())
 		if err != nil {
 			return err
 		}
@@ -664,7 +666,7 @@ func (c *MigrationTargetController) unmountVolumes(vmi *v1.VirtualMachineInstanc
 
 	// Mount hotplug disks
 	if attachmentPodUID := vmi.Status.MigrationState.TargetAttachmentPodUID; attachmentPodUID != "" {
-		cgroupManager, err := getCgroupManager(vmi, c.host)
+		cgroupManager, err := getCgroupManager(vmi, c.host, c.clusterConfig.GetHypervisor())
 		if err != nil {
 			return err
 		}
@@ -816,7 +818,7 @@ func (c *MigrationTargetController) updateDomainFunc(old, new interface{}) {
 }
 
 func (c *MigrationTargetController) reportDedicatedCPUSetForMigratingVMI(vmi *v1.VirtualMachineInstance) error {
-	cgroupManager, err := getCgroupManager(vmi, c.host)
+	cgroupManager, err := getCgroupManager(vmi, c.host, c.clusterConfig.GetHypervisor())
 	if err != nil {
 		return err
 	}

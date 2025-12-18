@@ -47,6 +47,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 	launcherclients "kubevirt.io/kubevirt/pkg/virt-handler/launcher-clients"
 	migrationproxy "kubevirt.io/kubevirt/pkg/virt-handler/migration-proxy"
+	virtruntime "kubevirt.io/kubevirt/pkg/virt-handler/virt-runtime"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
@@ -97,6 +98,7 @@ func NewMigrationSourceController(
 		migrationProxy,
 		virtLauncherFSRunDirPattern,
 		netStat,
+		virtruntime.GetVirtRuntime(podIsolationDetector, clusterConfig.GetHypervisor()),
 	)
 	if err != nil {
 		return nil, err

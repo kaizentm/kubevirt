@@ -34,3 +34,7 @@ func (k *KVMHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, domain *api
 func (*KVMHypervisor) GetDevice() string {
 	return "kvm"
 }
+
+func (*KVMHypervisor) GetDeviceMinorNumber() int64 {
+	return 232
+}

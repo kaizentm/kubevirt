@@ -39,3 +39,8 @@ func (h *HyperVLayeredHypervisor) AdjustDomain(vmi *v1.VirtualMachineInstance, d
 func (*HyperVLayeredHypervisor) GetDevice() string {
 	return "mshv"
 }
+
+func (*HyperVLayeredHypervisor) GetDeviceMinorNumber() int64 {
+	// Based on https://github.com/microsoft/kubevirt/blob/435f820ed3dae0bd76c73b859035a2fd18933d25/pkg/virt-handler/cgroup/util.go#L200C1-L201C1
+	return 125
+}
