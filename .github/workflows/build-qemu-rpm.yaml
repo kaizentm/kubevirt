@@ -1,7 +1,7 @@
 name: Build Custom QEMU RPM
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       qemu_repo:
         description: 'QEMU Git repository URL'
@@ -18,7 +18,6 @@ on:
         required: false
         default: 'qemu-mshv'
         type: string
-  workflow_dispatch:
   push:
     branches: ["ise"]
     paths:
