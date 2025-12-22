@@ -9,8 +9,8 @@ on:
 
 env:
   LIBVIRT_REPO: https://github.com/kaizentm/libvirt.git
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
+  REGISTRY: acrafoimages.azurecr.io
+  IMAGE_NAME: l1vh/libvirt-rpms
   LIBVIRT_TAG: qemu_mshv_v1
   RPM_IMAGE_TAG: qemu-mshv
 
@@ -19,17 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build libvirt RPMs
         run: |
@@ -47,8 +40,17 @@ jobs:
             -t ${{ env.RPM_IMAGE_TAG }} \
             -d rpms-libvirt
 
+      - name: Azure login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.ACR_RW_UMI_CLIENT_ID }}
+          tenant-id: ${{ secrets.ACR_RW_UMI_TENANT_ID }}
+          subscription-id: ${{ secrets.ACR_RO_UMI_SUBSCRIPTION_ID }}
+
       - name: Push Container Image
         run: |
+          az acr login --name ${{ env.REGISTRY }}
+
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}
 
           echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}"
