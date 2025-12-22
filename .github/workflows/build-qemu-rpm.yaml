@@ -8,10 +8,15 @@ on:
         required: false
         default: 'https://github.com/qemu/qemu'
         type: string
-      qemu_version:
-        description: 'Tag of QEMU to build (actual tag has leading "v")'
+      qemu_tag:
+        description: 'Tag/branch of QEMU to build'
         required: false
-        default: '10.2.0-rc4'
+        default: 'v10.2.0-rc4'
+        type: string
+      qemu_version:
+        description: 'Version of QEMU RPM to build (if not provided, derived from tag)'
+        required: false
+        default: ''
         type: string
       rpm_image_tag:
         description: 'Tag to use for the resulting RPM container image'
@@ -37,17 +42,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
-
       - name: Build QEMU RPM
         run: |
           hack/qemu-mshv/build-qemu-rpms.sh \
             -r ${{ inputs.qemu_repo }} \
+            -t ${{ inputs.qemu_tag }} \
             -v ${{ inputs.qemu_version }}
 
       - name: Create Container Image
@@ -57,6 +56,13 @@ jobs:
             -i ${{ env.IMAGE_NAME }} \
             -t ${{ inputs.rpm_image_tag }} \
             -d rpms-qemu
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_PAT }}
 
       - name: Push Container Image
         run: |
