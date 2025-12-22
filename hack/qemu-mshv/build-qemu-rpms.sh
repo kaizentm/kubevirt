@@ -1,8 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 while getopts r:v: flag; do
     case "${flag}" in
-    r) QEMU_REPO=${OPTARG} ;;
     v) QEMU_VERSION=${OPTARG} ;;
     *)
         echo "Invalid option"
@@ -11,18 +12,33 @@ while getopts r:v: flag; do
     esac
 done
 
-if [ -z "$QEMU_REPO" ] || [ -z "$QEMU_VERSION" ]; then
-    echo "Usage: $0 -r <QEMU_REPO> -v <QEMU_VERSION>"
+if [ -z "$QEMU_VERSION" ]; then
+    echo "Usage: $0 -v <QEMU_VERSION>"
     exit 1
 fi
 
-git clone ${QEMU_REPO} qemu-src
+# Fetch QEMU source code from upstream
+rm -rf ./qemu-rpm-build
+mkdir -p ./qemu-rpm-build
+cd ./qemu-rpm-build
 
-cd qemu-src/
+# RPM spec compatible version of QEMU version
+# 1. Replace hyphens with dot
+QEMU_SPEC_VERSION=${QEMU_VERSION//-/.}
+curl -L https://github.com/qemu/qemu/archive/refs/tags/v${QEMU_VERSION}.tar.gz \
+    -o qemu-${QEMU_SPEC_VERSION}.tar.xz
 
-sed -i "s/Version:.*$/Version: ${QEMU_VERSION}/" qemu.spec
+# Rename the folder within the tar file to match QEMU_SPEC_VERSION
+tar -xf qemu-${QEMU_SPEC_VERSION}.tar.xz
+mv qemu-${QEMU_VERSION} qemu-${QEMU_SPEC_VERSION}
+tar -cf qemu-${QEMU_SPEC_VERSION}.tar.xz \
+    qemu-${QEMU_SPEC_VERSION}
+rm -rf qemu-${QEMU_SPEC_VERSION}
 
-curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
+# Copy spec file and related files
+cp $SCRIPT_DIR/qemu-spec/* .
+
+sed -i "s/Version:.*$/Version: ${QEMU_SPEC_VERSION}/" qemu.spec
 
 docker rm -f qemu-build
 
@@ -36,7 +52,8 @@ docker exec -w /qemu-src qemu-build bash -c "
   set -ex
   mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
   cp qemu.spec ~/rpmbuild/SPECS
-  cp qemu-${QEMU_VERSION}.tar.xz ~/rpmbuild/SOURCES/
+  cp *.patch ~/rpmbuild/SOURCES/
+  cp qemu-${QEMU_SPEC_VERSION}.tar.xz ~/rpmbuild/SOURCES/
   cd ~/rpmbuild/SPECS
   dnf update -y
   dnf -y install createrepo
@@ -52,6 +69,6 @@ docker cp qemu-build:/root/rpmbuild/RPMS ./rpms-qemu
 
 cat >./rpms-qemu/build-info.json <<EOF
 {
-  "qemu_version": "0:${QEMU_VERSION}-1.el9"
+  "qemu_version": "0:${QEMU_SPEC_VERSION}-1.el9"
 }
 EOF
