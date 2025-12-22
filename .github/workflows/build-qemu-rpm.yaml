@@ -42,8 +42,8 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.ACR_RO_UMI_CLIENT_ID }}
-          tenant-id: ${{ secrets.ACR_RO_UMI_TENANT_ID }}
+          client-id: ${{ secrets.ACR_RW_UMI_CLIENT_ID }}
+          tenant-id: ${{ secrets.ACR_RW_UMI_TENANT_ID }}
           subscription-id: ${{ secrets.ACR_RO_UMI_SUBSCRIPTION_ID }}
 
       - name: Push Container Image
