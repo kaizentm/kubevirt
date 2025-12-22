@@ -4,6 +4,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 while getopts r:v: flag; do
     case "${flag}" in
+    r) QEMU_REPO=${OPTARG} ;;
     v) QEMU_VERSION=${OPTARG} ;;
     *)
         echo "Invalid option"
@@ -12,8 +13,8 @@ while getopts r:v: flag; do
     esac
 done
 
-if [ -z "$QEMU_VERSION" ]; then
-    echo "Usage: $0 -v <QEMU_VERSION>"
+if [ -z "$QEMU_REPO" ] || [ -z "$QEMU_VERSION" ]; then
+    echo "Usage: $0 -r <QEMU_REPO> -v <QEMU_VERSION>"
     exit 1
 fi
 
@@ -25,12 +26,9 @@ cd ./qemu-rpm-build
 # RPM spec compatible version of QEMU version
 # 1. Replace hyphens with dot
 QEMU_SPEC_VERSION=${QEMU_VERSION//-/.}
-curl -L https://github.com/qemu/qemu/archive/refs/tags/v${QEMU_VERSION}.tar.gz \
-    -o qemu-${QEMU_SPEC_VERSION}.tar.xz
+git clone -b v${QEMU_VERSION} ${QEMU_REPO} qemu-${QEMU_SPEC_VERSION}
 
-# Rename the folder within the tar file to match QEMU_SPEC_VERSION
-tar -xf qemu-${QEMU_SPEC_VERSION}.tar.xz
-mv qemu-${QEMU_VERSION} qemu-${QEMU_SPEC_VERSION}
+# Create tarball of QEMU source code
 tar -cf qemu-${QEMU_SPEC_VERSION}.tar.xz \
     qemu-${QEMU_SPEC_VERSION}
 rm -rf qemu-${QEMU_SPEC_VERSION}
