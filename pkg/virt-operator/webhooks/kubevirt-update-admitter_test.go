@@ -183,6 +183,11 @@ var _ = Describe("Validating KubeVirtUpdate Admitter", func() {
 					Name: v1.HyperVDirectHypervisorName,
 				},
 			}, 1),
+			Entry("invalid hypervisor name should not be allowed", []v1.HypervisorConfiguration{
+				{
+					Name: "InvalidHypervisor",
+				},
+			}, 1),
 		)
 	})
 

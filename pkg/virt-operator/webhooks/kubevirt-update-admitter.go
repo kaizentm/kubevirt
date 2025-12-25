@@ -505,6 +505,21 @@ func validateHypervisors(hypervisors []v1.HypervisorConfiguration) []metav1.Stat
 			Message: "Only one hypervisor configuration is allowed",
 			Field:   "spec.configuration.hypervisorConfigurations",
 		})
+	} else if len(hypervisors) == 1 {
+		// Validate the specified hypervisor
+		hypervisor := hypervisors[0]
+		switch hypervisor.Name {
+		case v1.KvmHypervisorName:
+			// KVM is valid, no further validation needed
+		case v1.HyperVDirectHypervisorName:
+			// Hyper-V Direct is valid, no further validation needed
+		default:
+			results = append(results, metav1.StatusCause{
+				Type:    metav1.CauseTypeFieldValueNotSupported,
+				Message: fmt.Sprintf("Unsupported hypervisor: %s. Accepted values are %s and %s", hypervisor.Name, v1.KvmHypervisorName, v1.HyperVDirectHypervisorName),
+				Field:   "spec.configuration.hypervisorConfigurations[0].name",
+			})
+		}
 	}
 	return results
 }
