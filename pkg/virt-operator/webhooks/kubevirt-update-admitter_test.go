@@ -164,6 +164,28 @@ var _ = Describe("Validating KubeVirtUpdate Admitter", func() {
 		)
 	})
 
+	Context("test validateHypervisors", func() {
+		DescribeTable("enforce singleton hypervisors entry", func(hypervisors []v1.HypervisorConfiguration, expectedCauses int) {
+			causes := validateHypervisors(hypervisors)
+			Expect(causes).To(HaveLen(expectedCauses))
+		},
+			Entry("no hypervisors specified should be allowed", []v1.HypervisorConfiguration{}, 0),
+			Entry("one hypervisor specified should be allowed", []v1.HypervisorConfiguration{
+				{
+					Name: v1.KvmHypervisorName,
+				},
+			}, 0),
+			Entry("two hypervisors specified should NOT be allowed", []v1.HypervisorConfiguration{
+				{
+					Name: v1.KvmHypervisorName,
+				},
+				{
+					Name: v1.HyperVDirectHypervisorName,
+				},
+			}, 1),
+		)
+	})
+
 	Context("deprecations", func() {
 		var admitter *KubeVirtUpdateAdmitter
 
