@@ -2,17 +2,30 @@ name: Build Custom libvirt RPMs
 
 on:
   workflow_dispatch:
+      inputs:
+        libvirt_repo:
+          description: 'Libvirt Git repository URL'
+          required: false
+          default: 'https://github.com/libvirt/libvirt.git'
+          type: string
+        libvirt_tag:
+          description: 'Tag/branch of Libvirt to build'
+          required: false
+          default: 'v11.10.0'
+          type: string
+        rpm_image_tag:
+          description: 'Tag to use for the resulting RPM container image'
+          required: false
+          default: 'qemu-mshv'
+          type: string
   push:
     branches: ["ise"]
     paths:
       - .github/workflows/build-libvirt-rpms.yaml
 
 env:
-  LIBVIRT_REPO: https://github.com/kaizentm/libvirt.git
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
-  LIBVIRT_TAG: qemu_mshv_v1
-  RPM_IMAGE_TAG: qemu-mshv
 
 jobs:
   build-rpms:
@@ -34,8 +47,8 @@ jobs:
       - name: Build libvirt RPMs
         run: |
           hack/qemu-mshv/build-libvirt-rpms.sh \
-            -r ${{ env.LIBVIRT_REPO }} \
-            -t ${{ env.LIBVIRT_TAG }} \
+            -r ${{ inputs.libvirt_repo }} \
+            -t ${{ inputs.libvirt_tag }} \
             -i ${{ github.run_id }} \
             -n ${{ github.run_number }}
 
@@ -44,11 +57,11 @@ jobs:
           hack/qemu-mshv/build-rpms-http-image.sh \
             -r ${{ env.REGISTRY }} \
             -i ${{ env.IMAGE_NAME }} \
-            -t ${{ env.RPM_IMAGE_TAG }} \
+            -t ${{ inputs.rpm_image_tag }} \
             -d rpms-libvirt
 
       - name: Push Container Image
         run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.rpm_image_tag }}
 
-          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}"
+          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.rpm_image_tag }}"
