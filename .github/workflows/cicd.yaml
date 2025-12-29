@@ -4,12 +4,23 @@ on:
   push:
     branches: ["ise"]
   workflow_dispatch:
+    inputs:
+      qemu_rpm_image_tag:
+        description: 'Tag of QEMU RPM container image to pull'
+        required: false
+        default: 'qemu-mshv'
+        type: string
+      libvirt_rpm_image_tag:
+        description: 'Tag of Libvirt RPM container image to pull'
+        required: false
+        default: 'qemu-mshv'
+        type: string
 
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, 'qemu-mshv') }}
-  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, 'qemu-mshv') }}
+  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, inputs.libvirt_rpm_image_tag) }}
+  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, inputs.qemu_rpm_image_tag) }}
 
 jobs:
   #quality-check:
@@ -39,7 +50,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GH_PAT }}
 
       - name: Setup Custom libvirt & qemu RPMs
         run: |
