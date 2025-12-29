@@ -30,7 +30,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/qemu-rpms
+  # TODO: Revert back to original repo once PAT is created with write permissions
+  # TODO IMAGE_NAME: ${{ github.repository }}/qemu-rpms
+  IMAGE_NAME: harshitgupta1337/kubevirt/qemu-rpms
 
 jobs:
   build-rpms:
