@@ -1298,7 +1298,7 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 		),
 		compute.TPMDomainConfigurator{},
 		compute.VSOCKDomainConfigurator{},
-		compute.NewHypervisorDomainConfigurator(c.AllowEmulation, c.KvmAvailable),
+		// TODO Revert back when MSHV is integrated in converter compute.NewHypervisorDomainConfigurator(c.AllowEmulation, c.KvmAvailable),
 		compute.NewLaunchSecurityDomainConfigurator(architecture),
 		compute.ChannelsDomainConfigurator{},
 		compute.ClockDomainConfigurator{},
@@ -1349,36 +1349,6 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 	// set the maximum number of sockets here to allow hot-plug CPUs
 	if vmiCPU := vmi.Spec.Domain.CPU; vmiCPU != nil && vmiCPU.MaxSockets != 0 && c.Architecture.SupportCPUHotplug() {
 		domainVCPUTopologyForHotplug(vmi, domain)
-	}
-
-	// Hypervisor device detection and selection logic
-	hypervisorPath := "/dev/kvm"
-	hypervisorType := v1.KvmHypervisorName
-	if c.Hypervisor != nil {
-		hypervisorPath = fmt.Sprintf("/dev/%s", c.Hypervisor.GetDevice())
-		// Determine hypervisor type based on device name
-		if c.Hypervisor.GetDevice() == "mshv" {
-			hypervisorType = v1.HyperVLayeredHypervisorName
-		}
-		log.Log.Object(vmi).Infof("Hypervisor type selected: %s, device path: %s", hypervisorType, hypervisorPath)
-	} else {
-		log.Log.Object(vmi).Infof("No hypervisor specified, defaulting to KVM with device path: %s", hypervisorPath)
-	}
-
-	if _, err := os.Stat(hypervisorPath); errors.Is(err, os.ErrNotExist) {
-		if c.AllowEmulation {
-			logger := log.DefaultLogger()
-			logger.Infof("Hardware emulation device '%s' not present. Falling back to software emulation (qemu). Hypervisor type: %s. Remediation: Verify hypervisor device availability or ensure AllowEmulation is intentional.", hypervisorPath, hypervisorType)
-			domain.Spec.Type = "qemu"
-		} else {
-			log.Log.Object(vmi).Errorf("Hardware emulation device '%s' not present and software emulation not allowed. Hypervisor type: %s. Remediation: Ensure the correct hypervisor device is available on the node or enable software emulation.", hypervisorPath, hypervisorType)
-			return fmt.Errorf("hardware emulation device '%s' not present", hypervisorPath)
-		}
-	} else if err != nil {
-		log.Log.Object(vmi).Reason(err).Errorf("Failed to access hypervisor device '%s'. Hypervisor type: %s. Remediation: Check device permissions and availability.", hypervisorPath, hypervisorType)
-		return err
-	} else {
-		log.Log.Object(vmi).Infof("Successfully detected hypervisor device '%s' for hypervisor type: %s", hypervisorPath, hypervisorType)
 	}
 
 	err = Convert_v1_Firmware_To_related_apis(vmi, domain, c)
