@@ -1381,8 +1381,6 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 		log.Log.Object(vmi).Infof("Successfully detected hypervisor device '%s' for hypervisor type: %s", hypervisorPath, hypervisorType)
 	}
 
-	domain.Spec.SysInfo = &api.SysInfo{}
-
 	err = Convert_v1_Firmware_To_related_apis(vmi, domain, c)
 	if err != nil {
 		return err
