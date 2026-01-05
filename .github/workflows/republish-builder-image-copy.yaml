@@ -1,0 +1,48 @@
+name: Copy of Republish KubeVirt Builder Image to ACR
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["guptaharshit/migrate-to-acr"] # TODO Revert to "ise" after testing
+
+env:
+  REGISTRY: acrafoimages.azurecr.io
+
+jobs:
+  republish-builder-image:
+    runs-on: ubuntu-latest
+    environment: build
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract builder VERSION
+        run: |
+          set -eux
+          builder_version=$(cat hack/dockerized \
+            | grep "kubevirt_builder_version=" \
+            | awk -F "\"" '{print $2}')
+
+          echo "BUILDER_VERSION=$builder_version" >> $GITHUB_ENV
+      
+      - name: Azure login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.ACR_RO_UMI_CLIENT_ID }}
+          tenant-id: ${{ secrets.ACR_RO_UMI_TENANT_ID }}
+          subscription-id: ${{ secrets.ACR_RO_UMI_SUBSCRIPTION_ID }}
+
+      - name: Republish Builder Image
+        run: |
+          set -eux
+
+          az acr login --name ${{ env.REGISTRY }}
+
+          upstream_builder_image="quay.io/kubevirt/builder:${BUILDER_VERSION}"
+          docker pull $upstream_builder_image
+          republished_image="${{ env.REGISTRY }}/kubevirt/builder:${BUILDER_VERSION}"
+          docker tag $upstream_builder_image $republished_image
+          docker push $republished_image
