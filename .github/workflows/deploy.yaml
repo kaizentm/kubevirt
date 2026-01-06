@@ -7,6 +7,7 @@ on:
         description: 'The environment to deploy to'
         required: true
         type: string
+        # TODO Remove unused inputs
       image_tag:
         description: 'The image tag to deploy'
         required: true
@@ -50,14 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.environment }}-manifests
-          path: ${{ github.workspace }}/_out/manifests
-
-      - name: Configure kubeconfig
-        if: ${{ inputs.kubevirt_provider == 'external' }}
-        run: |
-          echo "$KUBE_CONFIG_CONTENT" > $KUBECONFIG          
-        env:
-          KUBE_CONFIG_CONTENT: ${{ secrets.KUBE_CONFIG }}             
+          path: ${{ github.workspace }}/_out/manifests          
 
       - name: Deploy
         run: |
