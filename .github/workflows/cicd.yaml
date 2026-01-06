@@ -16,7 +16,7 @@ jobs:
   #  uses: ./.github/workflows/pr.yaml
 
   Build_Push_Images:
-    runs-on: [self-hosted, azlinux-cr-sub]
+    runs-on: [self-hosted, azlinux-cr-sub, small]
     permissions: write-all
     steps:
       - name: Checkout
