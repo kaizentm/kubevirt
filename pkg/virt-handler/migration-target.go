@@ -917,8 +917,9 @@ func (c *MigrationTargetController) hotplugMemory(vmi *v1.VirtualMachineInstance
 		return fmt.Errorf("cannot parse Memory requests from VMI label: %v", err)
 	}
 
+	launcherRenderer := services.NewLauncherResourceRenderer(v1.KvmHypervisorName)
 	overheadRatio := vmi.Labels[v1.MemoryHotplugOverheadRatioLabel]
-	requiredMemory := services.GetMemoryOverhead(vmi, runtime.GOARCH, &overheadRatio)
+	requiredMemory := launcherRenderer.GetMemoryOverhead(vmi, runtime.GOARCH, &overheadRatio)
 	requiredMemory.Add(
 		c.netBindingPluginMemoryCalculator.Calculate(vmi, c.clusterConfig.GetNetworkBindings()),
 	)

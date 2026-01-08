@@ -282,7 +282,8 @@ func GetNodesWithKVM() []*k8sv1.Node {
 		virtHandlerNode, err := virtClient.CoreV1().Nodes().Get(context.Background(), pod.Spec.NodeName, k8smetav1.GetOptions{})
 		Expect(err).ToNot(HaveOccurred())
 
-		_, ok := virtHandlerNode.Status.Allocatable[services.KvmDevice]
+		kvmDevice := services.NewLauncherResourceRenderer(v1.KvmHypervisorName).GetHypervisorDevice()
+		_, ok := virtHandlerNode.Status.Allocatable[k8sv1.ResourceName(services.K8sDevicePrefix+"/"+kvmDevice)]
 		if ok {
 			nodeList = append(nodeList, virtHandlerNode)
 		}

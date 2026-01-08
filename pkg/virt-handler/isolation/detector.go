@@ -119,8 +119,9 @@ func (s *socketBasedIsolationDetector) AdjustResources(vmi *v1.VirtualMachineIns
 			continue
 		}
 
+		launcherRenderer := services.NewLauncherResourceRenderer(v1.KvmHypervisorName)
 		// make the best estimate for memory required by libvirt
-		memlockSize := services.GetMemoryOverhead(vmi, runtime.GOARCH, additionalOverheadRatio)
+		memlockSize := launcherRenderer.GetMemoryOverhead(vmi, runtime.GOARCH, additionalOverheadRatio)
 		// Add base memory requested for the VM
 		var vmiBaseMemory *resource.Quantity
 		if vmi.Spec.Domain.Memory != nil && vmi.Spec.Domain.Memory.Guest != nil {
@@ -160,7 +161,8 @@ func AdjustQemuProcessMemoryLimits(podIsoDetector PodIsolationDetector, vmi *v1.
 	}
 	qemuProcessID := qemuProcess.Pid()
 	// make the best estimate for memory required by libvirt
-	memlockSize := services.GetMemoryOverhead(vmi, runtime.GOARCH, additionalOverheadRatio)
+	launcherRenderer := services.NewLauncherResourceRenderer(v1.KvmHypervisorName)
+	memlockSize := launcherRenderer.GetMemoryOverhead(vmi, runtime.GOARCH, additionalOverheadRatio)
 	// Add max memory assigned to the VM
 	var vmiBaseMemory *resource.Quantity
 

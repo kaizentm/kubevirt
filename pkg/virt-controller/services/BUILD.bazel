@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "launcherresourcerenderer.go",
         "nodeselectorrenderer.go",
         "rendercontainer.go",
         "renderresources.go",
@@ -18,10 +19,10 @@ go_library(
         "//pkg/apimachinery:go_default_library",
         "//pkg/config:go_default_library",
         "//pkg/container-disk:go_default_library",
-        "//pkg/downwardmetrics:go_default_library",
         "//pkg/dra:go_default_library",
         "//pkg/hooks:go_default_library",
         "//pkg/host-disk:go_default_library",
+        "//pkg/hypervisor/kvm:go_default_library",
         "//pkg/monitoring/metrics/virt-controller:go_default_library",
         "//pkg/network/downwardapi:go_default_library",
         "//pkg/network/istio:go_default_library",

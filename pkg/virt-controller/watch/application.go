@@ -674,6 +674,7 @@ func (vca *VirtControllerApp) initCommon() {
 		vca.exporterImage,
 		vca.resourceQuotaInformer.GetStore(),
 		vca.namespaceStore,
+		services.NewLauncherResourceRenderer(vca.clusterConfig.GetHypervisor().Name),
 		services.WithSidecarCreator(
 			func(vmi *v1.VirtualMachineInstance, _ *v1.KubeVirtConfiguration) (hooks.HookSidecarList, error) {
 				return hooks.UnmarshalHookSidecarList(vmi)
