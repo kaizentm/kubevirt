@@ -403,6 +403,9 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			Expect(err).ToNot(HaveOccurred())
 			Expect(kv.Spec.Configuration.VirtualMachineInstancesPerNode).ToNot(Equal(&newVirtualMachineInstancesPerNode))
 
+			launcherRenderer := services.NewLauncherResourceRenderer(v1.KvmHypervisorName)
+			kvmDeviceName := k8sv1.ResourceName(services.K8sDevicePrefix + "/" + launcherRenderer.GetHypervisorDevice())
+
 			newVMIPerNodePatch, err := patch.New(
 				patch.WithAdd("/spec/configuration/virtualMachineInstancesPerNode", newVirtualMachineInstancesPerNode)).GeneratePayload()
 			Expect(err).ToNot(HaveOccurred())
@@ -417,7 +420,7 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			Eventually(func() error {
 				nodesWithKvm := libnode.GetNodesWithKVM()
 				for _, node := range nodesWithKvm {
-					kvmDevices, _ := node.Status.Allocatable[services.KvmDevice]
+					kvmDevices, _ := node.Status.Allocatable[kvmDeviceName]
 					if int(kvmDevices.Value()) != newVirtualMachineInstancesPerNode {
 						return fmt.Errorf("node %s does not have the expected allocatable kvm devices: %d, got: %d", node.Name, newVirtualMachineInstancesPerNode, kvmDevices.Value())
 					}
@@ -439,7 +442,7 @@ var _ = Describe("[sig-operator]Operator", Serial, decorators.SigOperator, func(
 			By("Check that worker nodes resumed the default amount of allocatable kvm devices")
 			const defaultKvmDevices = "1k"
 			defaultKvmDevicesQuant := resource.MustParse(defaultKvmDevices)
-			kvmDeviceKey := k8sv1.ResourceName(services.KvmDevice)
+			kvmDeviceKey := k8sv1.ResourceName(kvmDeviceName)
 
 			Eventually(func(g Gomega) {
 				nodesWithKvm := libnode.GetNodesWithKVM()

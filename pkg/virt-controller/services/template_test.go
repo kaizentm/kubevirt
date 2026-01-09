@@ -121,6 +121,7 @@ var _ = Describe("Template", func() {
 	BeforeEach(func() {
 		configFactory = func(cpuArch string) (*virtconfig.ClusterConfig, cache.Store, *TemplateService) {
 			config, _, kvStore := testutils.NewFakeClusterConfigUsingKVWithCPUArch(kv, cpuArch)
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
@@ -136,6 +137,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithSidecarCreator(
 					func(vmi *v1.VirtualMachineInstance, _ *v1.KubeVirtConfiguration) (hooks.HookSidecarList, error) {
 						return hooks.UnmarshalHookSidecarList(vmi)
@@ -500,6 +502,7 @@ var _ = Describe("Template", func() {
 					"--hook-sidecars", "1",
 					"--ovmf-path", ovmfPath,
 					"--disk-memory-limit", strconv.Itoa(virtconfig.DefaultDiskVerificationMemoryLimitBytes),
+					"--hypervisor", config.GetHypervisor().Name,
 				}))
 				Expect(pod.Spec.Containers[1].Name).To(Equal("hook-sidecar-0"))
 				Expect(pod.Spec.Containers[1].Image).To(Equal("some-image:v1"))
@@ -1098,6 +1101,7 @@ var _ = Describe("Template", func() {
 					"--hook-sidecars", "1",
 					"--ovmf-path", ovmfPath,
 					"--disk-memory-limit", strconv.Itoa(virtconfig.DefaultDiskVerificationMemoryLimitBytes),
+					"--hypervisor", config.GetHypervisor().Name,
 				}))
 				Expect(pod.Spec.Containers[1].Name).To(Equal("hook-sidecar-0"))
 				Expect(pod.Spec.Containers[1].Image).To(Equal("some-image:v1"))
@@ -2356,7 +2360,8 @@ var _ = Describe("Template", func() {
 						if vmiCPUArch == "" {
 							vmiCPUArch = svc.clusterConfig.GetClusterCPUArch()
 						}
-						overhead := GetMemoryOverhead(&vmi, vmiCPUArch, svc.clusterConfig.GetConfig().AdditionalGuestMemoryOverheadRatio)
+						launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
+						overhead := launcherRenderer.GetMemoryOverhead(&vmi, vmiCPUArch, svc.clusterConfig.GetConfig().AdditionalGuestMemoryOverheadRatio)
 
 						mem100.Sub(overhead)
 						mem110.Sub(overhead)
@@ -2892,7 +2897,8 @@ var _ = Describe("Template", func() {
 				arch := config.GetClusterCPUArch()
 				Expect(err).ToNot(HaveOccurred())
 				expectedMemory := resource.NewScaledQuantity(0, resource.Kilo)
-				expectedMemory.Add(GetMemoryOverhead(vmi, arch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
+				launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
+				expectedMemory.Add(launcherRenderer.GetMemoryOverhead(vmi, arch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
 				expectedMemory.Add(*vmi.Spec.Domain.Resources.Requests.Memory())
 				Expect(pod.Spec.Containers[0].Resources.Requests.Memory().Value()).To(Equal(expectedMemory.Value()))
 			})
@@ -2920,7 +2926,8 @@ var _ = Describe("Template", func() {
 				arch := config.GetClusterCPUArch()
 				Expect(err).ToNot(HaveOccurred())
 				expectedMemory := resource.NewScaledQuantity(0, resource.Kilo)
-				expectedMemory.Add(GetMemoryOverhead(vmi1, arch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
+				launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
+				expectedMemory.Add(launcherRenderer.GetMemoryOverhead(vmi1, arch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
 				expectedMemory.Add(*vmi.Spec.Domain.Resources.Requests.Memory())
 				Expect(pod.Spec.Containers[0].Resources.Requests.Memory().Value()).To(Equal(expectedMemory.Value()))
 				Expect(pod1.Spec.Containers[0].Resources.Requests.Memory().Value()).To(Equal(expectedMemory.Value()))
@@ -3027,6 +3034,8 @@ var _ = Describe("Template", func() {
 
 		It("should call sidecar creators", func() {
 			config, _, _ := testutils.NewFakeClusterConfigUsingKVWithCPUArch(kv, defaultArch)
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
+
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -3041,6 +3050,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithSidecarCreator(testSidecarCreator),
 				WithNetBindingPluginMemoryCalculator(&stubNetBindingPluginMemoryCalculator{}),
 			)
@@ -4719,7 +4729,8 @@ var _ = Describe("Template", func() {
 				arch := config.GetClusterCPUArch()
 				Expect(err).ToNot(HaveOccurred())
 				expectedMemory := resource.NewScaledQuantity(0, resource.Kilo)
-				expectedMemory.Add(GetMemoryOverhead(vmi, arch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
+				launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
+				expectedMemory.Add(launcherRenderer.GetMemoryOverhead(vmi, arch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
 				expectedMemory.Add(*vmi.Spec.Domain.Resources.Requests.Memory())
 				Expect(pod.Spec.Containers[0].Resources.Requests.Memory().Value()).To(Equal(expectedMemory.Value()))
 			})
@@ -4791,45 +4802,6 @@ var _ = Describe("Template", func() {
 			})
 		})
 
-		Context("with guest-to-request memory headroom", func() {
-			BeforeEach(func() {
-				config, kvStore, svc = configFactory(defaultArch)
-			})
-
-			newVmi := func() *v1.VirtualMachineInstance {
-				vmi := api.NewMinimalVMI("test-vmi")
-
-				vmi.Spec.Domain.Resources = v1.ResourceRequirements{
-					Requests: k8sv1.ResourceList{
-						k8sv1.ResourceMemory: resource.MustParse("1G"),
-						k8sv1.ResourceCPU:    resource.MustParse("1"),
-					},
-				}
-
-				return vmi
-			}
-
-			DescribeTable("should add guest-to-memory headroom when configured with ratio", func(ratioStr string) {
-				vmi := newVmi()
-
-				ratio, err := strconv.ParseFloat(ratioStr, 64)
-				Expect(err).ToNot(HaveOccurred())
-
-				originalOverhead := GetMemoryOverhead(vmi, config.GetClusterCPUArch(), nil)
-				actualOverheadWithHeadroom := GetMemoryOverhead(vmi, config.GetClusterCPUArch(), pointer.P(ratioStr))
-				expectedOverheadWithHeadroom := multiplyMemory(originalOverhead, ratio)
-
-				const errFmt = "overhead without headroom: %s, ratio: %s, actual overhead with headroom: %s, expected overhead with headroom: %s"
-				Expect(newVmi()).To(Equal(vmi), "vmi object should not be changed")
-				Expect(actualOverheadWithHeadroom.Cmp(expectedOverheadWithHeadroom)).To(Equal(0),
-					fmt.Sprintf(errFmt, originalOverhead.String(), ratioStr, actualOverheadWithHeadroom.String(), expectedOverheadWithHeadroom.String()))
-			},
-				Entry("2.332", "2.332"),
-				Entry("1.234", "1.234"),
-				Entry("1.0", "1.0"),
-			)
-
-		})
 		Context("with configmap in VMI annotations for sidecar", func() {
 			var vmi *v1.VirtualMachineInstance
 
@@ -5484,7 +5456,8 @@ var _ = Describe("Template", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(pod.Spec.Containers[0].Name).To(Equal("compute"))
 					expectedMemory := resource.NewScaledQuantity(0, resource.Kilo)
-					expectedMemory.Add(GetMemoryOverhead(&vmi, defaultArch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
+					launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
+					expectedMemory.Add(launcherRenderer.GetMemoryOverhead(&vmi, defaultArch, config.GetConfig().AdditionalGuestMemoryOverheadRatio))
 					expectedMemory.Add(guestMemory)
 					Expect(pod.Spec.Containers[0].Resources.Requests.Memory().Value()).To(BeEquivalentTo(expectedMemory.Value()))
 					Expect(pod.Spec.Containers[0].Resources.Limits.Memory().Value()).To(BeEquivalentTo(expectedMemory.Value()))
@@ -5726,6 +5699,7 @@ var _ = Describe("Template", func() {
 			config, _, _ := testutils.NewFakeClusterConfigUsingKVConfig(&kvConfig.Spec.Configuration)
 
 			netBindingPluginMemoryOverheadCalculator := &stubNetBindingPluginMemoryCalculator{}
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5740,6 +5714,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithSidecarCreator(testSidecarCreator),
 				WithNetBindingPluginMemoryCalculator(netBindingPluginMemoryOverheadCalculator),
 			)
@@ -5796,6 +5771,7 @@ var _ = Describe("Template", func() {
 			generator1 := stubAnnotationsGenerator{annotations: generator1Annotations}
 			generator2 := stubAnnotationsGenerator{annotations: generator2Annotations}
 
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5810,6 +5786,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithAnnotationsGenerators(generator1, generator2),
 			)
 
@@ -5825,6 +5802,7 @@ var _ = Describe("Template", func() {
 		})
 
 		DescribeTable("Should fail when the first generator failure is encountered", func(generator1, generator2 stubAnnotationsGenerator, expectedErr error) {
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5839,6 +5817,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithAnnotationsGenerators(generator1, generator2),
 			)
 
@@ -5885,6 +5864,7 @@ var _ = Describe("Template", func() {
 				annotations: map[string]string{sharedKey: val2},
 			}
 
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5899,6 +5879,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithAnnotationsGenerators(generator1, generator2),
 			)
 
@@ -5926,6 +5907,7 @@ var _ = Describe("Template", func() {
 				annotations: map[string]string{testKey: updatedValue},
 			}
 
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5940,6 +5922,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithNetTargetAnnotationsGenerator(generator),
 			)
 
@@ -5964,6 +5947,7 @@ var _ = Describe("Template", func() {
 				generationErr: expectedErr,
 			}
 
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5978,6 +5962,7 @@ var _ = Describe("Template", func() {
 				"kubevirt/vmexport",
 				resourceQuotaStore,
 				namespaceStore,
+				launcherRenderer,
 				WithNetTargetAnnotationsGenerator(generator),
 			)
 

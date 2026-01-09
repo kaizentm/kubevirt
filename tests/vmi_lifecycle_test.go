@@ -1289,10 +1289,13 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 				}
 				node := nodeList.Items[0]
 
-				_, ok := node.Status.Allocatable[services.KvmDevice]
+				launcherRenderer := services.NewLauncherResourceRenderer(v1.KvmHypervisorName)
+				kvmDeviceName := k8sv1.ResourceName(services.K8sDevicePrefix + "/" + launcherRenderer.GetHypervisorDevice())
+
+				_, ok := node.Status.Allocatable[kvmDeviceName]
 				Expect(ok).To(BeTrue(), "KVM devices not allocatable on node: %s", node.Name)
 
-				_, ok = node.Status.Capacity[services.KvmDevice]
+				_, ok = node.Status.Capacity[kvmDeviceName]
 				Expect(ok).To(BeTrue(), "No Capacity for KVM devices on node: %s", node.Name)
 			})
 		})

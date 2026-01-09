@@ -224,8 +224,9 @@ var _ = Describe("VirtualMachineInstance watcher", func() {
 			return nil
 		}
 
+		launcherRenderer := services.NewLauncherResourceRenderer(config.GetHypervisor().Name)
 		controller, _ = NewController(
-			services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", rqInformer.GetStore(), nsInformer.GetStore()),
+			services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", rqInformer.GetStore(), nsInformer.GetStore(), launcherRenderer),
 			vmiInformer,
 			vmInformer,
 			podInformer,

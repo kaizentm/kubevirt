@@ -50,6 +50,7 @@ var _ = Describe("Container disk", func() {
 					},
 				},
 			}, "amd64")
+			launcherRenderer := NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -64,6 +65,7 @@ var _ = Describe("Container disk", func() {
 				"kubevirt/vmexport",
 				cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil),
 				cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil),
+				launcherRenderer,
 			)
 		})
 

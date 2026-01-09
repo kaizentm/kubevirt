@@ -127,6 +127,7 @@ var _ = Describe("Application", func() {
 		preferenceInformer, _ := testutils.NewFakeInformerFor(&instancetypev1beta1.VirtualMachinePreference{})
 		clusterPreferenceInformer, _ := testutils.NewFakeInformerFor(&instancetypev1beta1.VirtualMachineClusterPreference{})
 		controllerRevisionInformer, _ := testutils.NewFakeInformerFor(&appsv1.ControllerRevision{})
+		launcherRenderer := services.NewLauncherResourceRenderer(config.GetHypervisor().Name)
 
 		var qemuGid int64 = 107
 
@@ -136,7 +137,7 @@ var _ = Describe("Application", func() {
 		app.evacuationController, _ = evacuation.NewEvacuationController(vmiInformer, migrationInformer, nodeInformer, podInformer, recorder, virtClient, config)
 		app.disruptionBudgetController, _ = disruptionbudget.NewDisruptionBudgetController(vmiInformer, pdbInformer, podInformer, migrationInformer, recorder, virtClient)
 		app.nodeController, _ = node.NewController(virtClient, nodeInformer, vmiInformer, recorder)
-		app.vmiController, _ = vmi.NewController(services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore()),
+		app.vmiController, _ = vmi.NewController(services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore(), launcherRenderer),
 			vmiInformer,
 			vmInformer,
 			podInformer,
@@ -178,7 +179,7 @@ var _ = Describe("Application", func() {
 			[]string{},
 			[]string{},
 		)
-		app.migrationController, _ = migration.NewController(services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore()),
+		app.migrationController, _ = migration.NewController(services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore(), launcherRenderer),
 			vmiInformer,
 			podInformer,
 			migrationInformer,
@@ -225,7 +226,7 @@ var _ = Describe("Application", func() {
 		_ = app.restoreController.Init()
 		app.exportController = &export.VMExportController{
 			Client:                      virtClient,
-			ManifestRenderer:            services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore()),
+			ManifestRenderer:            services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore(), launcherRenderer),
 			VMExportInformer:            vmExportInformer,
 			PVCInformer:                 pvcInformer,
 			PodInformer:                 podInformer,

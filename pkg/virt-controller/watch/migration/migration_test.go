@@ -249,8 +249,9 @@ var _ = Describe("Migration watcher", func() {
 		storageProfileInformer, _ := testutils.NewFakeInformerFor(&cdiv1.StorageProfile{})
 		kubevirtInformer, _ := testutils.NewFakeInformerFor(&v1.KubeVirt{})
 		config, _, _ := testutils.NewFakeClusterConfigUsingKVConfig(&v1.KubeVirtConfiguration{})
+		launcherRenderer := services.NewLauncherResourceRenderer(config.GetHypervisor().Name)
 		controller, _ = NewController(
-			services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore()),
+			services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", resourceQuotaInformer.GetStore(), namespaceInformer.GetStore(), launcherRenderer),
 			vmiInformer,
 			podInformer,
 			migrationInformer,

@@ -2721,8 +2721,9 @@ var _ = Describe(SIG("VM Live Migration", decorators.RequiresTwoSchedulableNodes
 				libvmi.WithMemoryRequest(vmiRequest.String()),
 			)
 
+			launcherRenderer := services.NewLauncherResourceRenderer(v1.KvmHypervisorName)
 			vmiRequest.Add(resource.MustParse("50Mi")) //add 50Mi memoryOverHead to make sure vmi creation won't be blocked
-			enoughMemoryToStartVmiButNotEnoughForMigration := services.GetMemoryOverhead(vmi, runtime.GOARCH, nil)
+			enoughMemoryToStartVmiButNotEnoughForMigration := launcherRenderer.GetMemoryOverhead(vmi, runtime.GOARCH, nil)
 			enoughMemoryToStartVmiButNotEnoughForMigration.Add(vmiRequest)
 			resourcesToLimit := k8sv1.ResourceList{
 				k8sv1.ResourceMemory: resource.MustParse(enoughMemoryToStartVmiButNotEnoughForMigration.String()),
