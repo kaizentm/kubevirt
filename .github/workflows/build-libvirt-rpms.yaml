@@ -25,9 +25,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # TODO: Revert back to original repo once PAT is created with write permissions
-  # TODO IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
-  IMAGE_NAME: harshitgupta1337/kubevirt/libvirt-rpms
+  IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
 
 jobs:
   build-rpms:
@@ -44,7 +42,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build libvirt RPMs
         run: |

@@ -17,16 +17,10 @@ on:
         type: string
 
 env:
-  # TODO: Revert back to original repo once PAT is created with write permissions
-  # TODO DOCKER_PREFIX: ghcr.io/${{ github.repository }}
-  DOCKER_PREFIX: ghcr.io/harshitgupta1337/kubevirt
+  DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-  # TODO: Revert back to original repo once PAT is created with write permissions
-  # TODO CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, inputs.libvirt_rpm_image_tag) }}
-  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/harshitgupta1337/kubevirt/libvirt-rpms:{0}', inputs.libvirt_rpm_image_tag) }}
-  # TODO: Revert back to original repo once PAT is created with write permissions
-  # TODO CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, inputs.qemu_rpm_image_tag) }}
-  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/harshitgupta1337/kubevirt/qemu-rpms:{0}', inputs.qemu_rpm_image_tag) }}
+  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, inputs.libvirt_rpm_image_tag) }}
+  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, inputs.qemu_rpm_image_tag) }}
 
 jobs:
   #quality-check:
@@ -56,7 +50,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Custom libvirt & qemu RPMs
         run: |
