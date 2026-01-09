@@ -62,30 +62,22 @@ jobs:
           docker rm -f qemu-rpms-http-server 2>/dev/null || true
           echo "Custom RPM HTTP servers cleaned up"
 
-  dev:
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      environment: dev
-      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-      kubevirt_provider: external
-    secrets: inherit
-    needs: [Build_Push_Images]
-
   test-kvm:
     uses: ./.github/workflows/deploy.yaml
     with:
       environment: test-kvm
       image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
       kubevirt_provider: k8s-1.32
-      runner_tags: '["self-hosted", "large"]'
+      runner_tags: '["self-hosted", "azlinux-cr-sub", "large"]'
     secrets: inherit
-    needs: [dev]
+    needs: [Build_Push_Images]
 
   test-mshv:
-   uses: ./.github/workflows/deploy.yaml
-   with:
-     environment: test-mshv
-     image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-     kubevirt_provider: external
-   secrets: inherit
-   needs: [dev]
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: test-mshv
+      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+      kubevirt_provider: kind-1.33
+      runner_tags: '["self-hosted", "azlinux-cr-sub", "l1vh"]'
+    secrets: inherit
+    needs: [Build_Push_Images]
