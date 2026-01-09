@@ -16,6 +16,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	"kubevirt.io/kubevirt/pkg/util"
+	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	operatorutil "kubevirt.io/kubevirt/pkg/virt-operator/util"
 )
 
@@ -66,7 +67,7 @@ func RenderPrHelperContainer(image string, pullPolicy corev1.PullPolicy) corev1.
 	}
 }
 
-func NewHandlerDaemonSet(namespace, repository, imagePrefix, version, launcherVersion, prHelperVersion, sidecarShimVersion, productName, productVersion, productComponent, image, launcherImage, prHelperImage, sidecarShimImage string, pullPolicy corev1.PullPolicy, imagePullSecrets []corev1.LocalObjectReference, migrationNetwork *string, verbosity string, extraEnv map[string]string, enablePrHelper bool) *appsv1.DaemonSet {
+func NewHandlerDaemonSet(namespace, repository, imagePrefix, version, launcherVersion, prHelperVersion, sidecarShimVersion, productName, productVersion, productComponent, image, launcherImage, prHelperImage, sidecarShimImage string, pullPolicy corev1.PullPolicy, imagePullSecrets []corev1.LocalObjectReference, migrationNetwork *string, verbosity string, extraEnv map[string]string, enablePrHelper bool, hypervisorName string) *appsv1.DaemonSet {
 
 	deploymentName := VirtHandlerName
 	imageName := fmt.Sprintf("%s%s", imagePrefix, deploymentName)
@@ -131,6 +132,8 @@ func NewHandlerDaemonSet(namespace, repository, imagePrefix, version, launcherVe
 	pod.ServiceAccountName = HandlerServiceAccountName
 	pod.HostPID = true
 
+	launcherRenderer := services.NewLauncherResourceRenderer(hypervisorName)
+
 	// nodelabeller currently only support x86. The arch check will be done in node-labller.sh
 	pod.InitContainers = []corev1.Container{
 		{
@@ -142,6 +145,10 @@ func NewHandlerDaemonSet(namespace, repository, imagePrefix, version, launcherVe
 			Name:  "virt-launcher",
 			Args: []string{
 				"node-labeller.sh",
+				"-d",
+				launcherRenderer.GetHypervisorDevice(),
+				"-t",
+				launcherRenderer.GetVirtType(),
 			},
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: pointer.P(true),
