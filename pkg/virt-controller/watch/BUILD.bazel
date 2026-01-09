@@ -81,6 +81,7 @@ go_test(
     race = "on",
     deps = [
         "//pkg/controller:go_default_library",
+        "//pkg/hypervisor:go_default_library",
         "//pkg/instancetype/controller/vm:go_default_library",
         "//pkg/monitoring/metrics/virt-controller:go_default_library",
         "//pkg/rest:go_default_library",
