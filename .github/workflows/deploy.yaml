@@ -7,7 +7,6 @@ on:
         description: 'The environment to deploy to'
         required: true
         type: string
-        # TODO Remove unused inputs
       image_tag:
         description: 'The image tag to deploy'
         required: true
