@@ -91,10 +91,11 @@ docker exec -w /libvirt-src libvirt-build bash -c "
 # Copy RPMs to local directory
 docker cp libvirt-build:/root/rpmbuild/RPMS/. rpms-libvirt/
 
+LIBVIRT_VERSION=${LIBVIRT_TAG#v}
 # Create metadata file
 cat >rpms-libvirt/build-info.json <<EOF
 {
-  "libvirt_version": "0:11.7.0-1.$COMMIT_SHA_SHORT.el9",
+  "libvirt_version": "0:${LIBVIRT_VERSION}-1.$COMMIT_SHA_SHORT.el9",
   "commit_sha": "$COMMIT_SHA",
   "commit_date": "$COMMIT_DATE",
   "build_date": "$(date -Iseconds)",

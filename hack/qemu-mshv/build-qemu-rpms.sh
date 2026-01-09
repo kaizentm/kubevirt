@@ -1,8 +1,11 @@
 #!/bin/bash
 
-while getopts r:v: flag; do
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+while getopts r:t:v: flag; do
     case "${flag}" in
     r) QEMU_REPO=${OPTARG} ;;
+    t) QEMU_TAG=${OPTARG} ;;
     v) QEMU_VERSION=${OPTARG} ;;
     *)
         echo "Invalid option"
@@ -11,18 +14,35 @@ while getopts r:v: flag; do
     esac
 done
 
-if [ -z "$QEMU_REPO" ] || [ -z "$QEMU_VERSION" ]; then
-    echo "Usage: $0 -r <QEMU_REPO> -v <QEMU_VERSION>"
+if [ -z "$QEMU_REPO" ] || [ -z "$QEMU_TAG" ]; then
+    echo "Usage: $0 -r <QEMU_REPO> -t <QEMU_TAG> [-v <QEMU_VERSION>]"
+    echo "Note: If QEMU_VERSION is not provided, it will derivable from QEMU_TAG."
+    echo "It will be assumed that QEMU_TAG is of the form v<QEMU_VERSION>, with hyphens replaced by dots."
     exit 1
 fi
 
-git clone ${QEMU_REPO} qemu-src
+if [ -z "$QEMU_VERSION" ]; then
+    # Derive QEMU_VERSION from QEMU_TAG
+    QEMU_VERSION=${QEMU_TAG#v}
+    QEMU_VERSION=${QEMU_VERSION//-/.}
+fi
 
-cd qemu-src/
+# Fetch QEMU source code from upstream
+rm -rf ./qemu-rpm-build
+mkdir -p ./qemu-rpm-build
+cd ./qemu-rpm-build
+
+git clone -b ${QEMU_TAG} ${QEMU_REPO} qemu-${QEMU_VERSION}
+
+# Create tarball of QEMU source code
+tar -cf qemu-${QEMU_VERSION}.tar.xz \
+    qemu-${QEMU_VERSION}
+rm -rf qemu-${QEMU_VERSION}
+
+# Copy spec file and related files
+cp $SCRIPT_DIR/qemu-spec/* .
 
 sed -i "s/Version:.*$/Version: ${QEMU_VERSION}/" qemu.spec
-
-curl -L ${QEMU_REPO}/archive/refs/tags/v${QEMU_VERSION}.tar.gz -o qemu-${QEMU_VERSION}.tar.xz
 
 docker rm -f qemu-build
 
@@ -36,6 +56,7 @@ docker exec -w /qemu-src qemu-build bash -c "
   set -ex
   mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
   cp qemu.spec ~/rpmbuild/SPECS
+  cp *.patch ~/rpmbuild/SOURCES/
   cp qemu-${QEMU_VERSION}.tar.xz ~/rpmbuild/SOURCES/
   cd ~/rpmbuild/SPECS
   dnf update -y

@@ -2,17 +2,35 @@ name: Build Custom QEMU RPM
 
 on:
   workflow_dispatch:
+    inputs:
+      qemu_repo:
+        description: 'QEMU Git repository URL'
+        required: false
+        default: 'https://github.com/qemu/qemu'
+        type: string
+      qemu_tag:
+        description: 'Tag/branch of QEMU to build'
+        required: false
+        default: 'v10.2.0-rc4'
+        type: string
+      qemu_version:
+        description: 'Version of QEMU RPM to build (if not provided, derived from tag)'
+        required: false
+        default: ''
+        type: string
+      rpm_image_tag:
+        description: 'Tag to use for the resulting RPM container image'
+        required: false
+        default: 'qemu-mshv'
+        type: string
   push:
     branches: ["ise"]
     paths:
       - .github/workflows/build-qemu-rpm.yaml
 
 env:
-  QEMU_REPO: https://github.com/kaizentm/qemu
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/qemu-rpms
-  QEMU_VERSION: 10.1.50.mshv.v5
-  RPM_IMAGE_TAG: qemu-mshv
 
 jobs:
   build-rpms:
@@ -30,23 +48,25 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
+          # TODO Revert back to this password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build QEMU RPM
         run: |
           hack/qemu-mshv/build-qemu-rpms.sh \
-            -r ${{ env.QEMU_REPO }} \
-            -v ${{ env.QEMU_VERSION }}
+            -r ${{ inputs.qemu_repo }} \
+            -t ${{ inputs.qemu_tag }} \
+            -v "${{ inputs.qemu_version }}"
 
       - name: Create Container Image
         run: |
           hack/qemu-mshv/build-rpms-http-image.sh \
             -r ${{ env.REGISTRY }} \
             -i ${{ env.IMAGE_NAME }} \
-            -t ${{ env.RPM_IMAGE_TAG }} \
+            -t ${{ inputs.rpm_image_tag }} \
             -d rpms-qemu
 
       - name: Push Container Image
         run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.rpm_image_tag }}
 
-          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}"
+          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.rpm_image_tag }}"
