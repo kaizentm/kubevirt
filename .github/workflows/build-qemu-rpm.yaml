@@ -47,7 +47,8 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GH_PAT }}
+          # TODO Revert back to this password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build QEMU RPM
         run: |
