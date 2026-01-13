@@ -6,7 +6,6 @@ Summary:        QEMU with MSHV patch
 License:        GPLv2+
 URL:            https://www.qemu.org
 Source0:        qemu-%{version}.tar.xz
-Patch0:         revert-overlapping-mem-mappings.patch
 
 
 BuildRequires: gcc 
@@ -46,7 +45,6 @@ Packaging the latest (at time of writing) version of qemu that is not available 
 
 %prep
 %setup -q -n %{name}-%{version}
-%patch 0 -p1
 
 
 
