@@ -19,7 +19,7 @@ on:
           default: 'qemu-mshv'
           type: string
   push:
-    branches: ["ise"]
+    branches: ["ise", "guptaharshit/fix-auto-trigger-action-inputs"]
     paths:
       - .github/workflows/build-libvirt-rpms.yaml
 
