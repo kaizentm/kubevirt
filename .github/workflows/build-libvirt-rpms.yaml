@@ -34,6 +34,22 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Set env vars
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            libvirt_repo="${{ github.event.inputs.libvirt_repo }}"
+            libvirt_tag="${{ github.event.inputs.libvirt_tag }}"
+            rpm_image_tag="${{ github.event.inputs.rpm_image_tag }}"
+          else
+            libvirt_repo="https://github.com/libvirt/libvirt.git"
+            libvirt_tag="v11.10.0"
+            rpm_image_tag="qemu-mshv"
+          fi
+
+          echo "LIBVIRT_REPO=${libvirt_repo}" >> $GITHUB_ENV
+          echo "LIBVIRT_TAG=${libvirt_tag}" >> $GITHUB_ENV
+          echo "RPM_IMAGE_TAG=${rpm_image_tag}" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -47,8 +63,8 @@ jobs:
       - name: Build libvirt RPMs
         run: |
           hack/qemu-mshv/build-libvirt-rpms.sh \
-            -r ${{ inputs.libvirt_repo }} \
-            -t ${{ inputs.libvirt_tag }} \
+            -r ${{ env.LIBVIRT_REPO }} \
+            -t ${{ env.LIBVIRT_TAG }} \
             -i ${{ github.run_id }} \
             -n ${{ github.run_number }}
 
@@ -57,11 +73,11 @@ jobs:
           hack/qemu-mshv/build-rpms-http-image.sh \
             -r ${{ env.REGISTRY }} \
             -i ${{ env.IMAGE_NAME }} \
-            -t ${{ inputs.rpm_image_tag }} \
+            -t ${{ env.RPM_IMAGE_TAG }} \
             -d rpms-libvirt
 
       - name: Push Container Image
         run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.rpm_image_tag }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}
 
-          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.rpm_image_tag }}"
+          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}"
