@@ -1,0 +1,111 @@
+name: CICD Pipeline
+
+on:
+  push:
+    branches:
+    - msft-main
+    - ise
+  workflow_dispatch:
+    inputs:
+      qemu_rpm_image_tag:
+        description: 'Tag of QEMU RPM container image to pull'
+        required: false
+        default: 'qemu-mshv'
+        type: string
+      libvirt_rpm_image_tag:
+        description: 'Tag of Libvirt RPM container image to pull'
+        required: false
+        default: 'qemu-mshv'
+        type: string
+
+env:
+  DOCKER_PREFIX: ghcr.io/${{ github.repository }}
+  DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+
+jobs:
+  #quality-check:
+  #  uses: ./.github/workflows/pr.yaml
+
+  Build_Push_Images:
+    runs-on: [self-hosted, azlinux-cr-sub, small]
+    permissions: write-all
+    steps:
+      - name: Set env vars
+        run: |
+          set -x
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            qemu_rpm_image_tag="${{ github.event.inputs.qemu_rpm_image_tag }}"
+            libvirt_rpm_image_tag="${{ github.event.inputs.libvirt_rpm_image_tag }}"
+          else
+            qemu_rpm_image_tag="qemu-mshv"
+            libvirt_rpm_image_tag="qemu-mshv"
+          fi
+
+          custom_libvirt_image=ghcr.io/${{ github.repository }}/libvirt-rpms:${libvirt_rpm_image_tag}
+          custom_qemu_image=ghcr.io/${{ github.repository }}/qemu-rpms:${qemu_rpm_image_tag}
+
+          echo "CUSTOM_LIBVIRT_IMAGE=${custom_libvirt_image}" >> $GITHUB_ENV
+          echo "CUSTOM_QEMU_IMAGE=${custom_qemu_image}" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install pkg-config
+        run: |
+          sudo apt-get -y update
+          sudo apt-get install -y pkg-config
+
+      - name: Cleanup Docker containers and images
+        run: |
+          # Remove all running containers
+          docker ps -q | xargs -r docker rm -f
+          # Remove stopped containers, unused images, networks, and optionally volumes
+          docker system prune -f -a
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Custom libvirt & qemu RPMs
+        run: |
+          hack/qemu-mshv/setup-custom-libvirt-qemu-rpms.sh \
+            -l ${{ env.CUSTOM_LIBVIRT_IMAGE }} \
+            -q ${{ env.CUSTOM_QEMU_IMAGE }}
+
+      - name: Build Images
+        run: |
+          make bazel-build-images
+
+      - name: Push Images
+        run: |
+          make bazel-push-images
+
+      - name: Cleanup Custom RPM Servers
+        if: always()
+        run: |
+          docker rm -f libvirt-rpms-http-server 2>/dev/null || true
+          docker rm -f qemu-rpms-http-server 2>/dev/null || true
+          echo "Custom RPM HTTP servers cleaned up"
+
+  test-kvm:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: test-kvm
+      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+      kubevirt_provider: k8s-1.32
+      runner_tags: '["self-hosted", "azlinux-cr-sub", "large"]'
+    secrets: inherit
+    needs: [Build_Push_Images]
+
+  test-mshv:
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      environment: test-mshv
+      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
+      kubevirt_provider: kind-1.33
+      runner_tags: '["self-hosted", "azlinux-cr-sub", "l1vh"]'
+    secrets: inherit
+    needs: [Build_Push_Images]

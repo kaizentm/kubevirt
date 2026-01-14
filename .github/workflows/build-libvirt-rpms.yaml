@@ -1,0 +1,85 @@
+name: Build Custom libvirt RPMs
+
+on:
+  workflow_dispatch:
+      inputs:
+        libvirt_repo:
+          description: 'Libvirt Git repository URL'
+          required: false
+          default: 'https://github.com/libvirt/libvirt.git'
+          type: string
+        libvirt_tag:
+          description: 'Tag/branch of Libvirt to build'
+          required: false
+          default: 'v11.10.0'
+          type: string
+        rpm_image_tag:
+          description: 'Tag to use for the resulting RPM container image'
+          required: false
+          default: 'qemu-mshv'
+          type: string
+  push:
+    branches:
+    - msft-main
+    - ise
+    paths:
+      - .github/workflows/build-libvirt-rpms.yaml
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/libvirt-rpms
+
+jobs:
+  build-rpms:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set env vars
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            libvirt_repo="${{ github.event.inputs.libvirt_repo }}"
+            libvirt_tag="${{ github.event.inputs.libvirt_tag }}"
+            rpm_image_tag="${{ github.event.inputs.rpm_image_tag }}"
+          else
+            libvirt_repo="https://github.com/libvirt/libvirt.git"
+            libvirt_tag="v11.10.0"
+            rpm_image_tag="qemu-mshv"
+          fi
+
+          echo "LIBVIRT_REPO=${libvirt_repo}" >> $GITHUB_ENV
+          echo "LIBVIRT_TAG=${libvirt_tag}" >> $GITHUB_ENV
+          echo "RPM_IMAGE_TAG=${rpm_image_tag}" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build libvirt RPMs
+        run: |
+          hack/qemu-mshv/build-libvirt-rpms.sh \
+            -r ${{ env.LIBVIRT_REPO }} \
+            -t ${{ env.LIBVIRT_TAG }} \
+            -i ${{ github.run_id }} \
+            -n ${{ github.run_number }}
+
+      - name: Create Container Image
+        run: |
+          hack/qemu-mshv/build-rpms-http-image.sh \
+            -r ${{ env.REGISTRY }} \
+            -i ${{ env.IMAGE_NAME }} \
+            -t ${{ env.RPM_IMAGE_TAG }} \
+            -d rpms-libvirt
+
+      - name: Push Container Image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}
+
+          echo "Pushed container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RPM_IMAGE_TAG }}"
