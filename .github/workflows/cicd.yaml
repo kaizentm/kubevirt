@@ -19,8 +19,6 @@ on:
 env:
   DOCKER_PREFIX: ghcr.io/${{ github.repository }}
   DOCKER_TAG: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-  CUSTOM_LIBVIRT_IMAGE: ${{ format('ghcr.io/{0}/libvirt-rpms:{1}', github.repository, inputs.libvirt_rpm_image_tag) }}
-  CUSTOM_QEMU_IMAGE: ${{ format('ghcr.io/{0}/qemu-rpms:{1}', github.repository, inputs.qemu_rpm_image_tag) }}
 
 jobs:
   #quality-check:
@@ -30,6 +28,23 @@ jobs:
     runs-on: [self-hosted, azlinux-cr-sub, small]
     permissions: write-all
     steps:
+      - name: Set env vars
+        run: |
+          set -x
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            qemu_rpm_image_tag="${{ github.event.inputs.qemu_rpm_image_tag }}"
+            libvirt_rpm_image_tag="${{ github.event.inputs.libvirt_rpm_image_tag }}"
+          else
+            qemu_rpm_image_tag="qemu-mshv"
+            libvirt_rpm_image_tag="qemu-mshv"
+          fi
+
+          custom_libvirt_image=ghcr.io/${{ github.repository }}/libvirt-rpms:${libvirt_rpm_image_tag}
+          custom_qemu_image=ghcr.io/${{ github.repository }}/qemu-rpms:${qemu_rpm_image_tag}
+
+          echo "CUSTOM_LIBVIRT_IMAGE=${custom_libvirt_image}" >> $GITHUB_ENV
+          echo "CUSTOM_QEMU_IMAGE=${custom_qemu_image}" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v2
 
