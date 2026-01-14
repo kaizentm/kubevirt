@@ -6,6 +6,10 @@ on:
     branches:
       - ise
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref || github.ref_name}}"
+  cancel-in-progress: true
+
 env:
   JUNIT_REPORT_FILE: _out/artifacts/junit/junit.unittests.xml
 
@@ -21,13 +25,11 @@ jobs:
         run: |
           make format
           make lint
-
           
       - name: Run Unit Tests
         run: |  
           rm -f $JUNIT_REPORT_FILE
           make test
-
 
       - name: Upload Test Results
         if: always()
