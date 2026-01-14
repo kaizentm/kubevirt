@@ -57,6 +57,7 @@ jobs:
           max-annotations: 50
 
   Build_Push_Images:
+    if: ${{ !github.event.pull_request.draft }}
     needs: [Quality_Check]
     runs-on: [self-hosted, azlinux-cr-sub, small]
     permissions: write-all
@@ -117,6 +118,7 @@ jobs:
           echo "Custom RPM HTTP servers cleaned up"
 
   test-kvm:
+    if: ${{ !github.event.pull_request.draft }}
     uses: ./.github/workflows/deploy.yaml
     with:
       environment: test-kvm
@@ -127,6 +129,7 @@ jobs:
     needs: [Build_Push_Images]
 
   test-mshv:
+    if: ${{ !github.event.pull_request.draft }}
     uses: ./.github/workflows/deploy.yaml
     with:
       environment: test-mshv
