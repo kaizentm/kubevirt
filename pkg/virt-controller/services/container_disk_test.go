@@ -25,6 +25,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/testutils"
 
 	k8sv1 "k8s.io/api/core/v1"
@@ -50,6 +51,7 @@ var _ = Describe("Container disk", func() {
 					},
 				},
 			}, "amd64")
+			launcherRenderer := hypervisor.NewLauncherResourceRenderer(config.GetHypervisor().Name)
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -64,6 +66,7 @@ var _ = Describe("Container disk", func() {
 				"kubevirt/vmexport",
 				cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil),
 				cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, nil),
+				launcherRenderer,
 			)
 		})
 

@@ -48,6 +48,7 @@ import (
 	kubevirtfake "kubevirt.io/client-go/kubevirt/fake"
 	cdiv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/virt-operator/resource/generate/components"
 
@@ -135,6 +136,8 @@ var _ = Describe("PVC source", func() {
 		virtClient.EXPECT().VirtualMachineExport(testNamespace).
 			Return(vmExportClient.ExportV1beta1().VirtualMachineExports(testNamespace)).AnyTimes()
 
+		launcherRenderer := hypervisor.NewLauncherResourceRenderer(config.GetHypervisor().Name)
+
 		controller = &VMExportController{
 			Client:                      virtClient,
 			Recorder:                    recorder,
@@ -145,7 +148,7 @@ var _ = Describe("PVC source", func() {
 			ServiceInformer:             serviceInformer,
 			DataVolumeInformer:          dvInformer,
 			KubevirtNamespace:           "kubevirt",
-			ManifestRenderer:            services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", rqInformer.GetStore(), nsInformer.GetStore()),
+			ManifestRenderer:            services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", rqInformer.GetStore(), nsInformer.GetStore(), launcherRenderer),
 			caCertManager:               fakeCertManager,
 			RouteCache:                  routeCache,
 			IngressCache:                ingressCache,
