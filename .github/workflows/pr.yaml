@@ -10,6 +10,7 @@ on:
       - ready_for_review
     branches:
       - ise
+      - msft-main
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref || github.ref_name}}"
