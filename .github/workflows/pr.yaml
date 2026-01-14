@@ -127,14 +127,3 @@ jobs:
       runner_tags: '["self-hosted", "azlinux-cr-sub", "large"]'
     secrets: inherit
     needs: [Build_Push_Images]
-
-  test-mshv:
-    if: ${{ !github.event.pull_request.draft }}
-    uses: ./.github/workflows/deploy.yaml
-    with:
-      environment: test-mshv
-      image_tag: ${{ vars.VERSION }}-l1vh.${{ github.run_number }}
-      kubevirt_provider: kind-1.33
-      runner_tags: '["self-hosted", "azlinux-cr-sub", "l1vh"]'
-    secrets: inherit
-    needs: [Build_Push_Images]
