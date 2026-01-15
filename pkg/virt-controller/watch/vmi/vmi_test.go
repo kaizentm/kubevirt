@@ -54,6 +54,7 @@ import (
 	kubevirtfake "kubevirt.io/client-go/kubevirt/fake"
 	cdiv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 
 	kvcontroller "kubevirt.io/kubevirt/pkg/controller"
@@ -224,8 +225,9 @@ var _ = Describe("VirtualMachineInstance watcher", func() {
 			return nil
 		}
 
+		launcherRenderer := hypervisor.NewLauncherResourceRenderer(config.GetHypervisor().Name)
 		controller, _ = NewController(
-			services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", rqInformer.GetStore(), nsInformer.GetStore()),
+			services.NewTemplateService("a", 240, "b", "c", "d", "e", "f", pvcInformer.GetStore(), virtClient, config, qemuGid, "g", rqInformer.GetStore(), nsInformer.GetStore(), launcherRenderer),
 			vmiInformer,
 			vmInformer,
 			podInformer,
