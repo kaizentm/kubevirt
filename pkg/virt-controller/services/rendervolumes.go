@@ -380,33 +380,6 @@ func withAccessCredentials(accessCredentials []v1.AccessCredential) VolumeRender
 	}
 }
 
-func PathForSwtpm(vmi *v1.VirtualMachineInstance) string {
-	swtpmPath := "/var/lib/libvirt/swtpm"
-	if util.IsNonRootVMI(vmi) {
-		swtpmPath = filepath.Join(util.VirtPrivateDir, "libvirt", "qemu", "swtpm")
-	}
-
-	return swtpmPath
-}
-
-func PathForSwtpmLocalca(vmi *v1.VirtualMachineInstance) string {
-	localCaPath := "/var/lib/swtpm-localca"
-	if util.IsNonRootVMI(vmi) {
-		localCaPath = filepath.Join(util.VirtPrivateDir, "var", "lib", "swtpm-localca")
-	}
-
-	return localCaPath
-}
-
-func PathForNVram(vmi *v1.VirtualMachineInstance) string {
-	nvramPath := "/var/lib/libvirt/qemu/nvram"
-	if util.IsNonRootVMI(vmi) {
-		nvramPath = filepath.Join(util.VirtPrivateDir, "libvirt", "qemu", "nvram")
-	}
-
-	return nvramPath
-}
-
 func withBackendStorage(vmi *v1.VirtualMachineInstance, backendStoragePVCName string) VolumeRendererOption {
 	return func(renderer *VolumeRenderer) error {
 		if !backendstorage.IsBackendStorageNeeded(vmi) {
@@ -456,12 +429,12 @@ func withBackendStorage(vmi *v1.VirtualMachineInstance, backendStoragePVCName st
 			renderer.podVolumeMounts = append(renderer.podVolumeMounts, k8sv1.VolumeMount{
 				Name:      volumeName,
 				ReadOnly:  false,
-				MountPath: PathForSwtpm(vmi),
+				MountPath: util.PathForSwtpm(vmi),
 				SubPath:   "swtpm",
 			}, k8sv1.VolumeMount{
 				Name:      volumeName,
 				ReadOnly:  false,
-				MountPath: PathForSwtpmLocalca(vmi),
+				MountPath: util.PathForSwtpmLocalca(vmi),
 				SubPath:   "swtpm-localca",
 			})
 		}
@@ -470,7 +443,7 @@ func withBackendStorage(vmi *v1.VirtualMachineInstance, backendStoragePVCName st
 			renderer.podVolumeMounts = append(renderer.podVolumeMounts, k8sv1.VolumeMount{
 				Name:      volumeName,
 				ReadOnly:  false,
-				MountPath: PathForNVram(vmi),
+				MountPath: util.PathForNVram(vmi),
 				SubPath:   "nvram",
 			})
 		}

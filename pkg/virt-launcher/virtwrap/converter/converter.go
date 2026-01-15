@@ -57,12 +57,8 @@ import (
 	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 	"kubevirt.io/kubevirt/pkg/util"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/arch"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/compute"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/metadata"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/network"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/vcpu"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/virtio"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/device"
@@ -1153,7 +1149,7 @@ func Convert_v1_Firmware_To_related_apis(vmi *v1.VirtualMachineInstance, domain 
 			domain.Spec.OS.BootLoader.Type = "pflash"
 			domain.Spec.OS.NVRam = &api.NVRam{
 				Template: c.EFIConfiguration.EFIVars,
-				NVRam:    filepath.Join(services.PathForNVram(vmi), vmi.Name+"_VARS.fd"),
+				NVRam:    filepath.Join(util.PathForNVram(vmi), vmi.Name+"_VARS.fd"),
 			}
 		}
 	}
@@ -1392,53 +1388,14 @@ func setIOThreads(vmi *v1.VirtualMachineInstance, domain *api.Domain, vcpus uint
 	}
 }
 
-func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInstance, domain *api.Domain, c *ConverterContext) (err error) {
+func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInstance, domain *api.Domain, builder *DomainBuilder, c *ConverterContext) (err error) {
 	var controllerDriver *api.ControllerDriver
 
 	precond.MustNotBeNil(vmi)
 	precond.MustNotBeNil(domain)
+	precond.MustNotBeNil(builder)
 	precond.MustNotBeNil(c)
 
-	architecture := c.Architecture.GetArchitecture()
-
-	builder := NewDomainBuilder(
-		metadata.DomainConfigurator{},
-		network.NewDomainConfigurator(
-			network.WithDomainAttachmentByInterfaceName(c.DomainAttachmentByInterfaceName),
-			network.WithUseLaunchSecuritySEV(c.UseLaunchSecuritySEV),
-			network.WithUseLaunchSecurityPV(c.UseLaunchSecurityPV),
-		),
-		compute.TPMDomainConfigurator{},
-		compute.VSOCKDomainConfigurator{},
-		compute.NewLaunchSecurityDomainConfigurator(architecture),
-		compute.ChannelsDomainConfigurator{},
-		compute.ClockDomainConfigurator{},
-		compute.NewRNGDomainConfigurator(
-			compute.RNGWithArchitecture(architecture),
-			compute.RNGWithUseVirtioTransitional(c.UseVirtioTransitional),
-			compute.RNGWithUseLaunchSecuritySEV(c.UseLaunchSecuritySEV),
-			compute.RNGWithUseLaunchSecurityPV(c.UseLaunchSecurityPV),
-		),
-		compute.NewInputDeviceDomainConfigurator(architecture),
-		compute.NewBalloonDomainConfigurator(
-			compute.BalloonWithArchitecture(architecture),
-			compute.BalloonWithUseVirtioTransitional(c.UseVirtioTransitional),
-			compute.BalloonWithUseLaunchSecuritySEV(c.UseLaunchSecuritySEV),
-			compute.BalloonWithUseLaunchSecurityPV(c.UseLaunchSecurityPV),
-			compute.BalloonWithFreePageReporting(c.FreePageReporting),
-			compute.BalloonWithMemBalloonStatsPeriod(c.MemBalloonStatsPeriod),
-		),
-		compute.NewGraphicsDomainConfigurator(architecture, c.BochsForEFIGuests),
-		compute.SoundDomainConfigurator{},
-		compute.NewHostDeviceDomainConfigurator(
-			c.GenericHostDevices,
-			c.GPUHostDevices,
-			c.SRIOVDevices,
-		),
-		compute.NewWatchdogDomainConfigurator(architecture),
-		compute.NewConsoleDomainConfigurator(c.SerialConsoleLog),
-		compute.PanicDevicesDomainConfigurator{},
-	)
 	if err := builder.Build(vmi, domain); err != nil {
 		return err
 	}
@@ -1795,8 +1752,8 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 	}
 
 	if c.Architecture.ShouldVerboseLogsBeEnabled() {
-		virtLauncherLogVerbosity, err := strconv.Atoi(os.Getenv(services.ENV_VAR_VIRT_LAUNCHER_LOG_VERBOSITY))
-		if err == nil && virtLauncherLogVerbosity > services.EXT_LOG_VERBOSITY_THRESHOLD {
+		virtLauncherLogVerbosity, err := strconv.Atoi(os.Getenv(util.ENV_VAR_VIRT_LAUNCHER_LOG_VERBOSITY))
+		if err == nil && virtLauncherLogVerbosity > util.EXT_LOG_VERBOSITY_THRESHOLD {
 			// isa-debugcon device is only for x86_64
 			initializeQEMUCmdAndQEMUArg(domain)
 

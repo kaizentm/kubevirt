@@ -43,6 +43,7 @@ import (
 	"syscall"
 	"time"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/device/hostdevice/dra"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/network"
 
@@ -82,7 +83,6 @@ import (
 	kutil "kubevirt.io/kubevirt/pkg/util"
 	"kubevirt.io/kubevirt/pkg/util/hardware"
 	hw_utils "kubevirt.io/kubevirt/pkg/util/hardware"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/metadata"
 	accesscredentials "kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/access-credentials"
@@ -1189,7 +1189,9 @@ func (l *LibvirtDomainManager) SyncVMI(vmi *v1.VirtualMachineInstance, allowEmul
 		}
 	}
 
-	if err := converter.Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, c); err != nil {
+	domainBuilderFactory := hypervisor.KvmDomainBuilderFactory{} // TODO Get this from virt-launcher cmdline
+
+	if err := converter.Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, domainBuilderFactory.MakeDomainBuilder(c), c); err != nil {
 		logger.Error("Conversion failed.")
 		return nil, err
 	}
@@ -1993,7 +1995,7 @@ func (l *LibvirtDomainManager) FreezeVMI(vmi *v1.VirtualMachineInstance, unfreez
 	// directory to ensure data integrity. This explicit sync ensures that pending
 	// writes to the swtpm backing files are flushed to disk.
 	if tpm.HasPersistentDevice(&vmi.Spec) {
-		cmd := exec.Command("/usr/bin/sync", services.PathForSwtpm(vmi))
+		cmd := exec.Command("/usr/bin/sync", kutil.PathForSwtpm(vmi))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			log.Log.Errorf("fsync error to TPM state directory: %s, output: %s", err.Error(), out)
