@@ -4,6 +4,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
+	"kubevirt.io/kubevirt/pkg/hypervisor/mshv"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/builder"
 )
 
@@ -14,6 +15,8 @@ type DomainBuilderFactory interface {
 func NewDomainBuilderFactory(hypervisor string) DomainBuilderFactory {
 	switch hypervisor {
 	// Other hypervisors can be added here
+	case v1.HyperVDirectHypervisorName:
+		return &mshv.MshvDomainBuilderFactory{}
 	default:
 		return &kvm.KvmDomainBuilderFactory{} // Default to KVM
 	}
