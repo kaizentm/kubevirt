@@ -51,7 +51,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/downwardmetrics"
 	"kubevirt.io/kubevirt/pkg/ephemeral-disk/fake"
 	cmdv1 "kubevirt.io/kubevirt/pkg/handler-launcher-com/cmd/v1"
-	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/os/disk"
 	"kubevirt.io/kubevirt/pkg/pointer"
@@ -60,6 +59,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/util/hardware"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	archconverter "kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/arch"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/builder"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/network"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/vcpu"
 	lsec "kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/launchsecurity"
@@ -120,7 +120,7 @@ var _ = Describe("Converter", func() {
 
 	Context("with v1.Disk", func() {
 		DescribeTable("Should define disk capacity as the minimum of capacity and request", func(arch string, requests, capacity, expected int64) {
-			context := &ConverterContext{Architecture: archconverter.NewConverter(arch)}
+			context := &builder.ConverterContext{Architecture: archconverter.NewConverter(arch)}
 			v1Disk := v1.Disk{
 				Name: "myvolume",
 				DiskDevice: v1.DiskDevice{
@@ -150,7 +150,7 @@ var _ = Describe("Converter", func() {
 		)
 
 		DescribeTable("Should assign scsi controller to", func(diskDevice v1.DiskDevice) {
-			context := &ConverterContext{}
+			context := &builder.ConverterContext{}
 			v1Disk := v1.Disk{
 				Name:       "myvolume",
 				DiskDevice: diskDevice,
@@ -311,8 +311,6 @@ var _ = Describe("Converter", func() {
 		}
 
 		BeforeEach(func() {
-			domainBuilderFactory := kvm.KvmDomainBuilderFactory{}
-
 			vmi = &v1.VirtualMachineInstance{
 				ObjectMeta: k8smeta.ObjectMeta{
 					Name:      "testvmi",
@@ -618,7 +616,7 @@ var _ = Describe("Converter", func() {
 
 		var convertedDomainWithDevicesOnRootBus = strings.TrimSpace(fmt.Sprintf(embedDomainTemplateRootBus, domainType))
 
-		var c *ConverterContext
+		var c *builder.ConverterContext
 
 		isBlockPVCMap := make(map[string]bool)
 		isBlockPVCMap[blockPVCName] = true
@@ -626,7 +624,7 @@ var _ = Describe("Converter", func() {
 		isBlockDVMap["dv_block_test"] = true
 
 		BeforeEach(func() {
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				VirtualMachine: vmi,
 				Secrets: map[string]*k8sv1.Secret{
@@ -669,7 +667,7 @@ var _ = Describe("Converter", func() {
 				vmi.Spec.Domain.Devices.DisableHotplug = !enabled
 
 				domain := &api.Domain{}
-				err := Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, domainBuilderFactory.MakeDomainBuilder(c), c)
+				err := Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, c)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(domain.Spec.Devices.Controllers).To(ContainElement(
 					api.Controller{
@@ -1027,7 +1025,7 @@ var _ = Describe("Converter", func() {
 				libvmi.WithEphemeralPersistentVolumeClaim(blockPVCName, "test-ephemeral"),
 			)
 
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator, IsBlockPVC: isBlockPVCMap, IsBlockDV: isBlockDVMap})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator, IsBlockPVC: isBlockPVCMap, IsBlockDV: isBlockDVMap})
 			By("Checking if the disk backing store type is block")
 			Expect(domain.Spec.Devices.Disks[0].BackingStore).ToNot(BeNil())
 			Expect(domain.Spec.Devices.Disks[0].BackingStore.Type).To(Equal("block"))
@@ -1175,7 +1173,7 @@ var _ = Describe("Converter", func() {
 			)
 
 			DescribeTable("should create domain disk with datastore for block volumes with CBT enabled",
-				func(volumeName string, createVolumeSource func(string) v1.VolumeSource, setupContext func(*ConverterContext, string)) {
+				func(volumeName string, createVolumeSource func(string) v1.VolumeSource, setupContext func(*builder.ConverterContext, string)) {
 					cbtPath := "/var/lib/libvirt/qemu/cbt/" + volumeName + ".qcow2"
 
 					v1.SetObjectDefaults_VirtualMachineInstance(vmi)
@@ -1228,7 +1226,7 @@ var _ = Describe("Converter", func() {
 							},
 						}
 					},
-					func(c *ConverterContext, name string) {
+					func(c *builder.ConverterContext, name string) {
 						c.IsBlockPVC = map[string]bool{name: true}
 					},
 				),
@@ -1240,7 +1238,7 @@ var _ = Describe("Converter", func() {
 							},
 						}
 					},
-					func(c *ConverterContext, name string) {
+					func(c *builder.ConverterContext, name string) {
 						c.IsBlockDV = map[string]bool{name: true}
 					},
 				),
@@ -1727,7 +1725,7 @@ var _ = Describe("Converter", func() {
 	})
 	Context("Network convert", func() {
 		var vmi *v1.VirtualMachineInstance
-		var c *ConverterContext
+		var c *builder.ConverterContext
 
 		const netName1 = "red1"
 		const netName2 = "red2"
@@ -1740,7 +1738,7 @@ var _ = Describe("Converter", func() {
 				},
 			}
 
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				VirtualMachine: vmi,
 				Secrets: map[string]*k8sv1.Secret{
@@ -1969,7 +1967,7 @@ var _ = Describe("Converter", func() {
 			vmi.Spec.Domain.Devices = v1.Devices{
 				AutoattachGraphicsDevice: autoAttach,
 			}
-			domain := vmiToDomain(&vmi, &ConverterContext{AllowEmulation: true, Architecture: archconverter.NewConverter(arch)})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{AllowEmulation: true, Architecture: archconverter.NewConverter(arch)})
 			Expect(domain.Spec.Devices.Video).To(HaveLen(devices))
 			Expect(domain.Spec.Devices.Graphics).To(HaveLen(devices))
 
@@ -1997,7 +1995,7 @@ var _ = Describe("Converter", func() {
 		DescribeTable("should check video device", func(arch string) {
 			const expectedVideoType = "test-video"
 			vmi := libvmi.New(libvmi.WithAutoattachGraphicsDevice(true), libvmi.WithVideo(expectedVideoType))
-			domain := vmiToDomain(vmi, &ConverterContext{AllowEmulation: true, Architecture: archconverter.NewConverter(arch)})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{AllowEmulation: true, Architecture: archconverter.NewConverter(arch)})
 			Expect(domain.Spec.Devices.Video[0].Model.Type).To(Equal(expectedVideoType))
 		},
 			MultiArchEntry("and use the explicitly set video device"),
@@ -2015,7 +2013,7 @@ var _ = Describe("Converter", func() {
 				},
 			}
 
-			domain := vmiToDomain(&vmi, &ConverterContext{Architecture: archconverter.NewConverter(arch), AllowEmulation: true})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(arch), AllowEmulation: true})
 			Expect(domain.Spec.Devices.Graphics).To(HaveLen(1))
 			Expect(domain.Spec.Devices.Graphics).To(HaveExactElements(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 				"Type": Equal("vnc"),
@@ -2042,7 +2040,7 @@ var _ = Describe("Converter", func() {
 				},
 			}
 
-			domain := vmiToDomain(&vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			Expect(domain.Spec.Features.Hyperv).To(Equal(result))
 
 		},
@@ -2094,7 +2092,7 @@ var _ = Describe("Converter", func() {
 				},
 			}
 
-			domain := vmiToDomain(&vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			Expect(domain.Spec.Features.Hyperv.Mode).To(Equal(api.HypervModePassthrough))
 		})
 	})
@@ -2124,7 +2122,7 @@ var _ = Describe("Converter", func() {
 			vmi.Spec.Domain.Devices = v1.Devices{
 				AutoattachSerialConsole: autoAttach,
 			}
-			domain := vmiToDomain(&vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			Expect(domain.Spec.Devices.Serials).To(HaveLen(devices))
 			Expect(domain.Spec.Devices.Consoles).To(HaveLen(devices))
 
@@ -2138,7 +2136,7 @@ var _ = Describe("Converter", func() {
 	It("should not include serial entry in sysinfo when firmware.serial is not set", func() {
 		vmi := libvmi.New()
 		v1.SetObjectDefaults_VirtualMachineInstance(vmi)
-		domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+		domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 		Expect(domain.Spec.SysInfo.System).ToNot(ContainElement(HaveField("Name", Equal("serial"))),
 			"serial entry should not be present in sysinfo",
 		)
@@ -2299,7 +2297,7 @@ var _ = Describe("Converter", func() {
 				},
 			}
 
-			domain := vmiToDomain(&vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator})
 			Expect(domain.Spec.IOThreads).ToNot(BeNil())
 			Expect(int(domain.Spec.IOThreads.IOThreads)).To(Equal(threadCount))
 			for idx, disk := range domain.Spec.Devices.Disks {
@@ -2396,7 +2394,7 @@ var _ = Describe("Converter", func() {
 				},
 			}
 
-			domain := vmiToDomain(&vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator})
+			domain := vmiToDomain(&vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator})
 			Expect(domain.Spec.IOThreads).ToNot(BeNil())
 			Expect(domain.Spec.IOThreads.IOThreads).To(Equal(uint(2)))
 			// Disk with dedicated IOThread (2)
@@ -2421,7 +2419,7 @@ var _ = Describe("Converter", func() {
 				iothreads.IOThread = append(iothreads.IOThread, api.DiskIOThread{Id: uint32(id)})
 			}
 
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, EphemeraldiskCreator: EphemeralDiskImageCreator})
 
 			Expect(domain.Spec.IOThreads.IOThreads).To(Equal(uint(count)))
 			Expect(domain.Spec.Devices.Disks[0].Driver.IOThreads).To(Equal(iothreads))
@@ -2430,10 +2428,10 @@ var _ = Describe("Converter", func() {
 
 	Context("virtio block multi-queue", func() {
 		var vmi *v1.VirtualMachineInstance
-		var context *ConverterContext
+		var context *builder.ConverterContext
 
 		BeforeEach(func() {
-			context = &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), UseVirtioTransitional: false}
+			context = &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), UseVirtioTransitional: false}
 			vmi = &v1.VirtualMachineInstance{
 				ObjectMeta: k8smeta.ObjectMeta{
 					Name:      "testvmi",
@@ -2512,7 +2510,7 @@ var _ = Describe("Converter", func() {
 			expectedNumOfBlkQueues :=
 				vmi.Spec.Domain.CPU.Cores * vmi.Spec.Domain.CPU.Threads * vmi.Spec.Domain.CPU.Sockets
 
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, SMBios: &cmdv1.SMBios{}})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, SMBios: &cmdv1.SMBios{}})
 			Expect(domain.Spec.Devices.Disks).To(HaveLen(1))
 			disk := domain.Spec.Devices.Disks[0]
 			Expect(disk.Driver.Queues).ToNot(BeNil())
@@ -2525,7 +2523,7 @@ var _ = Describe("Converter", func() {
 				Cores: 2,
 			}
 
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, SMBios: &cmdv1.SMBios{}})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true, SMBios: &cmdv1.SMBios{}})
 			Expect(*(domain.Spec.Devices.Disks[0].Driver.Queues)).To(Equal(expectedQueues),
 				"expected number of queues to equal number of requested vCPUs")
 		})
@@ -2533,7 +2531,7 @@ var _ = Describe("Converter", func() {
 
 	Context("Correctly handle IsolateEmulatorThread with dedicated cpus", func() {
 		DescribeTable("should succeed assigning CPUs to emulatorThread",
-			func(cpu v1.CPU, converterContext *ConverterContext, vmiAnnotations map[string]string, expectedEmulatorThreads int) {
+			func(cpu v1.CPU, converterContext *builder.ConverterContext, vmiAnnotations map[string]string, expectedEmulatorThreads int) {
 				var err error
 				domain := &api.Domain{}
 
@@ -2561,7 +2559,7 @@ var _ = Describe("Converter", func() {
 			},
 			Entry("when EmulatorThreadCompleteToEvenParity is disabled and there is one extra CPU assigned for emulatorThread",
 				v1.CPU{Sockets: 1, Cores: 2, Threads: 1},
-				&ConverterContext{CPUSet: []int{5, 6, 7},
+				&builder.ConverterContext{CPUSet: []int{5, 6, 7},
 					Topology: &cmdv1.Topology{
 						NumaCells: []*cmdv1.Cell{{
 							Cpus: []*cmdv1.CPU{
@@ -2575,7 +2573,7 @@ var _ = Describe("Converter", func() {
 				1),
 			Entry("when EmulatorThreadCompleteToEvenParity is enabled and there is one extra CPU assigned for emulatorThread (odd CPUs)",
 				v1.CPU{Sockets: 1, Cores: 5, Threads: 1},
-				&ConverterContext{CPUSet: []int{5, 6, 7, 8, 9, 10},
+				&builder.ConverterContext{CPUSet: []int{5, 6, 7, 8, 9, 10},
 					Topology: &cmdv1.Topology{
 						NumaCells: []*cmdv1.Cell{{
 							Cpus: []*cmdv1.CPU{
@@ -2589,7 +2587,7 @@ var _ = Describe("Converter", func() {
 				1),
 			Entry("when EmulatorThreadCompleteToEvenParity is enabled and there are two extra CPUs assigned for emulatorThread (even CPUs)",
 				v1.CPU{Sockets: 1, Cores: 6, Threads: 1},
-				&ConverterContext{CPUSet: []int{5, 6, 7, 8, 9, 10, 11, 12},
+				&builder.ConverterContext{CPUSet: []int{5, 6, 7, 8, 9, 10, 11, 12},
 					Topology: &cmdv1.Topology{
 						NumaCells: []*cmdv1.Cell{{
 							Cpus: []*cmdv1.CPU{
@@ -2603,7 +2601,7 @@ var _ = Describe("Converter", func() {
 				2),
 		)
 		DescribeTable("should fail assigning CPUs to emulatorThread",
-			func(cpu v1.CPU, converterContext *ConverterContext, vmiAnnotations map[string]string, expectedErrorString string) {
+			func(cpu v1.CPU, converterContext *builder.ConverterContext, vmiAnnotations map[string]string, expectedErrorString string) {
 				var err error
 				domain := &api.Domain{}
 
@@ -2621,7 +2619,7 @@ var _ = Describe("Converter", func() {
 			},
 			Entry("when EmulatorThreadCompleteToEvenParity is disabled and there are not enough CPUs to allocate emulator threads",
 				v1.CPU{Sockets: 1, Cores: 2, Threads: 1},
-				&ConverterContext{CPUSet: []int{5, 6},
+				&builder.ConverterContext{CPUSet: []int{5, 6},
 					Topology: &cmdv1.Topology{
 						NumaCells: []*cmdv1.Cell{{
 							Cpus: []*cmdv1.CPU{
@@ -2634,7 +2632,7 @@ var _ = Describe("Converter", func() {
 				"no CPU allocated for the emulation thread"),
 			Entry("when EmulatorThreadCompleteToEvenParity is enabled and there are not enough Cores to allocate emulator threads (odd CPUs)",
 				v1.CPU{Sockets: 1, Cores: 3, Threads: 1},
-				&ConverterContext{CPUSet: []int{5, 6, 7},
+				&builder.ConverterContext{CPUSet: []int{5, 6, 7},
 					Topology: &cmdv1.Topology{
 						NumaCells: []*cmdv1.Cell{{
 							Cpus: []*cmdv1.CPU{
@@ -2648,7 +2646,7 @@ var _ = Describe("Converter", func() {
 				"no CPU allocated for the emulation thread"),
 			Entry("when EmulatorThreadCompleteToEvenParity is enabled and there are not enough Cores to allocate emulator threads (even CPUs)",
 				v1.CPU{Sockets: 1, Cores: 2, Threads: 1},
-				&ConverterContext{CPUSet: []int{5, 6, 7},
+				&builder.ConverterContext{CPUSet: []int{5, 6, 7},
 					Topology: &cmdv1.Topology{
 						NumaCells: []*cmdv1.Cell{{
 							Cpus: []*cmdv1.CPU{
@@ -2689,7 +2687,7 @@ var _ = Describe("Converter", func() {
 			vmi.Spec.Domain.CPU.Cores = 16
 			vmi.Spec.Domain.Resources.Requests[k8sv1.ResourceCPU] = resource.MustParse("16")
 			v1.SetObjectDefaults_VirtualMachineInstance(vmi)
-			c := &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH),
+			c := &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH),
 				CPUSet:         []int{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
 				AllowEmulation: true,
 				SMBios:         &cmdv1.SMBios{},
@@ -2736,7 +2734,7 @@ var _ = Describe("Converter", func() {
 		It("should pack iothreads equally on available vcpus, if there are more iothreads than vcpus", func() {
 			vmi.Spec.Domain.CPU.Cores = 2
 			v1.SetObjectDefaults_VirtualMachineInstance(vmi)
-			c := &ConverterContext{
+			c := &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				CPUSet:         []int{5, 6},
 				AllowEmulation: true,
@@ -2793,7 +2791,7 @@ var _ = Describe("Converter", func() {
 				Cores: 2,
 			}
 
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			Expect(*(domain.Spec.Devices.Interfaces[0].Driver.Queues)).To(Equal(expectedQueues),
 				"expected number of queues to equal number of requested vCPUs")
 		})
@@ -2805,14 +2803,14 @@ var _ = Describe("Converter", func() {
 				Sockets: 1,
 				Threads: 2,
 			}
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			Expect(*(domain.Spec.Devices.Interfaces[0].Driver.Queues)).To(Equal(expectedQueues),
 				"expected number of queues to equal number of requested vCPUs")
 		})
 
 		It("should not assign queues to a non-virtio devices", func() {
 			vmi.Spec.Domain.Devices.Interfaces[0].Model = "e1000"
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			Expect(domain.Spec.Devices.Interfaces[0].Driver).To(BeNil(),
 				"queues should not be set for models other than virtio")
 		})
@@ -2823,7 +2821,7 @@ var _ = Describe("Converter", func() {
 				Sockets: 1,
 				Threads: 2,
 			}
-			domain := vmiToDomain(vmi, &ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
+			domain := vmiToDomain(vmi, &builder.ConverterContext{Architecture: archconverter.NewConverter(runtime.GOARCH), AllowEmulation: true})
 			expectedNumberQueues := uint(network.MultiQueueMaxQueues)
 			Expect(*(domain.Spec.Devices.Interfaces[0].Driver.Queues)).To(Equal(expectedNumberQueues),
 				"should be capped to the maximum number of queues on tap devices")
@@ -2832,9 +2830,9 @@ var _ = Describe("Converter", func() {
 	})
 	Context("Realtime", func() {
 		var vmi *v1.VirtualMachineInstance
-		var rtContext *ConverterContext
+		var rtContext *builder.ConverterContext
 		BeforeEach(func() {
-			rtContext = &ConverterContext{
+			rtContext = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				AllowEmulation: true,
 				CPUSet:         []int{0, 1, 2, 3, 4},
@@ -2870,7 +2868,7 @@ var _ = Describe("Converter", func() {
 
 	Context("Bootloader", func() {
 		var vmi *v1.VirtualMachineInstance
-		var c *ConverterContext
+		var c *builder.ConverterContext
 
 		BeforeEach(func() {
 			vmi = &v1.VirtualMachineInstance{
@@ -2882,7 +2880,7 @@ var _ = Describe("Converter", func() {
 
 			v1.SetObjectDefaults_VirtualMachineInstance(vmi)
 
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				VirtualMachine: vmi,
 				AllowEmulation: true,
@@ -2921,7 +2919,7 @@ var _ = Describe("Converter", func() {
 		})
 
 		DescribeTable("EFI bootloader", func(secureBoot *bool, efiCode, efiVars string) {
-			c.EFIConfiguration = &EFIConfiguration{
+			c.EFIConfiguration = &builder.EFIConfiguration{
 				EFICode:      efiCode,
 				EFIVars:      efiVars,
 				SecureLoader: secureBoot == nil || *secureBoot,
@@ -2955,7 +2953,7 @@ var _ = Describe("Converter", func() {
 		)
 
 		It("EFI vars should be in the right place when running as root", func() {
-			c.EFIConfiguration = &EFIConfiguration{
+			c.EFIConfiguration = &builder.EFIConfiguration{
 				EFICode:      "OVMF_CODE.fd",
 				EFIVars:      "OVMF_VARS.fd",
 				SecureLoader: false,
@@ -2979,12 +2977,12 @@ var _ = Describe("Converter", func() {
 
 		DescribeTable("display device should be set to", func(arch string, bootloader v1.Bootloader, enableFG bool, expectedDevice string) {
 			vmi.Spec.Domain.Firmware = &v1.Firmware{Bootloader: &bootloader}
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:      archconverter.NewConverter(arch),
 				BochsForEFIGuests: enableFG,
 				VirtualMachine:    vmi,
 				AllowEmulation:    true,
-				EFIConfiguration:  &EFIConfiguration{},
+				EFIConfiguration:  &builder.EFIConfiguration{},
 			}
 			domainSpec := vmiToDomainXMLToDomainSpec(vmi, c)
 			Expect(domainSpec.Devices.Video).To(HaveLen(1))
@@ -3026,7 +3024,7 @@ var _ = Describe("Converter", func() {
 			}
 			vmi.Spec.Domain.Firmware = &v1.Firmware{ACPI: acpi}
 
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				VirtualMachine: vmi,
 				AllowEmulation: true,
@@ -3115,14 +3113,14 @@ var _ = Describe("Converter", func() {
 
 	Context("Kernel Boot", func() {
 		var vmi *v1.VirtualMachineInstance
-		var c *ConverterContext
+		var c *builder.ConverterContext
 
 		BeforeEach(func() {
 			vmi = &v1.VirtualMachineInstance{}
 
 			v1.SetObjectDefaults_VirtualMachineInstance(vmi)
 
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				VirtualMachine: vmi,
 				AllowEmulation: true,
@@ -3169,11 +3167,11 @@ var _ = Describe("Converter", func() {
 
 	Context("hotplug", func() {
 		var vmi *v1.VirtualMachineInstance
-		var c *ConverterContext
+		var c *builder.ConverterContext
 
 		Context("disk", func() {
 
-			type ConverterFunc = func(name string, disk *api.Disk, c *ConverterContext) error
+			type ConverterFunc = func(name string, disk *api.Disk, c *builder.ConverterContext) error
 
 			BeforeEach(func() {
 				vmi = &v1.VirtualMachineInstance{
@@ -3185,7 +3183,7 @@ var _ = Describe("Converter", func() {
 
 				v1.SetObjectDefaults_VirtualMachineInstance(vmi)
 
-				c = &ConverterContext{
+				c = &builder.ConverterContext{
 					Architecture:   archconverter.NewConverter(runtime.GOARCH),
 					VirtualMachine: vmi,
 					AllowEmulation: true,
@@ -3298,7 +3296,7 @@ var _ = Describe("Converter", func() {
 
 				v1.SetObjectDefaults_VirtualMachineInstance(vmi)
 
-				c = &ConverterContext{
+				c = &builder.ConverterContext{
 					VirtualMachine: vmi,
 					AllowEmulation: true,
 				}
@@ -3338,7 +3336,7 @@ var _ = Describe("Converter", func() {
 
 					v1.SetObjectDefaults_VirtualMachineInstance(vmi)
 
-					testContext := &ConverterContext{
+					testContext := &builder.ConverterContext{
 						VirtualMachine: vmi,
 						AllowEmulation: true,
 						Architecture:   archconverter.NewConverter(runtime.GOARCH),
@@ -3375,7 +3373,7 @@ var _ = Describe("Converter", func() {
 	Context("with AMD SEV LaunchSecurity", func() {
 		var (
 			vmi *v1.VirtualMachineInstance
-			c   *ConverterContext
+			c   *builder.ConverterContext
 		)
 
 		BeforeEach(func() {
@@ -3406,10 +3404,10 @@ var _ = Describe("Converter", func() {
 					},
 				},
 			}
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:         archconverter.NewConverter(amd64),
 				AllowEmulation:       true,
-				EFIConfiguration:     &EFIConfiguration{},
+				EFIConfiguration:     &builder.EFIConfiguration{},
 				UseLaunchSecuritySEV: true,
 			}
 		})
@@ -3489,7 +3487,7 @@ var _ = Describe("Converter", func() {
 	Context("with Secure Execution LaunchSecurity", func() {
 		var (
 			vmi *v1.VirtualMachineInstance
-			c   *ConverterContext
+			c   *builder.ConverterContext
 		)
 
 		BeforeEach(func() {
@@ -3526,7 +3524,7 @@ var _ = Describe("Converter", func() {
 				*v1.DefaultPodNetwork(), secondaryNetwork,
 			}
 			vmi.Spec.Domain.LaunchSecurity = &v1.LaunchSecurity{}
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:        archconverter.NewConverter(s390x),
 				AllowEmulation:      true,
 				UseLaunchSecurityPV: true,
@@ -3577,7 +3575,7 @@ var _ = Describe("Converter", func() {
 	Context("with Intel TDX LaunchSecurity", func() {
 		var (
 			vmi *v1.VirtualMachineInstance
-			c   *ConverterContext
+			c   *builder.ConverterContext
 		)
 
 		BeforeEach(func() {
@@ -3606,10 +3604,10 @@ var _ = Describe("Converter", func() {
 					},
 				},
 			}
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:         archconverter.NewConverter(amd64),
 				AllowEmulation:       true,
-				EFIConfiguration:     &EFIConfiguration{},
+				EFIConfiguration:     &builder.EFIConfiguration{},
 				UseLaunchSecurityTDX: true,
 			}
 		})
@@ -3625,7 +3623,7 @@ var _ = Describe("Converter", func() {
 	Context("when TSC Frequency", func() {
 		var (
 			vmi *v1.VirtualMachineInstance
-			c   *ConverterContext
+			c   *builder.ConverterContext
 		)
 
 		const fakeFrequency = 12345
@@ -3634,7 +3632,7 @@ var _ = Describe("Converter", func() {
 			vmi = kvapi.NewMinimalVMI("testvmi")
 			v1.SetObjectDefaults_VirtualMachineInstance(vmi)
 			vmi.Status.TopologyHints = &v1.TopologyHints{TSCFrequency: pointer.P(int64(fakeFrequency))}
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				AllowEmulation: true,
 			}
@@ -3700,7 +3698,7 @@ var _ = Describe("Converter", func() {
 	Context("with FreePageReporting", func() {
 		var (
 			vmi *v1.VirtualMachineInstance
-			c   *ConverterContext
+			c   *builder.ConverterContext
 		)
 
 		BeforeEach(func() {
@@ -3709,7 +3707,7 @@ var _ = Describe("Converter", func() {
 		})
 
 		DescribeTable("should set freePageReporting attribute of memballooning device, accordingly to the context value", func(freePageReporting bool, expectedValue string) {
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:      archconverter.NewConverter(runtime.GOARCH),
 				FreePageReporting: freePageReporting,
 				AllowEmulation:    true,
@@ -3729,7 +3727,7 @@ var _ = Describe("Converter", func() {
 	Context("with Paused strategy", func() {
 		var (
 			vmi *v1.VirtualMachineInstance
-			c   *ConverterContext
+			c   *builder.ConverterContext
 		)
 
 		BeforeEach(func() {
@@ -3738,7 +3736,7 @@ var _ = Describe("Converter", func() {
 		})
 
 		DescribeTable("bootmenu should be", func(startPaused bool) {
-			c = &ConverterContext{
+			c = &builder.ConverterContext{
 				Architecture:   archconverter.NewConverter(runtime.GOARCH),
 				AllowEmulation: true,
 			}
@@ -3769,7 +3767,7 @@ var _ = Describe("Converter", func() {
 			vmi.Spec.Domain.Devices.TPM = vmiTPM
 			domain := vmiToDomain(
 				vmi,
-				&ConverterContext{
+				&builder.ConverterContext{
 					Architecture:   archconverter.NewConverter(runtime.GOARCH),
 					AllowEmulation: true,
 				},
@@ -3983,20 +3981,20 @@ var _ = Describe("Driver Cache and IO Settings", func() {
 func diskToDiskXML(arch string, disk *v1.Disk) string {
 	devicePerBus := make(map[string]deviceNamer)
 	libvirtDisk := &api.Disk{}
-	Expect(Convert_v1_Disk_To_api_Disk(&ConverterContext{Architecture: archconverter.NewConverter(arch), UseVirtioTransitional: false}, disk, libvirtDisk, devicePerBus, nil, make(map[string]v1.VolumeStatus))).To(Succeed())
+	Expect(Convert_v1_Disk_To_api_Disk(&builder.ConverterContext{Architecture: archconverter.NewConverter(arch), UseVirtioTransitional: false}, disk, libvirtDisk, devicePerBus, nil, make(map[string]v1.VolumeStatus))).To(Succeed())
 	data, err := xml.MarshalIndent(libvirtDisk, "", "  ")
 	Expect(err).ToNot(HaveOccurred())
 	return string(data)
 }
 
-func vmiToDomainXML(vmi *v1.VirtualMachineInstance, c *ConverterContext) string {
+func vmiToDomainXML(vmi *v1.VirtualMachineInstance, c *builder.ConverterContext) string {
 	domain := vmiToDomain(vmi, c)
 	data, err := xml.MarshalIndent(domain.Spec, "", "  ")
 	Expect(err).ToNot(HaveOccurred())
 	return string(data)
 }
 
-func vmiToDomain(vmi *v1.VirtualMachineInstance, c *ConverterContext) *api.Domain {
+func vmiToDomain(vmi *v1.VirtualMachineInstance, c *builder.ConverterContext) *api.Domain {
 	domain := &api.Domain{}
 	ExpectWithOffset(1, Convert_v1_VirtualMachineInstance_To_api_Domain(vmi, domain, c)).To(Succeed())
 	api.NewDefaulter(c.Architecture.GetArchitecture()).SetObjectDefaults_Domain(domain)
@@ -4011,19 +4009,19 @@ func xmlToDomainSpec(data string) *api.DomainSpec {
 	return newDomain
 }
 
-func vmiToDomainXMLToDomainSpec(vmi *v1.VirtualMachineInstance, c *ConverterContext) *api.DomainSpec {
+func vmiToDomainXMLToDomainSpec(vmi *v1.VirtualMachineInstance, c *builder.ConverterContext) *api.DomainSpec {
 	return xmlToDomainSpec(vmiToDomainXML(vmi, c))
 }
 
 // As the arch specific default disk is set in the mutating webhook, so in some tests,
 // it needs to run the mutate function before verifying converter
-func vmiArchMutate(arch string, vmi *v1.VirtualMachineInstance, c *ConverterContext) {
+func vmiArchMutate(arch string, vmi *v1.VirtualMachineInstance, c *builder.ConverterContext) {
 	switch arch {
 	case arm64:
 		defaults.SetArm64Defaults(&vmi.Spec)
 		// bootloader has been initialized in webhooks.SetArm64Defaults,
 		// c.EFIConfiguration.SecureLoader is needed in the converter.Convert_v1_VirtualMachineInstance_To_api_Domain.
-		c.EFIConfiguration = &EFIConfiguration{
+		c.EFIConfiguration = &builder.EFIConfiguration{
 			SecureLoader: false,
 		}
 	case amd64:

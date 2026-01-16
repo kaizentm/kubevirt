@@ -2,11 +2,11 @@ package hypervisor
 
 import (
 	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/builder"
 )
 
 type DomainBuilderFactory interface {
-	MakeDomainBuilder(c *converter.ConverterContext) *converter.DomainBuilder
+	MakeDomainBuilder(c *builder.ConverterContext) *builder.DomainBuilder
 }
 
 func NewDomainBuilderFactory(hypervisor string) DomainBuilderFactory {

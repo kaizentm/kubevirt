@@ -3,7 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "builder.go",
         "converter.go",
         "generated_mock_converter.go",
         "pci-placement.go",
@@ -16,9 +15,8 @@ go_library(
         "//pkg/config:go_default_library",
         "//pkg/container-disk:go_default_library",
         "//pkg/emptydisk:go_default_library",
-        "//pkg/ephemeral-disk:go_default_library",
-        "//pkg/handler-launcher-com/cmd/v1:go_default_library",
         "//pkg/host-disk:go_default_library",
+        "//pkg/hypervisor:go_default_library",
         "//pkg/ignition:go_default_library",
         "//pkg/os/disk:go_default_library",
         "//pkg/pointer:go_default_library",
@@ -27,7 +25,7 @@ go_library(
         "//pkg/storage/types:go_default_library",
         "//pkg/util:go_default_library",
         "//pkg/virt-launcher/virtwrap/api:go_default_library",
-        "//pkg/virt-launcher/virtwrap/converter/arch:go_default_library",
+        "//pkg/virt-launcher/virtwrap/converter/builder:go_default_library",
         "//pkg/virt-launcher/virtwrap/converter/vcpu:go_default_library",
         "//pkg/virt-launcher/virtwrap/converter/virtio:go_default_library",
         "//pkg/virt-launcher/virtwrap/device:go_default_library",
@@ -44,7 +42,6 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
-        "builder_test.go",
         "converter_suite_test.go",
         "converter_test.go",
     ],
@@ -63,7 +60,6 @@ go_test(
         "//pkg/downwardmetrics:go_default_library",
         "//pkg/ephemeral-disk/fake:go_default_library",
         "//pkg/handler-launcher-com/cmd/v1:go_default_library",
-        "//pkg/hypervisor/kvm:go_default_library",
         "//pkg/libvmi:go_default_library",
         "//pkg/os/disk:go_default_library",
         "//pkg/pointer:go_default_library",
@@ -72,6 +68,7 @@ go_test(
         "//pkg/util/hardware:go_default_library",
         "//pkg/virt-launcher/virtwrap/api:go_default_library",
         "//pkg/virt-launcher/virtwrap/converter/arch:go_default_library",
+        "//pkg/virt-launcher/virtwrap/converter/builder:go_default_library",
         "//pkg/virt-launcher/virtwrap/converter/network:go_default_library",
         "//pkg/virt-launcher/virtwrap/converter/vcpu:go_default_library",
         "//pkg/virt-launcher/virtwrap/launchsecurity:go_default_library",

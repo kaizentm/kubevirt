@@ -1,7 +1,7 @@
 package kvm
 
 import (
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/builder"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/compute"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/metadata"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/network"
@@ -9,10 +9,10 @@ import (
 
 type KvmDomainBuilderFactory struct{}
 
-func (f *KvmDomainBuilderFactory) MakeDomainBuilder(c *converter.ConverterContext) *converter.DomainBuilder {
+func (f KvmDomainBuilderFactory) MakeDomainBuilder(c *builder.ConverterContext) *builder.DomainBuilder {
 	architecture := c.Architecture.GetArchitecture()
 
-	builder := converter.NewDomainBuilder(
+	builder := builder.NewDomainBuilder(
 		metadata.DomainConfigurator{},
 		network.NewDomainConfigurator(
 			network.WithDomainAttachmentByInterfaceName(c.DomainAttachmentByInterfaceName),
