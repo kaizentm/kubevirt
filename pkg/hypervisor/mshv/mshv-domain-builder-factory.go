@@ -1,4 +1,4 @@
-package kvm
+package mshv
 
 import (
 	v1 "kubevirt.io/api/core/v1"
@@ -12,9 +12,9 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/virtio"
 )
 
-type KvmDomainBuilderFactory struct{}
+type MshvDomainBuilderFactory struct{}
 
-func (f KvmDomainBuilderFactory) MakeDomainBuilder(vmi *v1.VirtualMachineInstance, c *builder.ConverterContext) *builder.DomainBuilder {
+func (f MshvDomainBuilderFactory) MakeDomainBuilder(vmi *v1.VirtualMachineInstance, c *builder.ConverterContext) *builder.DomainBuilder {
 	architecture := c.Architecture.GetArchitecture()
 	virtioModel := virtio.InterpretTransitionalModelType(
 		vmi.Spec.Domain.Devices.UseVirtioTransitional,
@@ -32,7 +32,7 @@ func (f KvmDomainBuilderFactory) MakeDomainBuilder(vmi *v1.VirtualMachineInstanc
 		),
 		compute.TPMDomainConfigurator{},
 		compute.VSOCKDomainConfigurator{},
-		compute.NewKvmDomainConfigurator(c.AllowEmulation, c.HypervisorAvailable),
+		NewMshvDomainConfigurator(c.AllowEmulation, c.HypervisorAvailable),
 		compute.NewLaunchSecurityDomainConfigurator(architecture),
 		compute.ChannelsDomainConfigurator{},
 		compute.ClockDomainConfigurator{},
