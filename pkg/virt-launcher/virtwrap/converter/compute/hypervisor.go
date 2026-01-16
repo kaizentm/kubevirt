@@ -28,21 +28,21 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 )
 
-type HypervisorDomainConfigurator struct {
+type KvmDomainConfigurator struct {
 	allowEmulation bool
 	kvmAvailable   bool
 }
 
-// NewHypervisorDomainConfigurator creates a new hypervisor domain configurator
-func NewHypervisorDomainConfigurator(allowEmulation bool, kvmAvailable bool) HypervisorDomainConfigurator {
-	return HypervisorDomainConfigurator{
+// NewKvmDomainConfigurator creates a new KVM domain configurator
+func NewKvmDomainConfigurator(allowEmulation bool, kvmAvailable bool) KvmDomainConfigurator {
+	return KvmDomainConfigurator{
 		allowEmulation: allowEmulation,
 		kvmAvailable:   kvmAvailable,
 	}
 }
 
 // Configure configures the domain hypervisor settings based on KVM availability and emulation settings
-func (h HypervisorDomainConfigurator) Configure(vmi *v1.VirtualMachineInstance, domain *api.Domain) error {
+func (h KvmDomainConfigurator) Configure(vmi *v1.VirtualMachineInstance, domain *api.Domain) error {
 	if !h.kvmAvailable {
 		if h.allowEmulation {
 			logger := log.DefaultLogger()

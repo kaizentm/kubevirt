@@ -32,6 +32,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 	archconverter "kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/arch"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/builder"
 
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "kubevirt.io/api/core/v1"
@@ -47,10 +48,11 @@ var _ = Describe("SMBios sidecar", func() {
 			},
 		}
 
-		c := &converter.ConverterContext{
+		c := &builder.ConverterContext{
 			Architecture:   archconverter.NewConverter(runtime.GOARCH),
 			VirtualMachine: vmi,
 			AllowEmulation: true,
+			HypervisorName: v1.KvmHypervisorName,
 		}
 
 		domain := &api.Domain{}

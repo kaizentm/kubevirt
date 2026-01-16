@@ -97,7 +97,7 @@ var _ = Describe("VirtualMachineInstance", func() {
 	const host = "master"
 	const interfaceName = "interface_name"
 
-	getCgroupManager = func(_ *v1.VirtualMachineInstance, _ string) (cgroup.Manager, error) {
+	getCgroupManager = func(_ *v1.VirtualMachineInstance, _ string, _ int64) (cgroup.Manager, error) {
 		return mockCgroupManager, nil
 	}
 
