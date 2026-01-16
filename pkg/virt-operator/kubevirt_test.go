@@ -3543,7 +3543,8 @@ func getDefaultVirtHandlerDaemonSet(namespace string, config *util.KubeVirtDeplo
 		nil,
 		config.GetVerbosity(),
 		config.GetExtraEnv(),
-		false)
+		false,
+		config.GetHypervisorName())
 }
 
 func getDefaultExportProxyDeployment(namespace string, config *util.KubeVirtDeploymentConfig) *appsv1.Deployment {

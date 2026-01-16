@@ -47,9 +47,8 @@ import (
 	"kubevirt.io/kubevirt/pkg/config"
 	containerdisk "kubevirt.io/kubevirt/pkg/container-disk"
 	"kubevirt.io/kubevirt/pkg/emptydisk"
-	ephemeraldisk "kubevirt.io/kubevirt/pkg/ephemeral-disk"
-	cmdv1 "kubevirt.io/kubevirt/pkg/handler-launcher-com/cmd/v1"
 	hostdisk "kubevirt.io/kubevirt/pkg/host-disk"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/ignition"
 	"kubevirt.io/kubevirt/pkg/os/disk"
 	"kubevirt.io/kubevirt/pkg/pointer"
@@ -57,12 +56,8 @@ import (
 	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 	"kubevirt.io/kubevirt/pkg/util"
-	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/arch"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/compute"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/metadata"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/network"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/builder"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/vcpu"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter/virtio"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/device"
@@ -80,45 +75,6 @@ type deviceNamer struct {
 	usedDeviceMap   map[string]string
 }
 
-type EFIConfiguration struct {
-	EFICode      string
-	EFIVars      string
-	SecureLoader bool
-}
-
-type ConverterContext struct {
-	Architecture                    arch.Converter
-	AllowEmulation                  bool
-	Secrets                         map[string]*k8sv1.Secret
-	VirtualMachine                  *v1.VirtualMachineInstance
-	CPUSet                          []int
-	IsBlockPVC                      map[string]bool
-	IsBlockDV                       map[string]bool
-	ApplyCBT                        map[string]string
-	HotplugVolumes                  map[string]v1.VolumeStatus
-	PermanentVolumes                map[string]v1.VolumeStatus
-	MigratedVolumes                 map[string]string
-	DisksInfo                       map[string]*disk.DiskInfo
-	SMBios                          *cmdv1.SMBios
-	SRIOVDevices                    []api.HostDevice
-	GenericHostDevices              []api.HostDevice
-	GPUHostDevices                  []api.HostDevice
-	EFIConfiguration                *EFIConfiguration
-	MemBalloonStatsPeriod           uint
-	UseVirtioTransitional           bool
-	EphemeraldiskCreator            ephemeraldisk.EphemeralDiskCreatorInterface
-	VolumesDiscardIgnore            []string
-	Topology                        *cmdv1.Topology
-	ExpandDisksEnabled              bool
-	UseLaunchSecuritySEV            bool // For AMD SEV/ES/SNP
-	UseLaunchSecurityTDX            bool // For Intel TDX
-	UseLaunchSecurityPV             bool // For IBM SE(s390-pv)
-	FreePageReporting               bool
-	BochsForEFIGuests               bool
-	SerialConsoleLog                bool
-	DomainAttachmentByInterfaceName map[string]string
-}
-
 func assignDiskToSCSIController(disk *api.Disk, unit int) {
 	// Ensure we assign this disk to the correct scsi controller
 	if disk.Address == nil {
@@ -131,7 +87,7 @@ func assignDiskToSCSIController(disk *api.Disk, unit int) {
 	disk.Address.Unit = strconv.Itoa(unit)
 }
 
-func Convert_v1_Disk_To_api_Disk(c *ConverterContext, diskDevice *v1.Disk, disk *api.Disk, prefixMap map[string]deviceNamer, numQueues *uint, volumeStatusMap map[string]v1.VolumeStatus) error {
+func Convert_v1_Disk_To_api_Disk(c *builder.ConverterContext, diskDevice *v1.Disk, disk *api.Disk, prefixMap map[string]deviceNamer, numQueues *uint, volumeStatusMap map[string]v1.VolumeStatus) error {
 	if diskDevice.Disk != nil {
 		var unit int
 		disk.Device = "disk"
@@ -594,7 +550,7 @@ func toApiReadOnly(src bool) *api.ReadOnly {
 	return nil
 }
 
-func Convert_v1_Volume_To_api_Disk(source *v1.Volume, disk *api.Disk, c *ConverterContext, diskIndex int) error {
+func Convert_v1_Volume_To_api_Disk(source *v1.Volume, disk *api.Disk, c *builder.ConverterContext, diskIndex int) error {
 
 	if source.ContainerDisk != nil {
 		return Convert_v1_ContainerDiskSource_To_api_Disk(source.Name, source.ContainerDisk, disk, c, diskIndex)
@@ -646,7 +602,7 @@ func Convert_v1_Volume_To_api_Disk(source *v1.Volume, disk *api.Disk, c *Convert
 }
 
 // Convert_v1_Hotplug_Volume_To_api_Disk convers a hotplug volume to an api disk
-func Convert_v1_Hotplug_Volume_To_api_Disk(source *v1.Volume, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_Hotplug_Volume_To_api_Disk(source *v1.Volume, disk *api.Disk, c *builder.ConverterContext) error {
 	// This is here because virt-handler before passing the VMI here replaces all PVCs with host disks in
 	// hostdisk.ReplacePVCByHostDisk not quite sure why, but it broken hot plugging PVCs
 	if source.HostDisk != nil {
@@ -764,24 +720,24 @@ func ConvertVolumeSourceToDisk(volumeName, cbtPath string, isBlock bool, disk *a
 	return convertVolumeWithoutCBT(volumeName, isBlock, disk, volumesDiscardIgnore)
 }
 
-func Convert_v1_PersistentVolumeClaim_To_api_Disk(name string, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_PersistentVolumeClaim_To_api_Disk(name string, disk *api.Disk, c *builder.ConverterContext) error {
 	return ConvertVolumeSourceToDisk(name, c.ApplyCBT[name], c.IsBlockPVC[name], disk, c.VolumesDiscardIgnore)
 }
 
 // Convert_v1_Hotplug_PersistentVolumeClaim_To_api_Disk converts a Hotplugged PVC to an api disk
-func Convert_v1_Hotplug_PersistentVolumeClaim_To_api_Disk(name string, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_Hotplug_PersistentVolumeClaim_To_api_Disk(name string, disk *api.Disk, c *builder.ConverterContext) error {
 	if c.IsBlockPVC[name] {
 		return Convert_v1_Hotplug_BlockVolumeSource_To_api_Disk(name, disk, c.VolumesDiscardIgnore)
 	}
 	return Convert_v1_Hotplug_FilesystemVolumeSource_To_api_Disk(name, disk, c.VolumesDiscardIgnore)
 }
 
-func Convert_v1_DataVolume_To_api_Disk(name string, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_DataVolume_To_api_Disk(name string, disk *api.Disk, c *builder.ConverterContext) error {
 	return ConvertVolumeSourceToDisk(name, c.ApplyCBT[name], c.IsBlockDV[name], disk, c.VolumesDiscardIgnore)
 }
 
 // Convert_v1_Hotplug_DataVolume_To_api_Disk converts a Hotplugged DataVolume to an api disk
-func Convert_v1_Hotplug_DataVolume_To_api_Disk(name string, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_Hotplug_DataVolume_To_api_Disk(name string, disk *api.Disk, c *builder.ConverterContext) error {
 	if c.IsBlockDV[name] {
 		return Convert_v1_Hotplug_BlockVolumeSource_To_api_Disk(name, disk, c.VolumesDiscardIgnore)
 	}
@@ -823,7 +779,7 @@ func Convert_v1_Hotplug_BlockVolumeSource_To_api_Disk(volumeName string, disk *a
 	return nil
 }
 
-func Convert_v1_HostDisk_To_api_Disk(volumeName string, path string, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_HostDisk_To_api_Disk(volumeName string, path string, disk *api.Disk, c *builder.ConverterContext) error {
 	disk.Type = "file"
 	if cbtPath, ok := c.ApplyCBT[volumeName]; ok {
 		disk.Driver.Type = "qcow2"
@@ -856,7 +812,7 @@ func Convert_v1_SysprepSource_To_api_Disk(volumeName string, disk *api.Disk) err
 	return nil
 }
 
-func Convert_v1_CloudInitSource_To_api_Disk(source v1.VolumeSource, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_CloudInitSource_To_api_Disk(source v1.VolumeSource, disk *api.Disk, c *builder.ConverterContext) error {
 	if disk.Type == "lun" {
 		return fmt.Errorf(deviceTypeNotCompatibleFmt, disk.Alias.GetName())
 	}
@@ -876,7 +832,7 @@ func Convert_v1_CloudInitSource_To_api_Disk(source v1.VolumeSource, disk *api.Di
 	return nil
 }
 
-func Convert_v1_DownwardMetricSource_To_api_Disk(disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_DownwardMetricSource_To_api_Disk(disk *api.Disk, c *builder.ConverterContext) error {
 	disk.Type = "file"
 	disk.ReadOnly = toApiReadOnly(true)
 	disk.Driver = &api.DiskDriver{
@@ -903,7 +859,7 @@ func Convert_v1_EmptyDiskSource_To_api_Disk(volumeName string, _ *v1.EmptyDiskSo
 	return nil
 }
 
-func Convert_v1_ContainerDiskSource_To_api_Disk(volumeName string, _ *v1.ContainerDiskSource, disk *api.Disk, c *ConverterContext, diskIndex int) error {
+func Convert_v1_ContainerDiskSource_To_api_Disk(volumeName string, _ *v1.ContainerDiskSource, disk *api.Disk, c *builder.ConverterContext, diskIndex int) error {
 	if disk.Type == "lun" {
 		return fmt.Errorf(deviceTypeNotCompatibleFmt, disk.Alias.GetName())
 	}
@@ -927,7 +883,7 @@ func Convert_v1_ContainerDiskSource_To_api_Disk(volumeName string, _ *v1.Contain
 	return nil
 }
 
-func Convert_v1_EphemeralVolumeSource_To_api_Disk(volumeName string, disk *api.Disk, c *ConverterContext) error {
+func Convert_v1_EphemeralVolumeSource_To_api_Disk(volumeName string, disk *api.Disk, c *builder.ConverterContext) error {
 	disk.Type = "file"
 	setDiskDriver(disk, "qcow2", true)
 	disk.Source.File = c.EphemeraldiskCreator.GetFilePath(volumeName)
@@ -953,7 +909,7 @@ func Convert_v1_EphemeralVolumeSource_To_api_Disk(volumeName string, disk *api.D
 	return nil
 }
 
-func Convert_v1_Usbredir_To_api_Usbredir(vmi *v1.VirtualMachineInstance, domainDevices *api.Devices, _ *ConverterContext) error {
+func Convert_v1_Usbredir_To_api_Usbredir(vmi *v1.VirtualMachineInstance, domainDevices *api.Devices, _ *builder.ConverterContext) error {
 	clientDevices := vmi.Spec.Domain.Devices.ClientPassthrough
 
 	// Default is to have USB Redirection disabled
@@ -989,7 +945,7 @@ func convertFeatureState(source *v1.FeatureState) *api.FeatureState {
 	return nil
 }
 
-func Convert_v1_Features_To_api_Features(source *v1.Features, features *api.Features, c *ConverterContext) error {
+func Convert_v1_Features_To_api_Features(source *v1.Features, features *api.Features, c *builder.ConverterContext) error {
 	if source.ACPI.Enabled == nil || *source.ACPI.Enabled {
 		features.ACPI = &api.FeatureEnabled{}
 	}
@@ -1125,7 +1081,7 @@ func setupDomainMemory(vmi *v1.VirtualMachineInstance, domain *api.Domain) error
 	return nil
 }
 
-func Convert_v1_Firmware_To_related_apis(vmi *v1.VirtualMachineInstance, domain *api.Domain, c *ConverterContext) error {
+func Convert_v1_Firmware_To_related_apis(vmi *v1.VirtualMachineInstance, domain *api.Domain, c *builder.ConverterContext) error {
 	firmware := vmi.Spec.Domain.Firmware
 	if firmware == nil {
 		return nil
@@ -1153,7 +1109,7 @@ func Convert_v1_Firmware_To_related_apis(vmi *v1.VirtualMachineInstance, domain 
 			domain.Spec.OS.BootLoader.Type = "pflash"
 			domain.Spec.OS.NVRam = &api.NVRam{
 				Template: c.EFIConfiguration.EFIVars,
-				NVRam:    filepath.Join(services.PathForNVram(vmi), vmi.Name+"_VARS.fd"),
+				NVRam:    filepath.Join(util.PathForNVram(vmi), vmi.Name+"_VARS.fd"),
 			}
 		}
 	}
@@ -1392,54 +1348,14 @@ func setIOThreads(vmi *v1.VirtualMachineInstance, domain *api.Domain, vcpus uint
 	}
 }
 
-func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInstance, domain *api.Domain, c *ConverterContext) (err error) {
+func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInstance, domain *api.Domain, c *builder.ConverterContext) (err error) {
 	var controllerDriver *api.ControllerDriver
 
 	precond.MustNotBeNil(vmi)
 	precond.MustNotBeNil(domain)
 	precond.MustNotBeNil(c)
 
-	architecture := c.Architecture.GetArchitecture()
-
-	builder := NewDomainBuilder(
-		metadata.DomainConfigurator{},
-		network.NewDomainConfigurator(
-			network.WithDomainAttachmentByInterfaceName(c.DomainAttachmentByInterfaceName),
-			network.WithUseLaunchSecuritySEV(c.UseLaunchSecuritySEV),
-			network.WithUseLaunchSecurityPV(c.UseLaunchSecurityPV),
-		),
-		compute.TPMDomainConfigurator{},
-		compute.VSOCKDomainConfigurator{},
-		compute.NewLaunchSecurityDomainConfigurator(architecture),
-		compute.ChannelsDomainConfigurator{},
-		compute.ClockDomainConfigurator{},
-		compute.NewRNGDomainConfigurator(
-			compute.RNGWithArchitecture(architecture),
-			compute.RNGWithUseVirtioTransitional(c.UseVirtioTransitional),
-			compute.RNGWithUseLaunchSecuritySEV(c.UseLaunchSecuritySEV),
-			compute.RNGWithUseLaunchSecurityPV(c.UseLaunchSecurityPV),
-		),
-		compute.NewInputDeviceDomainConfigurator(architecture),
-		compute.NewBalloonDomainConfigurator(
-			compute.BalloonWithArchitecture(architecture),
-			compute.BalloonWithUseVirtioTransitional(c.UseVirtioTransitional),
-			compute.BalloonWithUseLaunchSecuritySEV(c.UseLaunchSecuritySEV),
-			compute.BalloonWithUseLaunchSecurityPV(c.UseLaunchSecurityPV),
-			compute.BalloonWithFreePageReporting(c.FreePageReporting),
-			compute.BalloonWithMemBalloonStatsPeriod(c.MemBalloonStatsPeriod),
-		),
-		compute.NewGraphicsDomainConfigurator(architecture, c.BochsForEFIGuests),
-		compute.SoundDomainConfigurator{},
-		compute.NewHostDeviceDomainConfigurator(
-			c.GenericHostDevices,
-			c.GPUHostDevices,
-			c.SRIOVDevices,
-		),
-		compute.NewWatchdogDomainConfigurator(architecture),
-		compute.NewConsoleDomainConfigurator(c.SerialConsoleLog),
-		compute.PanicDevicesDomainConfigurator{},
-	)
-	if err := builder.Build(vmi, domain); err != nil {
+	if err := hypervisor.NewDomainBuilderFactory(c.HypervisorName).MakeDomainBuilder(c).Build(vmi, domain); err != nil {
 		return err
 	}
 
@@ -1795,8 +1711,8 @@ func Convert_v1_VirtualMachineInstance_To_api_Domain(vmi *v1.VirtualMachineInsta
 	}
 
 	if c.Architecture.ShouldVerboseLogsBeEnabled() {
-		virtLauncherLogVerbosity, err := strconv.Atoi(os.Getenv(services.ENV_VAR_VIRT_LAUNCHER_LOG_VERBOSITY))
-		if err == nil && virtLauncherLogVerbosity > services.EXT_LOG_VERBOSITY_THRESHOLD {
+		virtLauncherLogVerbosity, err := strconv.Atoi(os.Getenv(util.ENV_VAR_VIRT_LAUNCHER_LOG_VERBOSITY))
+		if err == nil && virtLauncherLogVerbosity > util.EXT_LOG_VERBOSITY_THRESHOLD {
 			// isa-debugcon device is only for x86_64
 			initializeQEMUCmdAndQEMUArg(domain)
 
