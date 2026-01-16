@@ -42,6 +42,7 @@ import (
 	"syscall"
 	"time"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/device/hostdevice/dra"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/network"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/storage"
@@ -1032,14 +1033,14 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		}
 	}
 
-	// Check KVM device availability
-	const kvmPath = "/dev/kvm"
-	kvmAvailable := true
-	if _, err := os.Stat(kvmPath); err != nil {
+	// Check Hypervisor device availability
+	hypervisorDevicePath := "/dev/" + hypervisor.NewLauncherResourceRenderer(l.hypervisorName).GetHypervisorDevice()
+	hypervisorDeviceAvailable := true
+	if _, err := os.Stat(hypervisorDevicePath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			kvmAvailable = false
+			hypervisorDeviceAvailable = false
 		} else {
-			return nil, fmt.Errorf("failed to stat KVM device %s: %w", kvmPath, err)
+			return nil, fmt.Errorf("failed to stat hypervisor device %s: %w", hypervisorDevicePath, err)
 		}
 	}
 
@@ -1048,7 +1049,7 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		Architecture:          arch.NewConverter(runtime.GOARCH),
 		VirtualMachine:        vmi,
 		AllowEmulation:        allowEmulation,
-		HypervisorAvailable:   kvmAvailable,
+		HypervisorAvailable:   hypervisorDeviceAvailable,
 		CPUSet:                podCPUSet,
 		IsBlockPVC:            isBlockPVCMap,
 		IsBlockDV:             isBlockDVMap,
