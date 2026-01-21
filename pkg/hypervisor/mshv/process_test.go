@@ -118,7 +118,6 @@ var _ = Describe("findIsolatedQemuProcess", func() {
 		fakeProcess2,
 		fakeProcess3}
 
-	qemuKvmProc := ProcessStub{pid: 101, ppid: virtLauncherPid, binary: "qemu-kvm"}
 	qemuSystemProc := ProcessStub{pid: 101, ppid: virtLauncherPid, binary: "qemu-system-x86_64"}
 
 	DescribeTable("should return QEMU process",
@@ -127,11 +126,6 @@ var _ = Describe("findIsolatedQemuProcess", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proc).To(Equal(expectedProcess))
 		},
-		Entry("when qemu-kvm binary running",
-			append(virtLauncherProcesses, qemuKvmProc),
-			virtLauncherPid,
-			qemuKvmProc,
-		),
 		Entry("when qemu-system binary running",
 			append(virtLauncherProcesses, qemuSystemProc),
 			virtLauncherPid,
