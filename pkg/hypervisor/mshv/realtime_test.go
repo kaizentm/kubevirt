@@ -34,11 +34,11 @@ var _ = Describe("Running real time workloads", func() {
 			Expect(ok).To(Equal(parseOK))
 			Expect(v).To(Equal(cpuID))
 		},
-			Entry("Extracts the CPU ID from a single digit vcpu pthread", []byte("CPU 3/KVM\n"), "3", true),
-			Entry("Extracts the CPU ID from a double digit vcpu pthread", []byte("CPU 10/KVM\n"), "10", true),
-			Entry("Fails to parse the comm value", []byte("vCPU 1/KVM\n"), "", false),
-			Entry("Fails to parse a negative vCPU value", []byte("CPU -1/KVM\n"), "", false),
-			Entry("Fails to parse a vCPU value that does not end with a carrier return", []byte("CPU 1/KVM"), "", false))
+			Entry("Extracts the CPU ID from a single digit vcpu pthread", []byte("CPU 3/MSHV\n"), "3", true),
+			Entry("Extracts the CPU ID from a double digit vcpu pthread", []byte("CPU 10/MSHV\n"), "10", true),
+			Entry("Fails to parse the comm value", []byte("vCPU 1/MSHV\n"), "", false),
+			Entry("Fails to parse a negative vCPU value", []byte("CPU -1/MSHV\n"), "", false),
+			Entry("Fails to parse a vCPU value that does not end with a carrier return", []byte("CPU 1/MSHV"), "", false))
 	})
 
 	Context("determines if a vcpu is flagged for realtime", func() {
