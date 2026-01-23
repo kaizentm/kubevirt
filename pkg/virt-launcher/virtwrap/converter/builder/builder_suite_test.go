@@ -17,32 +17,14 @@
  *
  */
 
-package converter
+package builder
 
 import (
-	v1 "kubevirt.io/api/core/v1"
+	"testing"
 
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
+	"kubevirt.io/client-go/testutils"
 )
 
-type configurator interface {
-	Configure(vmi *v1.VirtualMachineInstance, domain *api.Domain) error
-}
-
-type DomainBuilder struct {
-	configurators []configurator
-}
-
-func NewDomainBuilder(configurators ...configurator) DomainBuilder {
-	return DomainBuilder{configurators: configurators}
-}
-
-func (db *DomainBuilder) Build(vmi *v1.VirtualMachineInstance, domain *api.Domain) error {
-	for _, cfg := range db.configurators {
-		if err := cfg.Configure(vmi, domain); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func TestBuilder(t *testing.T) {
+	testutils.KubeVirtTestSuiteSetup(t)
 }
