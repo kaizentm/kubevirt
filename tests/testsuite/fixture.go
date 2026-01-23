@@ -221,9 +221,10 @@ func EnsureHypervisorPresent() {
 	virtClient := kubevirt.Client()
 
 	kv := libkubevirt.GetCurrentKv(virtClient)
+	fmt.Println("Ensuring hypervisor devices are present on cluster nodes")
+	fmt.Println("KubeVirt configuration:", kv.Spec.Configuration)
 	hypervisorName := virt_config.GetHypervisorFromKvConfig(&kv.Spec.Configuration, checks.HasFeature(featuregate.ConfigurableHypervisor)).Name
-	launcherRenderer := hypervisor.NewLauncherResourceRenderer(hypervisorName)
-	deviceName := k8sv1.ResourceName(services.K8sDevicePrefix + "/" + launcherRenderer.GetHypervisorDevice())
+	deviceName := hypervisor.NewLauncherResourceRenderer(hypervisorName).GetHypervisorDevice()
 	deviceK8sResource := k8sv1.ResourceName(fmt.Sprintf("%s/%s", device_manager.DeviceNamespace, deviceName))
 
 	if !shouldAllowEmulation(virtClient) {
