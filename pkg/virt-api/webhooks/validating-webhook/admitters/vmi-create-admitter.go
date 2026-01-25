@@ -43,7 +43,6 @@ import (
 	netadmitter "kubevirt.io/kubevirt/pkg/network/admitter"
 	"kubevirt.io/kubevirt/pkg/network/vmispec"
 	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
-	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 
 	core_capabilities "kubevirt.io/kubevirt/pkg/capabilities/core"
@@ -274,8 +273,6 @@ func ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMa
 	causes = append(causes, validateHostDevicesWithPassthroughEnabled(field, spec, config)...)
 	causes = append(causes, validateSoundDevices(field, spec)...)
 	causes = append(causes, validateLaunchSecurity(field, spec, config)...)
-	causes = append(causes, validateVSOCK(field, spec, config)...)
-	causes = append(causes, validatePersistentReservation(field, spec, config)...)
 	causes = append(causes, validateDownwardMetrics(field, spec, config)...)
 	causes = append(causes, validateFilesystemsWithVirtIOFSEnabled(field, spec, config)...)
 	causes = append(causes, validateVideoConfig(field, spec, config)...)
@@ -1977,40 +1974,6 @@ func validateSpecTopologySpreadConstraints(field *k8sfield.Path, spec *v1.Virtua
 			Type:    metav1.CauseTypeFieldValueInvalid,
 			Message: validationErr.Error(),
 			Field:   validationErr.Field,
-		})
-	}
-
-	return causes
-}
-
-func validateVSOCK(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
-	var causes []metav1.StatusCause
-	if spec.Domain.Devices.AutoattachVSOCK == nil || !*spec.Domain.Devices.AutoattachVSOCK {
-		return causes
-	}
-
-	if !config.VSOCKEnabled() {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("%s feature gate is not enabled in kubevirt-config", featuregate.VSOCKGate),
-			Field:   field.Child("domain", "devices", "autoattachVSOCK").String(),
-		})
-	}
-
-	return causes
-}
-
-func validatePersistentReservation(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
-	var causes []metav1.StatusCause
-	if !reservation.HasVMISpecPersistentReservation(spec) {
-		return causes
-	}
-
-	if !config.PersistentReservationEnabled() {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("%s feature gate is not enabled in kubevirt-config", featuregate.PersistentReservation),
-			Field:   field.Child("domain", "devices", "disks", "luns", "reservation").String(),
 		})
 	}
 

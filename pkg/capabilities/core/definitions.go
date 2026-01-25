@@ -7,8 +7,9 @@ import (
 
 // Capability constants - each represents a feature that may need validation or blocking
 const (
-	CapVsock        CapabilityKey = "domain.devices.vsock"
-	CapPanicDevices CapabilityKey = "domain.devices.panicDevices"
+	CapVsock                 CapabilityKey = "domain.devices.vsock"
+	CapPanicDevices          CapabilityKey = "domain.devices.panicDevices"
+	CapPersistentReservation CapabilityKey = "domain.devices.disks.luns.reservation"
 	// ... all capabilities declared as constants
 )
 
@@ -29,5 +30,19 @@ var CapPanicDevicesDef = Capability{
 	},
 	GetField: func(vmiSpecField *k8sfield.Path) string {
 		return vmiSpecField.Child("domain").Child("devices").Child("panicDevices").String()
+	},
+}
+
+var CapPersistentReservationDef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		for _, disk := range vmiSpec.Domain.Devices.Disks {
+			if disk.DiskDevice.LUN != nil && disk.DiskDevice.LUN.Reservation {
+				return true
+			}
+		}
+		return false
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("domain", "devices", "disks", "luns", "reservation").String()
 	},
 }

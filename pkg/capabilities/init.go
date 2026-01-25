@@ -12,6 +12,7 @@ func RegisterUniversalCapabilities() {
 	// Associate capability keys with their definitions
 	core.RegisterCapability(core.CapVsock, core.CapVsockDef)
 	core.RegisterCapability(core.CapPanicDevices, core.CapPanicDevicesDef)
+	core.RegisterCapability(core.CapPersistentReservation, core.CapPersistentReservationDef)
 
 	// Declare cross-platform support level for capabilities
 	core.AddPlatformCapabilitySupport(core.Universal, core.CapVsock, core.CapabilitySupport{
@@ -23,6 +24,11 @@ func RegisterUniversalCapabilities() {
 		Level:   core.Experimental,
 		Message: "PanicDevices experimental on this platform.",
 		GatedBy: featuregate.PanicDevicesGate,
+	})
+	core.AddPlatformCapabilitySupport(core.Universal, core.CapPersistentReservation, core.CapabilitySupport{
+		Level:   core.Experimental,
+		Message: "Persistent Reservation support is experimental on this platform.",
+		GatedBy: featuregate.PersistentReservation,
 	})
 }
 
