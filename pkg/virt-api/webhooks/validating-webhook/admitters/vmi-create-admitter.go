@@ -270,7 +270,6 @@ func ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMa
 	causes = append(causes, validatePodDNSConfig(spec.DNSConfig, &spec.DNSPolicy, field.Child("dnsConfig"))...)
 	causes = append(causes, validateLiveMigration(field, spec, config)...)
 	causes = append(causes, validateMDEVRamFB(field, spec)...)
-	causes = append(causes, validateHostDevicesWithPassthroughEnabled(field, spec, config)...)
 	causes = append(causes, validateSoundDevices(field, spec)...)
 	causes = append(causes, validateLaunchSecurity(field, spec, config)...)
 	causes = append(causes, validateDownwardMetrics(field, spec, config)...)
@@ -547,18 +546,6 @@ func validateMDEVRamFB(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec
 			Field:   field.Child("GPUs").String(),
 		})
 
-	}
-	return causes
-}
-
-func validateHostDevicesWithPassthroughEnabled(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
-	var causes []metav1.StatusCause
-	if spec.Domain.Devices.HostDevices != nil && !config.HostDevicesPassthroughEnabled() {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: "Host Devices feature gate is not enabled in kubevirt-config",
-			Field:   field.Child("HostDevices").String(),
-		})
 	}
 	return causes
 }

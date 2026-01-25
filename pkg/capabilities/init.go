@@ -14,6 +14,7 @@ func RegisterUniversalCapabilities() {
 	core.RegisterCapability(core.CapPanicDevices, core.CapPanicDevicesDef)
 	core.RegisterCapability(core.CapPersistentReservation, core.CapPersistentReservationDef)
 	core.RegisterCapability(core.CapVideoConfig, core.CapVideoConfigDef)
+	core.RegisterCapability(core.CapHostDevicePassthrough, core.CapHostDevicePassthroughDef)
 
 	// Declare cross-platform support level for capabilities
 	core.AddPlatformCapabilitySupport(core.Universal, core.CapVsock, core.CapabilitySupport{
@@ -35,6 +36,11 @@ func RegisterUniversalCapabilities() {
 		Level:   core.Experimental,
 		Message: "VideoConfig support is experimental on this platform.",
 		GatedBy: featuregate.VideoConfig,
+	})
+	core.AddPlatformCapabilitySupport(core.Universal, core.CapHostDevicePassthrough, core.CapabilitySupport{
+		Level:   core.Experimental,
+		Message: "HostDevicePassthrough support is experimental on this platform.",
+		GatedBy: featuregate.HostDevicesGate,
 	})
 }
 
