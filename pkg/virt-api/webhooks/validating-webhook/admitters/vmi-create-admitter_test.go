@@ -41,6 +41,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/api"
 
+	capabilities "kubevirt.io/kubevirt/pkg/capabilities"
 	"kubevirt.io/kubevirt/pkg/hooks"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	libvmici "kubevirt.io/kubevirt/pkg/libvmi/cloudinit"
@@ -90,6 +91,11 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 
 		testutils.UpdateFakeKubeVirtClusterConfig(kvStore, kvConfig)
 	}
+
+	BeforeEach(func() {
+		capabilities.Reset()
+		capabilities.Init()
+	})
 
 	AfterEach(func() {
 		disableFeatureGates()
@@ -1436,7 +1442,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 				causes := ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
 				Expect(causes).To(HaveLen(1))
 				Expect(causes[0].Field).To(Equal("fake.domain.devices.panicDevices"))
-				Expect(causes[0].Message).To(Equal("Panic Devices feature gate is not enabled in kubevirt-config"))
+				Expect(causes[0].Message).To(ContainSubstring(fmt.Sprintf("%s feature gate is not enabled", featuregate.PanicDevicesGate)))
 			})
 
 			It("should allow valid panic device model", func() {

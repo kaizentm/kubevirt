@@ -46,6 +46,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 
+	core_capabilities "kubevirt.io/kubevirt/pkg/capabilities/core"
 	hwutil "kubevirt.io/kubevirt/pkg/util/hardware"
 	webhookutils "kubevirt.io/kubevirt/pkg/util/webhooks"
 	"kubevirt.io/kubevirt/pkg/virt-api/webhooks"
@@ -172,8 +173,51 @@ func ValidateVirtualMachineInstancePerArch(field *k8sfield.Path, spec *v1.Virtua
 	return causes
 }
 
+func ValidateCapabilities(vmiSpecField *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
+	var causes []metav1.StatusCause
+
+	// Get the platform information for the VMI
+	hypervisor := config.GetHypervisor().Name
+	arch := spec.Architecture
+	if arch == "" {
+		arch = config.GetDefaultArchitecture()
+	}
+
+	// Retrieve the capability support information for the given hypervisor and architecture
+	supports := core_capabilities.GetCapabilitiesSupportForPlatform(hypervisor, arch)
+
+	// Validate the capabilities in the spec against the supported capabilities
+	for capKey, capSupport := range supports {
+		capabilityDef := core_capabilities.CapabilityDefinitions[capKey]
+
+		if capabilityDef.IsRequiredBy(spec) {
+			switch capSupport.Level {
+			case core_capabilities.Unsupported:
+				causes = append(causes, metav1.StatusCause{
+					Type:    metav1.CauseTypeFieldValueNotSupported,
+					Message: capSupport.Message,
+					Field:   capabilityDef.GetField(vmiSpecField),
+				})
+			case core_capabilities.Experimental:
+				if capSupport.GatedBy != "" && !config.IsFeatureGateEnabled(capSupport.GatedBy) {
+					causes = append(causes, metav1.StatusCause{
+						Type:    metav1.CauseTypeFieldValueNotSupported,
+						Message: capSupport.Message + fmt.Sprintf(". But %s feature gate is not enabled", capSupport.GatedBy),
+						Field:   capabilityDef.GetField(vmiSpecField),
+					})
+				}
+			}
+		}
+	}
+
+	return causes
+}
+
 func ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
 	var causes []metav1.StatusCause
+
+	// Validate capabilities based on the target platform for the VMI
+	causes = append(causes, ValidateCapabilities(field, spec, config)...)
 
 	causes = append(causes, validateHostNameNotConformingToDNSLabelRules(field, spec)...)
 	causes = append(causes, validateSubdomainDNSSubdomainRules(field, spec)...)
@@ -235,7 +279,7 @@ func ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMa
 	causes = append(causes, validateDownwardMetrics(field, spec, config)...)
 	causes = append(causes, validateFilesystemsWithVirtIOFSEnabled(field, spec, config)...)
 	causes = append(causes, validateVideoConfig(field, spec, config)...)
-	causes = append(causes, validatePanicDevices(field, spec, config)...)
+	causes = append(causes, validatePanicDevices(field, spec)...)
 
 	return causes
 }
@@ -2028,32 +2072,8 @@ func validatePanicDeviceModel(field *k8sfield.Path, model *v1.PanicDeviceModel) 
 	return nil
 }
 
-func validatePanicDevices(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
+func validatePanicDevices(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec) []metav1.StatusCause {
 	var causes []metav1.StatusCause
-	if len(spec.Domain.Devices.PanicDevices) == 0 {
-		return causes
-	}
-	if spec.Domain.Devices.PanicDevices != nil && !config.PanicDevicesEnabled() {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: "Panic Devices feature gate is not enabled in kubevirt-config",
-			Field:   field.Child("domain", "devices", "panicDevices").String(),
-		})
-		return causes
-	}
-
-	arch := spec.Architecture
-	if arch == "" {
-		arch = config.GetDefaultArchitecture()
-	}
-
-	if arch == "s390x" {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("custom panic devices are not supported on %s architecture", arch),
-			Field:   field.Child("domain", "devices", "panicDevices").String(),
-		})
-	}
 
 	for idx, panicDevice := range spec.Domain.Devices.PanicDevices {
 		if cause := validatePanicDeviceModel(field.Child("domain", "devices", "panicDevices").Index(idx).Child("model"), panicDevice.Model); cause != nil {
