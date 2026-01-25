@@ -10,6 +10,7 @@ const (
 	CapVsock                 CapabilityKey = "domain.devices.vsock"
 	CapPanicDevices          CapabilityKey = "domain.devices.panicDevices"
 	CapPersistentReservation CapabilityKey = "domain.devices.disks.luns.reservation"
+	CapVideoConfig           CapabilityKey = "domain.devices.video"
 	// ... all capabilities declared as constants
 )
 
@@ -44,5 +45,14 @@ var CapPersistentReservationDef = Capability{
 	},
 	GetField: func(vmiSpecField *k8sfield.Path) string {
 		return vmiSpecField.Child("domain", "devices", "disks", "luns", "reservation").String()
+	},
+}
+
+var CapVideoConfigDef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		return vmiSpec.Domain.Devices.Video != nil
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("video").String()
 	},
 }

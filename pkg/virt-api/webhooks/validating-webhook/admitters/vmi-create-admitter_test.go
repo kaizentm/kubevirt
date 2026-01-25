@@ -3664,7 +3664,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 			causes := ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
 			Expect(causes).To(HaveLen(1))
 			Expect(causes[0].Type).To(Equal(metav1.CauseTypeFieldValueInvalid))
-			Expect(causes[0].Message).To(Equal(fmt.Sprintf("Video configuration is specified but the %s feature gate is not enabled", featuregate.VideoConfig)))
+			Expect(causes[0].Message).To(Equal(fmt.Sprintf("VideoConfig support is experimental on this platform. But %s feature gate is not enabled.", featuregate.VideoConfig)))
 			Expect(causes[0].Field).To(Equal("fake.video"))
 		})
 

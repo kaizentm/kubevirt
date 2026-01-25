@@ -193,15 +193,15 @@ func ValidateCapabilities(vmiSpecField *k8sfield.Path, spec *v1.VirtualMachineIn
 			switch capSupport.Level {
 			case core_capabilities.Unsupported:
 				causes = append(causes, metav1.StatusCause{
-					Type:    metav1.CauseTypeFieldValueNotSupported,
+					Type:    metav1.CauseTypeFieldValueInvalid,
 					Message: capSupport.Message,
 					Field:   capabilityDef.GetField(vmiSpecField),
 				})
 			case core_capabilities.Experimental:
 				if capSupport.GatedBy != "" && !config.IsFeatureGateEnabled(capSupport.GatedBy) {
 					causes = append(causes, metav1.StatusCause{
-						Type:    metav1.CauseTypeFieldValueNotSupported,
-						Message: capSupport.Message + fmt.Sprintf(". But %s feature gate is not enabled", capSupport.GatedBy),
+						Type:    metav1.CauseTypeFieldValueInvalid,
+						Message: capSupport.Message + fmt.Sprintf(" But %s feature gate is not enabled.", capSupport.GatedBy),
 						Field:   capabilityDef.GetField(vmiSpecField),
 					})
 				}
@@ -1998,15 +1998,6 @@ func validateVideoConfig(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSp
 	var causes []metav1.StatusCause
 
 	if spec.Domain.Devices.Video == nil {
-		return causes
-	}
-
-	if !config.VideoConfigEnabled() {
-		causes = append(causes, metav1.StatusCause{
-			Type:    metav1.CauseTypeFieldValueInvalid,
-			Message: fmt.Sprintf("Video configuration is specified but the %s feature gate is not enabled", featuregate.VideoConfig),
-			Field:   field.Child("video").String(),
-		})
 		return causes
 	}
 

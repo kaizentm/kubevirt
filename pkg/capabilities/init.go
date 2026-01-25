@@ -13,6 +13,7 @@ func RegisterUniversalCapabilities() {
 	core.RegisterCapability(core.CapVsock, core.CapVsockDef)
 	core.RegisterCapability(core.CapPanicDevices, core.CapPanicDevicesDef)
 	core.RegisterCapability(core.CapPersistentReservation, core.CapPersistentReservationDef)
+	core.RegisterCapability(core.CapVideoConfig, core.CapVideoConfigDef)
 
 	// Declare cross-platform support level for capabilities
 	core.AddPlatformCapabilitySupport(core.Universal, core.CapVsock, core.CapabilitySupport{
@@ -29,6 +30,11 @@ func RegisterUniversalCapabilities() {
 		Level:   core.Experimental,
 		Message: "Persistent Reservation support is experimental on this platform.",
 		GatedBy: featuregate.PersistentReservation,
+	})
+	core.AddPlatformCapabilitySupport(core.Universal, core.CapVideoConfig, core.CapabilitySupport{
+		Level:   core.Experimental,
+		Message: "VideoConfig support is experimental on this platform.",
+		GatedBy: featuregate.VideoConfig,
 	})
 }
 
