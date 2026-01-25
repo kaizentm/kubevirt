@@ -43,7 +43,6 @@ import (
 	netadmitter "kubevirt.io/kubevirt/pkg/network/admitter"
 	"kubevirt.io/kubevirt/pkg/network/vmispec"
 	storageadmitters "kubevirt.io/kubevirt/pkg/storage/admitters"
-	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 
 	core_capabilities "kubevirt.io/kubevirt/pkg/capabilities/core"
 	hwutil "kubevirt.io/kubevirt/pkg/util/hardware"
@@ -273,34 +272,8 @@ func ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMa
 	causes = append(causes, validateSoundDevices(field, spec)...)
 	causes = append(causes, validateLaunchSecurity(field, spec, config)...)
 	causes = append(causes, validateDownwardMetrics(field, spec, config)...)
-	causes = append(causes, validateFilesystemsWithVirtIOFSEnabled(field, spec, config)...)
 	causes = append(causes, validateVideoConfig(field, spec, config)...)
 	causes = append(causes, validatePanicDevices(field, spec)...)
-
-	return causes
-}
-
-func validateFilesystemsWithVirtIOFSEnabled(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) (causes []metav1.StatusCause) {
-	if spec.Domain.Devices.Filesystems == nil {
-		return causes
-	}
-
-	volumes := storagetypes.GetVolumesByName(spec)
-
-	for _, fs := range spec.Domain.Devices.Filesystems {
-		volume, ok := volumes[fs.Name]
-		if !ok {
-			continue
-		}
-
-		if storagetypes.IsStorageVolume(volume) && (!config.VirtiofsStorageEnabled()) {
-			causes = append(causes, metav1.StatusCause{
-				Type:    metav1.CauseTypeFieldValueInvalid,
-				Message: "virtiofs is not allowed: virtiofs feature gate is not enabled for PVC",
-				Field:   field.Child("domain", "devices", "filesystems").String(),
-			})
-		}
-	}
 
 	return causes
 }

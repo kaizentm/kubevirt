@@ -15,6 +15,7 @@ func RegisterUniversalCapabilities() {
 	core.RegisterCapability(core.CapPersistentReservation, core.CapPersistentReservationDef)
 	core.RegisterCapability(core.CapVideoConfig, core.CapVideoConfigDef)
 	core.RegisterCapability(core.CapHostDevicePassthrough, core.CapHostDevicePassthroughDef)
+	core.RegisterCapability(core.CapVirtioFS, core.CapVirtioFSDef)
 
 	// Declare cross-platform support level for capabilities
 	core.AddPlatformCapabilitySupport(core.Universal, core.CapVsock, core.CapabilitySupport{
@@ -41,6 +42,11 @@ func RegisterUniversalCapabilities() {
 		Level:   core.Experimental,
 		Message: "HostDevicePassthrough support is experimental on this platform.",
 		GatedBy: featuregate.HostDevicesGate,
+	})
+	core.AddPlatformCapabilitySupport(core.Universal, core.CapVirtioFS, core.CapabilitySupport{
+		Level:   core.Experimental,
+		Message: "VirtioFS support is experimental on this platform.",
+		GatedBy: featuregate.VirtIOFSStorageVolumeGate,
 	})
 }
 

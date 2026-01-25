@@ -3,6 +3,7 @@ package capabilities
 import (
 	k8sfield "k8s.io/apimachinery/pkg/util/validation/field"
 	v1 "kubevirt.io/api/core/v1"
+	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 )
 
 // Capability constants - each represents a feature that may need validation or blocking
@@ -12,6 +13,7 @@ const (
 	CapPersistentReservation CapabilityKey = "domain.devices.disks.luns.reservation"
 	CapVideoConfig           CapabilityKey = "domain.devices.video"
 	CapHostDevicePassthrough CapabilityKey = "domain.devices.hostDevices.passthrough"
+	CapVirtioFS              CapabilityKey = "domain.devices.virtiofs"
 	// ... all capabilities declared as constants
 )
 
@@ -64,5 +66,29 @@ var CapHostDevicePassthroughDef = Capability{
 	},
 	GetField: func(vmiSpecField *k8sfield.Path) string {
 		return vmiSpecField.Child("HostDevices").String()
+	},
+}
+
+var CapVirtioFSDef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		if vmiSpec.Domain.Devices.Filesystems == nil {
+			return false
+		}
+
+		volumes := storagetypes.GetVolumesByName(vmiSpec)
+		for _, fs := range vmiSpec.Domain.Devices.Filesystems {
+			volume, ok := volumes[fs.Name]
+			if !ok {
+				continue
+			}
+
+			if storagetypes.IsStorageVolume(volume) {
+				return true
+			}
+		}
+		return false
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("domain", "devices", "filesystems").String()
 	},
 }
