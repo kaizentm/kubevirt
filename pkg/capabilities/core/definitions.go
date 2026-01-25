@@ -3,6 +3,8 @@ package capabilities
 import (
 	k8sfield "k8s.io/apimachinery/pkg/util/validation/field"
 	v1 "kubevirt.io/api/core/v1"
+
+	"kubevirt.io/kubevirt/pkg/downwardmetrics"
 	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 )
 
@@ -14,6 +16,7 @@ const (
 	CapVideoConfig           CapabilityKey = "domain.devices.video"
 	CapHostDevicePassthrough CapabilityKey = "domain.devices.hostDevices.passthrough"
 	CapVirtioFS              CapabilityKey = "domain.devices.virtiofs"
+	CapDownwardMetrics       CapabilityKey = "domain.devices.downwardMetrics"
 	// ... all capabilities declared as constants
 )
 
@@ -90,5 +93,14 @@ var CapVirtioFSDef = Capability{
 	},
 	GetField: func(vmiSpecField *k8sfield.Path) string {
 		return vmiSpecField.Child("domain", "devices", "filesystems").String()
+	},
+}
+
+var CapDownwardMetricsDef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		return downwardmetrics.HasDevice(vmiSpec)
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("domain", "devices", "downwardMetrics").String()
 	},
 }

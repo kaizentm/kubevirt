@@ -2009,7 +2009,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 	Context("with downwardmetrics virtio serial", func() {
 		var vmi *v1.VirtualMachineInstance
 		validate := func() []metav1.StatusCause {
-			return validateDownwardMetrics(k8sfield.NewPath("fake"), &vmi.Spec, config)
+			return ValidateVirtualMachineInstanceSpec(k8sfield.NewPath("fake"), &vmi.Spec, config)
 		}
 
 		BeforeEach(func() {
@@ -2028,7 +2028,7 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 			Expect(causes).To(HaveLen(1))
 			Expect(causes).To(ContainElement(metav1.StatusCause{Type: metav1.CauseTypeFieldValueInvalid,
 				Field:   "fake.domain.devices.downwardMetrics",
-				Message: "downwardMetrics virtio serial is not allowed: DownwardMetrics feature gate is not enabled"}))
+				Message: fmt.Sprintf("Downward Metrics support is experimental on this platform. But %s feature gate is not enabled.", featuregate.DownwardMetricsFeatureGate)}))
 		})
 	})
 

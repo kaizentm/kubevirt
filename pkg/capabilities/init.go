@@ -16,6 +16,7 @@ func RegisterUniversalCapabilities() {
 	core.RegisterCapability(core.CapVideoConfig, core.CapVideoConfigDef)
 	core.RegisterCapability(core.CapHostDevicePassthrough, core.CapHostDevicePassthroughDef)
 	core.RegisterCapability(core.CapVirtioFS, core.CapVirtioFSDef)
+	core.RegisterCapability(core.CapDownwardMetrics, core.CapDownwardMetricsDef)
 
 	// Declare cross-platform support level for capabilities
 	core.AddPlatformCapabilitySupport(core.Universal, core.CapVsock, core.CapabilitySupport{
@@ -47,6 +48,11 @@ func RegisterUniversalCapabilities() {
 		Level:   core.Experimental,
 		Message: "VirtioFS support is experimental on this platform.",
 		GatedBy: featuregate.VirtIOFSStorageVolumeGate,
+	})
+	core.AddPlatformCapabilitySupport(core.Universal, core.CapDownwardMetrics, core.CapabilitySupport{
+		Level:   core.Experimental,
+		Message: "Downward Metrics support is experimental on this platform.",
+		GatedBy: featuregate.DownwardMetricsFeatureGate,
 	})
 }
 
