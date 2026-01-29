@@ -17,6 +17,7 @@ func RegisterUniversalCapabilities() {
 	core.RegisterCapability(core.CapHostDevicePassthrough, core.CapHostDevicePassthroughDef)
 	core.RegisterCapability(core.CapVirtioFS, core.CapVirtioFSDef)
 	core.RegisterCapability(core.CapDownwardMetrics, core.CapDownwardMetricsDef)
+	core.RegisterCapability(core.CapNUMA, core.CapNUMADef)
 
 	// Declare cross-platform support level for capabilities
 	core.AddPlatformCapabilitySupport(core.Universal, core.CapVsock, core.CapabilitySupport{
@@ -53,6 +54,11 @@ func RegisterUniversalCapabilities() {
 		Level:   core.Experimental,
 		Message: "Downward Metrics support is experimental on this platform.",
 		GatedBy: featuregate.DownwardMetricsFeatureGate,
+	})
+	core.AddPlatformCapabilitySupport(core.Universal, core.CapNUMA, core.CapabilitySupport{
+		Level:   core.Experimental,
+		Message: "NUMA support is experimental on this platform.",
+		GatedBy: featuregate.NUMAFeatureGate,
 	})
 }
 

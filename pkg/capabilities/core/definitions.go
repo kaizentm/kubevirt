@@ -17,6 +17,7 @@ const (
 	CapHostDevicePassthrough CapabilityKey = "domain.devices.hostDevices.passthrough"
 	CapVirtioFS              CapabilityKey = "domain.devices.virtiofs"
 	CapDownwardMetrics       CapabilityKey = "domain.devices.downwardMetrics"
+	CapNUMA                  CapabilityKey = "domain.cpu.numa"
 	// ... all capabilities declared as constants
 )
 
@@ -102,5 +103,14 @@ var CapDownwardMetricsDef = Capability{
 	},
 	GetField: func(vmiSpecField *k8sfield.Path) string {
 		return vmiSpecField.Child("domain", "devices", "downwardMetrics").String()
+	},
+}
+
+var CapNUMADef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		return vmiSpec.Domain.CPU != nil && vmiSpec.Domain.CPU.NUMA != nil && vmiSpec.Domain.CPU.NUMA.GuestMappingPassthrough != nil
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("domain", "cpu", "numa", "guestMappingPassthrough").String()
 	},
 }

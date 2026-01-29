@@ -678,14 +678,6 @@ func validateCpuPinning(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpe
 func validateNUMA(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []metav1.StatusCause {
 	var causes []metav1.StatusCause
 	if spec.Domain.CPU != nil && spec.Domain.CPU.NUMA != nil && spec.Domain.CPU.NUMA.GuestMappingPassthrough != nil {
-		if !config.NUMAEnabled() {
-			causes = append(causes, metav1.StatusCause{
-				Type: metav1.CauseTypeFieldValueInvalid,
-				Message: fmt.Sprintf("NUMA feature gate is not enabled in kubevirt-config, invalid entry %s",
-					field.Child("domain", "cpu", "numa", "guestMappingPassthrough").String()),
-				Field: field.Child("domain", "cpu", "numa", "guestMappingPassthrough").String(),
-			})
-		}
 		if !spec.Domain.CPU.DedicatedCPUPlacement {
 			causes = append(causes, metav1.StatusCause{
 				Type: metav1.CauseTypeFieldValueInvalid,
