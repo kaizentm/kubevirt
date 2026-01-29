@@ -18,6 +18,8 @@ const (
 	CapVirtioFS              CapabilityKey = "domain.devices.virtiofs"
 	CapDownwardMetrics       CapabilityKey = "domain.devices.downwardMetrics"
 	CapNUMA                  CapabilityKey = "domain.cpu.numa"
+	CapSoundDevice           CapabilityKey = "domain.devices.sound"
+	CapWatchdog              CapabilityKey = "domain.devices.watchdog"
 	// ... all capabilities declared as constants
 )
 
@@ -112,5 +114,23 @@ var CapNUMADef = Capability{
 	},
 	GetField: func(vmiSpecField *k8sfield.Path) string {
 		return vmiSpecField.Child("domain", "cpu", "numa", "guestMappingPassthrough").String()
+	},
+}
+
+var CapSoundDeviceDef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		return vmiSpec.Domain.Devices.Sound != nil
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("domain", "devices", "sound").String()
+	},
+}
+
+var CapWatchdogDef = Capability{
+	IsRequiredBy: func(vmiSpec *v1.VirtualMachineInstanceSpec) bool {
+		return vmiSpec.Domain.Devices.Watchdog != nil
+	},
+	GetField: func(vmiSpecField *k8sfield.Path) string {
+		return vmiSpecField.Child("domain", "devices", "watchdog").String()
 	},
 }

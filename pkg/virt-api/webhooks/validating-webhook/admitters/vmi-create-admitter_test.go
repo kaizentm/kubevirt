@@ -2476,14 +2476,15 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 		)
 
 		It("should reject setting sound device", func() {
+			vmi.Spec.Architecture = "arm64"
 			vmi.Spec.Domain.Devices.Sound = &v1.SoundDevice{
 				Name:  "test-audio-device",
 				Model: "ich9",
 			}
-			causes := webhooks.ValidateVirtualMachineInstanceArm64Setting(k8sfield.NewPath("fake"), &vmi.Spec)
+			causes := ValidateCapabilities(k8sfield.NewPath("fake"), &vmi.Spec, config)
 			Expect(causes).To(HaveLen(1))
 			Expect(causes[0].Field).To(Equal("fake.domain.devices.sound"))
-			Expect(causes[0].Message).To(Equal("Arm64 not support sound device"))
+			Expect(causes[0].Message).To(Equal("Sound device is unsupported on ARM64."))
 		})
 	})
 
@@ -3619,7 +3620,8 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 		DescribeTable("validate for arm64",
 			func(watchdog *v1.Watchdog, expectedMessage string, shouldReject bool) {
 				vmi.Spec.Domain.Devices.Watchdog = watchdog
-				causes := webhooks.ValidateVirtualMachineInstanceArm64Setting(k8sfield.NewPath("fake"), &vmi.Spec)
+				vmi.Spec.Architecture = "arm64"
+				causes := ValidateCapabilities(k8sfield.NewPath("fake"), &vmi.Spec, config)
 
 				if shouldReject {
 					Expect(causes).To(HaveLen(1))
@@ -3634,14 +3636,14 @@ var _ = Describe("Validating VMICreate Admitter", func() {
 				WatchdogDevice: v1.WatchdogDevice{
 					I6300ESB: &v1.I6300ESBWatchdog{Action: v1.WatchdogActionPoweroff},
 				},
-			}, "Arm64 not support Watchdog device", true),
+			}, "Watchdog device is unsupported on ARM64.", true),
 
 			Entry("Diag288 is rejected", &v1.Watchdog{
 				Name: "w6",
 				WatchdogDevice: v1.WatchdogDevice{
 					Diag288: &v1.Diag288Watchdog{Action: v1.WatchdogActionPoweroff},
 				},
-			}, "Arm64 not support Watchdog device", true),
+			}, "Watchdog device is unsupported on ARM64.", true),
 
 			Entry("no watchdog configured", nil, "", false),
 		)

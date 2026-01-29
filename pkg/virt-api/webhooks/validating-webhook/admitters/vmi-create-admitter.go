@@ -135,6 +135,7 @@ func (admitter *VMICreateAdmitter) Admit(_ context.Context, ar *admissionv1.Admi
 	}
 }
 
+// TODO: This should also be handled by the capabilities package
 func warnDeprecatedAPIs(spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) []string {
 	var warnings []string
 	for _, fg := range config.GetConfig().DeveloperConfiguration.FeatureGates {
