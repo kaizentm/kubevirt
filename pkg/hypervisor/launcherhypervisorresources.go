@@ -22,6 +22,8 @@ package hypervisor
 import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "kubevirt.io/api/core/v1"
+
+	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 )
 
 type LauncherHypervisorResources interface {
@@ -33,6 +35,6 @@ func NewLauncherHypervisorResources(hypervisor string) LauncherHypervisorResourc
 	switch hypervisor {
 	// Other hypervisors can be added here
 	default:
-		return nil
+		return kvm.NewKvmLauncherHypervisorResources()
 	}
 }
