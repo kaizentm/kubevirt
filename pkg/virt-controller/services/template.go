@@ -46,6 +46,7 @@ import (
 	"kubevirt.io/client-go/precond"
 
 	drautil "kubevirt.io/kubevirt/pkg/dra"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/pointer"
 
 	"kubevirt.io/kubevirt/pkg/apimachinery"
@@ -78,7 +79,6 @@ const (
 )
 
 const K8sDevicePrefix = "devices.kubevirt.io"
-const KvmDevice = K8sDevicePrefix + "/kvm"
 const TunDevice = K8sDevicePrefix + "/tun"
 const VhostNetDevice = K8sDevicePrefix + "/vhost-net"
 const SevDevice = K8sDevicePrefix + "/sev"
@@ -115,11 +115,6 @@ const EXT_LOG_VERBOSITY_THRESHOLD = 5
 const ephemeralStorageOverheadSize = "50M"
 
 const (
-	VirtLauncherMonitorOverhead = "25Mi"  // The `ps` RSS for virt-launcher-monitor
-	VirtLauncherOverhead        = "100Mi" // The `ps` RSS for the virt-launcher process
-	VirtlogdOverhead            = "25Mi"  // The `ps` RSS for virtlogd
-	VirtqemudOverhead           = "40Mi"  // The `ps` RSS for virtqemud
-	QemuOverhead                = "30Mi"  // The `ps` RSS for qemu, minus the RAM of its (stressed) guest, minus the virtual page table
 	// Default: limits.memory = 2*requests.memory
 	DefaultMemoryLimitOverheadRatio = float64(2.0)
 
@@ -406,6 +401,7 @@ func (t *TemplateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 			"--hook-sidecars", strconv.Itoa(len(requestedHookSidecarList)),
 			"--ovmf-path", ovmfPath,
 			"--disk-memory-limit", strconv.Itoa(int(t.clusterConfig.GetDiskVerification().MemoryLimit.Value())),
+			"--hypervisor", t.clusterConfig.GetHypervisor().Name,
 		}
 		if nonRoot {
 			command = append(command, "--run-as-nonroot")
@@ -907,9 +903,11 @@ func (t *TemplateService) newVolumeRenderer(vmi *v1.VirtualMachineInstance, imag
 
 func (t *TemplateService) newResourceRenderer(vmi *v1.VirtualMachineInstance, networkToResourceMap map[string]string) (*ResourceRenderer, error) {
 	vmiResources := vmi.Spec.Domain.Resources
+	hypervisorName := t.clusterConfig.GetHypervisor().Name
+	hypervisorResource := k8sv1.ResourceName(K8sDevicePrefix + "/" + hypervisor.NewLauncherHypervisorResources(hypervisorName).GetHypervisorDevice())
 	baseOptions := []ResourceRendererOption{
 		WithEphemeralStorageRequest(),
-		WithVirtualizationResources(getRequiredResources(vmi, t.clusterConfig.AllowEmulation())),
+		WithVirtualizationResources(getRequiredResources(vmi, hypervisorResource, t.clusterConfig.AllowEmulation())),
 	}
 
 	if err := validatePermittedHostDevices(&vmi.Spec, t.clusterConfig); err != nil {
@@ -1264,29 +1262,6 @@ func appendUniqueImagePullSecret(secrets []k8sv1.LocalObjectReference, newsecret
 	return append(secrets, newsecret)
 }
 
-func addProbeOverheads(vmi *v1.VirtualMachineInstance, quantity *resource.Quantity) {
-	// We need to add this overhead due to potential issues when using exec probes.
-	// In certain situations depending on things like node size and kernel versions
-	// the exec probe can cause a significant memory overhead that results in the pod getting OOM killed.
-	// To prevent this, we add this overhead until we have a better way of doing exec probes.
-	// The virtProbeTotalAdditionalOverhead is added for the virt-probe binary we use for probing and
-	// only added once, while the virtProbeOverhead is the general memory consumption of virt-probe
-	// that we add per added probe.
-	virtProbeTotalAdditionalOverhead := resource.MustParse("100Mi")
-	virtProbeOverhead := resource.MustParse("10Mi")
-	hasLiveness := vmi.Spec.LivenessProbe != nil && vmi.Spec.LivenessProbe.Exec != nil
-	hasReadiness := vmi.Spec.ReadinessProbe != nil && vmi.Spec.ReadinessProbe.Exec != nil
-	if hasLiveness {
-		quantity.Add(virtProbeOverhead)
-	}
-	if hasReadiness {
-		quantity.Add(virtProbeOverhead)
-	}
-	if hasLiveness || hasReadiness {
-		quantity.Add(virtProbeTotalAdditionalOverhead)
-	}
-}
-
 func HaveContainerDiskVolume(volumes []v1.Volume) bool {
 	for _, volume := range volumes {
 		if volume.ContainerDisk != nil {
@@ -1575,7 +1550,8 @@ func CalculateMemoryOverhead(clusterConfig *virtconfig.ClusterConfig, netBinding
 	if vmiCPUArch == "" {
 		vmiCPUArch = clusterConfig.GetClusterCPUArch()
 	}
-	memoryOverhead := GetMemoryOverhead(vmi, vmiCPUArch, clusterConfig.GetConfig().AdditionalGuestMemoryOverheadRatio)
+
+	memoryOverhead := hypervisor.NewLauncherHypervisorResources(clusterConfig.GetHypervisor().Name).GetMemoryOverhead(vmi, vmiCPUArch, clusterConfig.GetConfig().AdditionalGuestMemoryOverheadRatio)
 
 	if netBindingPluginMemoryCalculator != nil {
 		memoryOverhead.Add(
