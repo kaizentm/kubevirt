@@ -40,9 +40,9 @@ tar -cf qemu-${QEMU_VERSION}.tar.xz \
 rm -rf qemu-${QEMU_VERSION}
 
 # Copy spec file and related files
-cp $SCRIPT_DIR/qemu-spec/* .
+cp -r $SCRIPT_DIR/qemu-spec/* .
 
-sed -i "s/Version:.*$/Version: ${QEMU_VERSION}/" qemu.spec
+sed -i "s/Version:.*$/Version: ${QEMU_VERSION}/" specs/qemu-kvm.spec
 
 docker rm -f qemu-build
 
@@ -55,14 +55,14 @@ docker run -td \
 docker exec -w /qemu-src qemu-build bash -c "
   set -ex
   mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-  cp qemu.spec ~/rpmbuild/SPECS
-  cp *.patch ~/rpmbuild/SOURCES/
+  cp specs/qemu-kvm.spec ~/rpmbuild/SPECS/
+  cp sources/* ~/rpmbuild/SOURCES/
   cp qemu-${QEMU_VERSION}.tar.xz ~/rpmbuild/SOURCES/
   cd ~/rpmbuild/SPECS
   dnf update -y
   dnf -y install createrepo
-  dnf builddep -y qemu.spec
-  rpmbuild -ba qemu.spec
+  dnf builddep -y qemu-kvm.spec
+  rpmbuild -ba qemu-kvm.spec
   cd ~/rpmbuild/RPMS
   createrepo --general-compress-type=gz --checksum=sha256 x86_64
 "
@@ -73,6 +73,6 @@ docker cp qemu-build:/root/rpmbuild/RPMS ./rpms-qemu
 
 cat >./rpms-qemu/build-info.json <<EOF
 {
-  "qemu_version": "0:${QEMU_VERSION}-1.el9"
+  "qemu_version": "0:${QEMU_VERSION}-100.el9"
 }
 EOF
