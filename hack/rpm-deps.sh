@@ -1,8 +1,3 @@
-# rome-deps.sh is updated to go with a single monolyth QEMU RPM rather than multiple smaller ones.
-# 1. to be consistent with the way how we build QEMU in CI in https://github.com/mkulke/qemu
-# 2. to keep things simple
-# 3. good enough for our purposes
-
 #!/usr/bin/env bash
 
 set -ex
@@ -11,8 +6,8 @@ source hack/common.sh
 source hack/bootstrap.sh
 source hack/config.sh
 
-LIBVIRT_VERSION=${LIBVIRT_VERSION:-0:10.10.0-13.el9}
-QEMU_VERSION=${QEMU_VERSION:-17:9.1.0-27.el9}
+LIBVIRT_VERSION=${LIBVIRT_VERSION:-0:11.9.0-1.el9}
+QEMU_VERSION=${QEMU_VERSION:-17:10.1.0-10.el9}
 SEABIOS_VERSION=${SEABIOS_VERSION:-0:1.16.3-4.el9}
 EDK2_VERSION=${EDK2_VERSION:-0:20241117-3.el9}
 LIBGUESTFS_VERSION=${LIBGUESTFS_VERSION:-1:1.54.0-9.el9}
@@ -61,7 +56,7 @@ testimage_main="
   iputils
   nmap-ncat
   procps-ng
-  qemu-${QEMU_VERSION}
+  qemu-img-${QEMU_VERSION}
   sevctl
   tar
   targetcli
@@ -95,20 +90,27 @@ launcherbase_main="
   libvirt-client-${LIBVIRT_VERSION}
   libvirt-daemon-driver-qemu-${LIBVIRT_VERSION}
   passt-${PASST_VERSION}
-  qemu-${QEMU_VERSION}
+  qemu-kvm-core-${QEMU_VERSION}
+  qemu-kvm-device-usb-host-${QEMU_VERSION}
   swtpm-tools-${SWTPM_VERSION}
 "
 launcherbase_x86_64="
   edk2-ovmf-${EDK2_VERSION}
-  qemu-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-gpu-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-vga-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-gpu-pci-${QEMU_VERSION}
+  qemu-kvm-device-usb-redirect-${QEMU_VERSION}
   seabios-${SEABIOS_VERSION}
 "
 launcherbase_aarch64="
   edk2-aarch64-${EDK2_VERSION}
-  qemu-${QEMU_VERSION}
+  qemu-kvm-device-usb-redirect-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-gpu-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-gpu-pci-${QEMU_VERSION}
 "
 launcherbase_s390x="
-  qemu-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-gpu-${QEMU_VERSION}
+  qemu-kvm-device-display-virtio-gpu-ccw-${QEMU_VERSION}
 "
 launcherbase_extra="
   findutils
@@ -123,8 +125,7 @@ launcherbase_extra="
 "
 
 handlerbase_main="
-  qemu-${QEMU_VERSION}
-  passt-${PASST_VERSION}
+  qemu-img-${QEMU_VERSION}
 "
 handlerbase_extra="
   findutils
@@ -142,7 +143,7 @@ libguestfstools_main="
   libguestfs-${LIBGUESTFS_VERSION}
   guestfs-tools-${GUESTFSTOOLS_VERSION}
   libvirt-daemon-driver-qemu-${LIBVIRT_VERSION}
-  qemu-${QEMU_VERSION}
+  qemu-kvm-core-${QEMU_VERSION}
 "
 libguestfstools_x86_64="
   edk2-ovmf-${EDK2_VERSION}
