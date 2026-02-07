@@ -1,0 +1,75 @@
+From d8f03b683f887433bccf15bf012d94e130290414 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:31 +0200
+Subject: [PATCH 13/31] accel/mshv: Add vCPU signal handling
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [12/30] 87dd1e952aae5893b29c3f74b804b2935c347001
+
+Implement signal handling for MSHV vCPUs to support asynchronous
+interrupts from the main thread.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-12-magnuskulke@linux.microsoft.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 575df4df54e060661db45e6f80293b29ea8901c1)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ accel/mshv/mshv-all.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/accel/mshv/mshv-all.c b/accel/mshv/mshv-all.c
+index e02421d79d..fa1f8f35bd 100644
+--- a/accel/mshv/mshv-all.c
++++ b/accel/mshv/mshv-all.c
+@@ -524,6 +524,35 @@ static int mshv_cpu_exec(CPUState *cpu)
+     return ret;
+ }
+ 
++/*
++ * The signal handler is triggered when QEMU's main thread receives a SIG_IPI
++ * (SIGUSR1). This signal causes the current CPU thread to be kicked, forcing a
++ * VM exit on the CPU. The VM exit generates an exit reason that breaks the loop
++ * (see mshv_cpu_exec). If the exit is due to a Ctrl+A+x command, the system
++ * will shut down. For other cases, the system will continue running.
++ */
++static void sa_ipi_handler(int sig)
++{
++    /* TODO: call IOCTL to set_immediate_exit, once implemented. */
++
++    qemu_cpu_kick_self();
++}
++
++static void init_signal(CPUState *cpu)
++{
++    /* init cpu signals */
++    struct sigaction sigact;
++    sigset_t set;
++
++    memset(&sigact, 0, sizeof(sigact));
++    sigact.sa_handler = sa_ipi_handler;
++    sigaction(SIG_IPI, &sigact, NULL);
++
++    pthread_sigmask(SIG_BLOCK, NULL, &set);
++    sigdelset(&set, SIG_IPI);
++    pthread_sigmask(SIG_SETMASK, &set, NULL);
++}
++
+ static void *mshv_vcpu_thread(void *arg)
+ {
+     CPUState *cpu = arg;
+@@ -540,6 +569,7 @@ static void *mshv_vcpu_thread(void *arg)
+         error_report("Failed to init vcpu %d", cpu->cpu_index);
+         goto cleanup;
+     }
++    init_signal(cpu);
+ 
+     /* signal CPU creation */
+     cpu_thread_signal_created(cpu);
+-- 
+2.51.1
+

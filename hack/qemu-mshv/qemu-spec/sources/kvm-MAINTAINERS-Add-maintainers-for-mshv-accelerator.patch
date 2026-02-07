@@ -1,0 +1,54 @@
+From 0fdaad5ececfa48df564eaf8ee08fdb76a08e5c5 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:47 +0200
+Subject: [PATCH 29/31] MAINTAINERS: Add maintainers for mshv accelerator
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [28/30] 8ddf4160575605b6d6e4d8490f61dffe826d5acc
+
+Adding Magnus Kulke and Wei Liu to the maintainers file for the
+respective folders/files.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-28-magnuskulke@linux.microsoft.com
+[Rename "MAHV CPUs" to mention x86. - Paolo]
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 1872bd9f2dad5113b0c27d352ec49683e0953c7f)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ MAINTAINERS | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a07086ed76..d4696f00d7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -546,6 +546,21 @@ F: target/i386/whpx/
+ F: accel/stubs/whpx-stub.c
+ F: include/system/whpx.h
+ 
++MSHV
++M: Magnus Kulke <magnus.kulke@linux.microsoft.com>
++R: Wei Liu <wei.liu@kernel.org>
++S: Supported
++F: accel/mshv/
++F: include/system/mshv.h
++F: include/hw/hyperv/hvgdk*.h
++F: include/hw/hyperv/hvhdk*.h
++
++X86 MSHV CPUs
++M: Magnus Kulke <magnus.kulke@linux.microsoft.com>
++R: Wei Liu <wei.liu@kernel.org>
++S: Supported
++F: target/i386/mshv/
++
+ X86 Instruction Emulator
+ M: Cameron Esfahani <dirty@apple.com>
+ M: Roman Bolshakov <rbolshakov@ddn.com>
+-- 
+2.51.1
+

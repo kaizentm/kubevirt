@@ -1,0 +1,179 @@
+cpio: 0001-Initial-redhat-build.patch not created: newer or same age version exists
+0001-Initial-redhat-build.patch
+cpio: 0002-Enable-disable-devices-for-RHEL.patch not created: newer or same age version exists
+0002-Enable-disable-devices-for-RHEL.patch
+cpio: 0003-Machine-type-related-general-changes.patch not created: newer or same age version exists
+0003-Machine-type-related-general-changes.patch
+cpio: 0004-meson-temporarily-disable-Wunused-function.patch not created: newer or same age version exists
+0004-meson-temporarily-disable-Wunused-function.patch
+cpio: 0005-Remove-upstream-machine-type-versions-for-aarch64-s3.patch not created: newer or same age version exists
+0005-Remove-upstream-machine-type-versions-for-aarch64-s3.patch
+cpio: 0006-Adapt-versioned-machine-type-macros-for-RHEL.patch not created: newer or same age version exists
+0006-Adapt-versioned-machine-type-macros-for-RHEL.patch
+cpio: 0007-Increase-deletion-schedule-to-3-releases.patch not created: newer or same age version exists
+0007-Increase-deletion-schedule-to-3-releases.patch
+cpio: 0008-Add-downstream-aarch64-versioned-virt-machine-types.patch not created: newer or same age version exists
+0008-Add-downstream-aarch64-versioned-virt-machine-types.patch
+cpio: 0009-Add-downstream-ppc64-versioned-spapr-machine-types.patch not created: newer or same age version exists
+0009-Add-downstream-ppc64-versioned-spapr-machine-types.patch
+cpio: 0010-Add-downstream-s390x-versioned-s390-ccw-virtio-machi.patch not created: newer or same age version exists
+0010-Add-downstream-s390x-versioned-s390-ccw-virtio-machi.patch
+cpio: 0011-Add-downstream-x86_64-versioned-pc-q35-machine-types.patch not created: newer or same age version exists
+0011-Add-downstream-x86_64-versioned-pc-q35-machine-types.patch
+cpio: 0012-Revert-meson-temporarily-disable-Wunused-function.patch not created: newer or same age version exists
+0012-Revert-meson-temporarily-disable-Wunused-function.patch
+cpio: 0013-Enable-make-check.patch not created: newer or same age version exists
+0013-Enable-make-check.patch
+cpio: 0014-vfio-cap-number-of-devices-that-can-be-assigned.patch not created: newer or same age version exists
+0014-vfio-cap-number-of-devices-that-can-be-assigned.patch
+cpio: 0015-Add-support-statement-to-help-output.patch not created: newer or same age version exists
+0015-Add-support-statement-to-help-output.patch
+cpio: 0016-Use-qemu-kvm-in-documentation-instead-of-qemu-system.patch not created: newer or same age version exists
+0016-Use-qemu-kvm-in-documentation-instead-of-qemu-system.patch
+cpio: 0017-qcow2-Deprecation-warning-when-opening-v2-images-rw.patch not created: newer or same age version exists
+0017-qcow2-Deprecation-warning-when-opening-v2-images-rw.patch
+cpio: 0018-redhat-allow-5-level-paging-for-TDX-VMs.patch not created: newer or same age version exists
+0018-redhat-allow-5-level-paging-for-TDX-VMs.patch
+cpio: 0019-Add-upstream-compat-bits.patch not created: newer or same age version exists
+0019-Add-upstream-compat-bits.patch
+cpio: 0020-Revert-hw-s390x-s390-virtio-ccw-Remove-the-deprecate.patch not created: newer or same age version exists
+0020-Revert-hw-s390x-s390-virtio-ccw-Remove-the-deprecate.patch
+cpio: 0021-Revert-hw-s390x-s390-virtio-ccw-Remove-the-deprecate.patch not created: newer or same age version exists
+0021-Revert-hw-s390x-s390-virtio-ccw-Remove-the-deprecate.patch
+cpio: 0022-Revert-hw-s390x-s390-virtio-ccw-Remove-the-deprecate.patch not created: newer or same age version exists
+0022-Revert-hw-s390x-s390-virtio-ccw-Remove-the-deprecate.patch
+cpio: 0023-redhat-Fix-rhel7.6.0-machine-type.patch not created: newer or same age version exists
+0023-redhat-Fix-rhel7.6.0-machine-type.patch
+cpio: 0024-redhat-Compatibility-handling-for-the-s390-ccw-virti.patch not created: newer or same age version exists
+0024-redhat-Compatibility-handling-for-the-s390-ccw-virti.patch
+cpio: 0025-redhat-Add-new-s390-ccw-virtio-rhel9.8.0-machine-typ.patch not created: newer or same age version exists
+0025-redhat-Add-new-s390-ccw-virtio-rhel9.8.0-machine-typ.patch
+cpio: 0026-hw-core-machine-rhel-machine-types-compat-fix.patch not created: newer or same age version exists
+0026-hw-core-machine-rhel-machine-types-compat-fix.patch
+cpio: 0027-arm-rhel-machine-type-compat-fix.patch not created: newer or same age version exists
+0027-arm-rhel-machine-type-compat-fix.patch
+cpio: 0028-target-i386-add-compatibility-property-for-arch_capa.patch not created: newer or same age version exists
+0028-target-i386-add-compatibility-property-for-arch_capa.patch
+cpio: 0029-target-i386-add-compatibility-property-for-pdcm-feat.patch not created: newer or same age version exists
+0029-target-i386-add-compatibility-property-for-pdcm-feat.patch
+cpio: 0030-arm-create-new-virt-machine-type-for-rhel-9.8.patch not created: newer or same age version exists
+0030-arm-create-new-virt-machine-type-for-rhel-9.8.patch
+cpio: 95-kvm-memlock.conf not created: newer or same age version exists
+95-kvm-memlock.conf
+cpio: 99-qemu-guest-agent.rules not created: newer or same age version exists
+99-qemu-guest-agent.rules
+cpio: README.tests not created: newer or same age version exists
+README.tests
+cpio: bridge.conf not created: newer or same age version exists
+bridge.conf
+cpio: kvm-Fix-the-typo-of-vfio-pci-device-s-enable-migration-o.patch not created: newer or same age version exists
+kvm-Fix-the-typo-of-vfio-pci-device-s-enable-migration-o.patch
+cpio: kvm-MAINTAINERS-Add-maintainers-for-mshv-accelerator.patch not created: newer or same age version exists
+kvm-MAINTAINERS-Add-maintainers-for-mshv-accelerator.patch
+cpio: kvm-accel-Add-Meson-and-config-support-for-MSHV-accelera.patch not created: newer or same age version exists
+kvm-accel-Add-Meson-and-config-support-for-MSHV-accelera.patch
+cpio: kvm-accel-mshv-Add-accelerator-skeleton.patch not created: newer or same age version exists
+kvm-accel-mshv-Add-accelerator-skeleton.patch
+cpio: kvm-accel-mshv-Add-vCPU-creation-and-execution-loop.patch not created: newer or same age version exists
+kvm-accel-mshv-Add-vCPU-creation-and-execution-loop.patch
+cpio: kvm-accel-mshv-Add-vCPU-signal-handling.patch not created: newer or same age version exists
+kvm-accel-mshv-Add-vCPU-signal-handling.patch
+cpio: kvm-accel-mshv-Handle-overlapping-mem-mappings.patch not created: newer or same age version exists
+kvm-accel-mshv-Handle-overlapping-mem-mappings.patch
+cpio: kvm-accel-mshv-Initialize-VM-partition.patch not created: newer or same age version exists
+kvm-accel-mshv-Initialize-VM-partition.patch
+cpio: kvm-accel-mshv-Register-memory-region-listeners.patch not created: newer or same age version exists
+kvm-accel-mshv-Register-memory-region-listeners.patch
+cpio: kvm-accel-mshv-initialize-thread-name.patch not created: newer or same age version exists
+kvm-accel-mshv-initialize-thread-name.patch
+cpio: kvm-accel-mshv-use-return-value-of-handle_pio_str_read.patch not created: newer or same age version exists
+kvm-accel-mshv-use-return-value-of-handle_pio_str_read.patch
+cpio: kvm-arm-kvm-report-registers-we-failed-to-set.patch not created: newer or same age version exists
+kvm-arm-kvm-report-registers-we-failed-to-set.patch
+cpio: kvm-block-backend-Fix-race-when-resuming-queued-requests.patch not created: newer or same age version exists
+kvm-block-backend-Fix-race-when-resuming-queued-requests.patch
+cpio: kvm-docs-Add-mshv-to-documentation.patch not created: newer or same age version exists
+kvm-docs-Add-mshv-to-documentation.patch
+cpio: kvm-file-posix-Handle-suspended-dm-multipath-better-for-.patch not created: newer or same age version exists
+kvm-file-posix-Handle-suspended-dm-multipath-better-for-.patch
+cpio: kvm-hw-intc-Generalize-APIC-helper-names-from-kvm_-to-ac.patch not created: newer or same age version exists
+kvm-hw-intc-Generalize-APIC-helper-names-from-kvm_-to-ac.patch
+cpio: kvm-include-hw-hyperv-Add-MSHV-ABI-header-definitions.patch not created: newer or same age version exists
+kvm-include-hw-hyperv-Add-MSHV-ABI-header-definitions.patch
+cpio: kvm-io-fix-use-after-free-in-websocket-handshake-code.patch not created: newer or same age version exists
+kvm-io-fix-use-after-free-in-websocket-handshake-code.patch
+cpio: kvm-io-move-websock-resource-release-to-close-method.patch not created: newer or same age version exists
+kvm-io-move-websock-resource-release-to-close-method.patch
+cpio: kvm-linux-headers-linux-Add-mshv.h-headers.patch not created: newer or same age version exists
+kvm-linux-headers-linux-Add-mshv.h-headers.patch
+cpio: kvm-monitor-generalize-query-mshv-info-mshv-to-query-acc.patch not created: newer or same age version exists
+kvm-monitor-generalize-query-mshv-info-mshv-to-query-acc.patch
+cpio: kvm-pcie_sriov-make-pcie_sriov_pf_exit-safe-on-non-SR-IO.patch not created: newer or same age version exists
+kvm-pcie_sriov-make-pcie_sriov_pf_exit-safe-on-non-SR-IO.patch
+cpio: kvm-qapi-accel-Allow-to-query-mshv-capabilities.patch not created: newer or same age version exists
+kvm-qapi-accel-Allow-to-query-mshv-capabilities.patch
+cpio: kvm-qapi-machine-s390x-add-QAPI-event-SCLP_CPI_INFO_AVAI.patch not created: newer or same age version exists
+kvm-qapi-machine-s390x-add-QAPI-event-SCLP_CPI_INFO_AVAI.patch
+cpio: kvm-ram-block-attributes-Unify-the-retrieval-of-the-bloc.patch not created: newer or same age version exists
+kvm-ram-block-attributes-Unify-the-retrieval-of-the-bloc.patch
+cpio: kvm-ram-block-attributes-fix-interaction-with-hugetlb-me.patch not created: newer or same age version exists
+kvm-ram-block-attributes-fix-interaction-with-hugetlb-me.patch
+cpio: kvm-s390x.conf not created: newer or same age version exists
+kvm-s390x.conf
+cpio: kvm-target-i386-emulate-Allow-instruction-decoding-from-.patch not created: newer or same age version exists
+kvm-target-i386-emulate-Allow-instruction-decoding-from-.patch
+cpio: kvm-target-i386-mshv-Add-CPU-create-and-remove-logic.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Add-CPU-create-and-remove-logic.patch
+cpio: kvm-target-i386-mshv-Add-x86-decoder-emu-implementation.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Add-x86-decoder-emu-implementation.patch
+cpio: kvm-target-i386-mshv-Implement-mshv_arch_put_registers.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Implement-mshv_arch_put_registers.patch
+cpio: kvm-target-i386-mshv-Implement-mshv_get_special_regs.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Implement-mshv_get_special_regs.patch
+cpio: kvm-target-i386-mshv-Implement-mshv_get_standard_regs.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Implement-mshv_get_standard_regs.patch
+cpio: kvm-target-i386-mshv-Implement-mshv_store_regs.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Implement-mshv_store_regs.patch
+cpio: kvm-target-i386-mshv-Implement-mshv_vcpu_run.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Implement-mshv_vcpu_run.patch
+cpio: kvm-target-i386-mshv-Integrate-x86-instruction-decoder-e.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Integrate-x86-instruction-decoder-e.patch
+cpio: kvm-target-i386-mshv-Register-CPUID-entries-with-MSHV.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Register-CPUID-entries-with-MSHV.patch
+cpio: kvm-target-i386-mshv-Register-MSRs-with-MSHV.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Register-MSRs-with-MSHV.patch
+cpio: kvm-target-i386-mshv-Set-local-interrupt-controller-stat.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Set-local-interrupt-controller-stat.patch
+cpio: kvm-target-i386-mshv-Use-preallocated-page-for-hvcall.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Use-preallocated-page-for-hvcall.patch
+cpio: kvm-target-i386-mshv-Write-MSRs-to-the-hypervisor.patch not created: newer or same age version exists
+kvm-target-i386-mshv-Write-MSRs-to-the-hypervisor.patch
+cpio: kvm-tests-functional-add-tests-for-SCLP-event-CPI.patch not created: newer or same age version exists
+kvm-tests-functional-add-tests-for-SCLP-event-CPI.patch
+cpio: kvm-treewide-rename-qemu_wait_io_event-qemu_wait_io_even.patch not created: newer or same age version exists
+kvm-treewide-rename-qemu_wait_io_event-qemu_wait_io_even.patch
+cpio: kvm-vfio-Disable-VFIO-migration-with-MultiFD-support.patch not created: newer or same age version exists
+kvm-vfio-Disable-VFIO-migration-with-MultiFD-support.patch
+cpio: kvm-vfio-only-check-region-info-cache-for-initial-region.patch not created: newer or same age version exists
+kvm-vfio-only-check-region-info-cache-for-initial-region.patch
+cpio: kvm-vfio-rename-field-to-num_initial_regions.patch not created: newer or same age version exists
+kvm-vfio-rename-field-to-num_initial_regions.patch
+cpio: kvm-x86-create-new-pc-q35-machine-type-for-rhel-9.8.patch not created: newer or same age version exists
+kvm-x86-create-new-pc-q35-machine-type-for-rhel-9.8.patch
+cpio: kvm-x86.conf not created: newer or same age version exists
+kvm-x86.conf
+cpio: kvm.conf not created: newer or same age version exists
+kvm.conf
+cpio: modules-load.conf not created: newer or same age version exists
+modules-load.conf
+cpio: qemu-10.1.0.tar.xz not created: newer or same age version exists
+qemu-10.1.0.tar.xz
+cpio: qemu-ga.sysconfig not created: newer or same age version exists
+qemu-ga.sysconfig
+cpio: qemu-guest-agent.service not created: newer or same age version exists
+qemu-guest-agent.service
+cpio: qemu-kvm.spec not created: newer or same age version exists
+qemu-kvm.spec
+cpio: vhost.conf not created: newer or same age version exists
+vhost.conf
+279302 blocks

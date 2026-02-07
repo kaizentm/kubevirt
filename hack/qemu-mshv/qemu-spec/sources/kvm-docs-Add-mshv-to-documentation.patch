@@ -1,0 +1,143 @@
+From 8ff12da78a42d59fd4e3525d081634804debf008 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:46 +0200
+Subject: [PATCH 28/31] docs: Add mshv to documentation
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [27/30] 2c46c1324ab9670aa133efcb9104d744746be32b
+
+Added mshv to the list of accelerators in doc text.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-27-magnuskulke@linux.microsoft.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 3af71a1a6a7a497df7d3026239d6136b56e3d5ab)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ docs/about/build-platforms.rst |  2 +-
+ docs/devel/codebase.rst        |  2 +-
+ docs/glossary.rst              |  7 +++----
+ docs/system/introduction.rst   |  3 +++
+ qemu-options.hx                | 16 ++++++++--------
+ 5 files changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/docs/about/build-platforms.rst b/docs/about/build-platforms.rst
+index 8671c3be9c..06ba0ddc9a 100644
+--- a/docs/about/build-platforms.rst
++++ b/docs/about/build-platforms.rst
+@@ -55,7 +55,7 @@ Those hosts are officially supported, with various accelerators:
+    * - SPARC
+      - tcg
+    * - x86
+-     - hvf (64 bit only), kvm, nvmm, tcg, whpx (64 bit only), xen
++     - hvf (64 bit only), mshv (64 bit only), kvm, nvmm, tcg, whpx (64 bit only), xen
+ 
+ Other host architectures are not supported. It is possible to build QEMU system
+ emulation on an unsupported host architecture using the configure
+diff --git a/docs/devel/codebase.rst b/docs/devel/codebase.rst
+index 2a3143787a..69d8827117 100644
+--- a/docs/devel/codebase.rst
++++ b/docs/devel/codebase.rst
+@@ -48,7 +48,7 @@ yet, so sometimes the source code is all you have.
+ * `accel <https://gitlab.com/qemu-project/qemu/-/tree/master/accel>`_:
+   Infrastructure and architecture agnostic code related to the various
+   `accelerators <Accelerators>` supported by QEMU
+-  (TCG, KVM, hvf, whpx, xen, nvmm).
++  (TCG, KVM, hvf, whpx, xen, nvmm, mshv).
+   Contains interfaces for operations that will be implemented per
+   `target <https://gitlab.com/qemu-project/qemu/-/tree/master/target>`_.
+ * `audio <https://gitlab.com/qemu-project/qemu/-/tree/master/audio>`_:
+diff --git a/docs/glossary.rst b/docs/glossary.rst
+index 4fa044bfb6..2857731bc4 100644
+--- a/docs/glossary.rst
++++ b/docs/glossary.rst
+@@ -12,7 +12,7 @@ Accelerator
+ 
+ A specific API used to accelerate execution of guest instructions. It can be
+ hardware-based, through a virtualization API provided by the host OS (kvm, hvf,
+-whpx, ...), or software-based (tcg). See this description of `supported
++whpx, mshv, ...), or software-based (tcg). See this description of `supported
+ accelerators<Accelerators>`.
+ 
+ Board
+@@ -101,9 +101,8 @@ manage a virtual machine. QEMU is a virtualizer, that interacts with various
+ hypervisors.
+ 
+ In the context of QEMU, an hypervisor is an API, provided by the Host OS,
+-allowing to execute virtual machines. Linux implementation is KVM (and supports
+-Xen as well). For MacOS, it's HVF. Windows defines WHPX. And NetBSD provides
+-NVMM.
++allowing to execute virtual machines.  Linux provides a choice of KVM, Xen
++or MSHV; MacOS provides HVF; Windows provides WHPX; NetBSD provides NVMM.
+ 
+ .. _machine:
+ 
+diff --git a/docs/system/introduction.rst b/docs/system/introduction.rst
+index 4cd46b5b8f..9c57523b6c 100644
+--- a/docs/system/introduction.rst
++++ b/docs/system/introduction.rst
+@@ -23,6 +23,9 @@ Tiny Code Generator (TCG) capable of emulating many CPUs.
+   * - Xen
+     - Linux (as dom0)
+     - Arm, x86
++  * - MSHV
++    - Linux (as dom0)
++    - x86
+   * - Hypervisor Framework (hvf)
+     - MacOS
+     - x86 (64 bit only), Arm (64 bit only)
+diff --git a/qemu-options.hx b/qemu-options.hx
+index 3837456a61..f802f1d6d2 100644
+--- a/qemu-options.hx
++++ b/qemu-options.hx
+@@ -28,7 +28,7 @@ DEF("machine", HAS_ARG, QEMU_OPTION_machine, \
+     "-machine [type=]name[,prop[=value][,...]]\n"
+     "                selects emulated machine ('-machine help' for list)\n"
+     "                property accel=accel1[:accel2[:...]] selects accelerator\n"
+-    "                supported accelerators are kvm, xen, hvf, nvmm, whpx or tcg (default: tcg)\n"
++    "                supported accelerators are kvm, xen, hvf, nvmm, whpx, mshv or tcg (default: tcg)\n"
+     "                vmport=on|off|auto controls emulation of vmport (default: auto)\n"
+     "                dump-guest-core=on|off include guest memory in a core dump (default=on)\n"
+     "                mem-merge=on|off controls memory merge support (default: on)\n"
+@@ -66,10 +66,10 @@ SRST
+ 
+     ``accel=accels1[:accels2[:...]]``
+         This is used to enable an accelerator. Depending on the target
+-        architecture, kvm, xen, hvf, nvmm, whpx or tcg can be available.
+-        By default, tcg is used. If there is more than one accelerator
+-        specified, the next one is used if the previous one fails to
+-        initialize.
++        architecture, kvm, xen, hvf, nvmm, whpx, mshv or tcg can be
++        available. By default, tcg is used. If there is more than one
++        accelerator specified, the next one is used if the previous one
++        fails to initialize.
+ 
+     ``vmport=on|off|auto``
+         Enables emulation of VMWare IO port, for vmmouse etc. auto says
+@@ -226,7 +226,7 @@ ERST
+ 
+ DEF("accel", HAS_ARG, QEMU_OPTION_accel,
+     "-accel [accel=]accelerator[,prop[=value][,...]]\n"
+-    "                select accelerator (kvm, xen, hvf, nvmm, whpx or tcg; use 'help' for a list)\n"
++    "                select accelerator (kvm, xen, hvf, nvmm, whpx, mshv or tcg; use 'help' for a list)\n"
+     "                igd-passthru=on|off (enable Xen integrated Intel graphics passthrough, default=off)\n"
+     "                kernel-irqchip=on|off|split controls accelerated irqchip support (default=on)\n"
+     "                kvm-shadow-mem=size of KVM shadow MMU in bytes\n"
+@@ -241,8 +241,8 @@ DEF("accel", HAS_ARG, QEMU_OPTION_accel,
+ SRST
+ ``-accel name[,prop=value[,...]]``
+     This is used to enable an accelerator. Depending on the target
+-    architecture, kvm, xen, hvf, nvmm, whpx or tcg can be available. By
+-    default, tcg is used. If there is more than one accelerator
++    architecture, kvm, xen, hvf, nvmm, whpx, mshv or tcg can be available.
++    By default, tcg is used. If there is more than one accelerator
+     specified, the next one is used if the previous one fails to
+     initialize.
+ 
+-- 
+2.51.1
+

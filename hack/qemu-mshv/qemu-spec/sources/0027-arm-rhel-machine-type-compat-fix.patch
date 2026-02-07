@@ -1,0 +1,26 @@
+From 0a8d8f3826fdb4160cbb6e401daa58abdc914873 Mon Sep 17 00:00:00 2001
+From: Sebastian Ott <sebott@redhat.com>
+Date: Thu, 16 Oct 2025 16:12:37 +0200
+Subject: [PATCH] arm: rhel machine type compat fix
+
+Ensure compat of virt-rhel9.6.0 - same change as for virt-9.1 upstream.
+
+Signed-off-by: Sebastian Ott <sebott@redhat.com>
+---
+ hw/arm/virt.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/hw/arm/virt.c b/hw/arm/virt.c
+index cb303e263b..d3bab67991 100644
+--- a/hw/arm/virt.c
++++ b/hw/arm/virt.c
+@@ -3694,6 +3694,9 @@ DEFINE_VIRT_MACHINE(4, 1)
+ 
+ static void virt_rhel_machine_9_6_0_options(MachineClass *mc)
+ {
++    VirtMachineClass *vmc = VIRT_MACHINE_CLASS(OBJECT_CLASS(mc));
++
++    vmc->no_nested_smmu = true;
+     compat_props_add(mc->compat_props, hw_compat_rhel_9_8, hw_compat_rhel_9_8_len);
+ }
+ DEFINE_VIRT_MACHINE_AS_LATEST(9, 6, 0)

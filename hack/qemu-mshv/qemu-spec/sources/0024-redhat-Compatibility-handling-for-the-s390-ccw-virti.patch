@@ -1,0 +1,41 @@
+From 8c4b23a9759821f5b543cda3af3a443583c6484b Mon Sep 17 00:00:00 2001
+From: Thomas Huth <thuth@redhat.com>
+Date: Wed, 1 Oct 2025 16:12:28 +0200
+Subject: [PATCH] redhat: Compatibility handling for the
+ s390-ccw-virtio-rhel9.6.0 machine
+
+JIRA: https://issues.redhat.com/browse/RHEL-105900
+Upstream status: downstream-only
+
+Add the compatiblity handling for the -rhel9.6.0 machine types (and
+older) after the rebase to QEMU 10.1. This adds the settings from
+the upstream machine types of QEMU 9.2 and 10.0 to the downstream
+machine types.
+
+Signed-off-by: Thomas Huth <thuth@redhat.com>
+---
+ hw/s390x/s390-virtio-ccw.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/hw/s390x/s390-virtio-ccw.c b/hw/s390x/s390-virtio-ccw.c
+index 79fe544224..906d45c813 100644
+--- a/hw/s390x/s390-virtio-ccw.c
++++ b/hw/s390x/s390-virtio-ccw.c
+@@ -1220,9 +1220,17 @@ static void ccw_rhel_machine_9_6_0_instance_options(MachineState *machine)
+ 
+ static void ccw_rhel_machine_9_6_0_class_options(MachineClass *mc)
+ {
++    S390CcwMachineClass *s390mc = S390_CCW_MACHINE_CLASS(mc);
++    static GlobalProperty compat[] = {
++        { TYPE_S390_PCI_DEVICE, "relaxed-translation", "off", },
++    };
++
++    s390mc->use_cpi = false;
++
+     /* NB: remember to move this line to the *latest* RHEL 9 machine */
+     compat_props_add(mc->compat_props, hw_compat_rhel_9, hw_compat_rhel_9_len);
+     compat_props_add(mc->compat_props, hw_compat_rhel_9_8, hw_compat_rhel_9_8_len);
++    compat_props_add(mc->compat_props, compat, G_N_ELEMENTS(compat));
+ }
+ DEFINE_CCW_MACHINE_AS_LATEST(9, 6, 0);
+ 

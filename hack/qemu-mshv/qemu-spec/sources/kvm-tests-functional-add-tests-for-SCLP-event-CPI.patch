@@ -1,0 +1,76 @@
+From d2dd32d1a91ed51e4704e02ffc5f518c3faff076 Mon Sep 17 00:00:00 2001
+From: Shalini Chellathurai Saroja <shalini@linux.ibm.com>
+Date: Thu, 16 Oct 2025 14:17:08 +0200
+Subject: [PATCH 2/5] tests/functional: add tests for SCLP event CPI
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Thomas Huth <thuth@redhat.com>
+RH-MergeRequest: 415: Patches for the Control Program Identification feature on s390x
+RH-Jira: RHEL-73009
+RH-Acked-by: Cédric Le Goater <clg@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [2/2] 291362fe226f583c66ddc480b2f0f6be9c6cbf3f (thuth/qemu-kvm-cs)
+
+JIRA: https://issues.redhat.com/browse/RHEL-73009
+
+Add tests for SCLP event type Control-Program Identification.
+
+Signed-off-by: Shalini Chellathurai Saroja <shalini@linux.ibm.com>
+Suggested-by: Thomas Huth <thuth@redhat.com>
+Reviewed-by: Hendrik Brueckner <brueckner@linux.ibm.com>
+Reviewed-by Thomas Huth <thuth@redhat.com>
+Message-ID: <20251016121708.334133-2-shalini@linux.ibm.com>
+Signed-off-by: Thomas Huth <thuth@redhat.com>
+(cherry picked from commit bc436b739c3c8683ef5e8c22391952dcaa95242e)
+---
+ tests/functional/test_s390x_ccw_virtio.py | 26 +++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/tests/functional/test_s390x_ccw_virtio.py b/tests/functional/test_s390x_ccw_virtio.py
+index 453711aa0f..0455337856 100755
+--- a/tests/functional/test_s390x_ccw_virtio.py
++++ b/tests/functional/test_s390x_ccw_virtio.py
+@@ -15,6 +15,7 @@
+ import tempfile
+ 
+ from qemu_test import QemuSystemTest, Asset
++from qemu_test import exec_command
+ from qemu_test import exec_command_and_wait_for_pattern
+ from qemu_test import wait_for_console_pattern
+ 
+@@ -270,5 +271,30 @@ def test_s390x_fedora(self):
+                         'while ! (dmesg -c | grep Start.virtcrypto_remove) ; do'
+                         ' sleep 1 ; done', 'Start virtcrypto_remove.')
+ 
++        # Test SCLP event Control-Program Identification (CPI)
++        cpi = '/sys/firmware/cpi/'
++        sclpcpi = '/machine/sclp/s390-sclp-event-facility/sclpcpi'
++        self.log.info("Test SCLP event CPI")
++        exec_command(self, 'echo TESTVM > ' + cpi + 'system_name')
++        exec_command(self, 'echo LINUX > ' + cpi + 'system_type')
++        exec_command(self, 'echo TESTPLEX > ' + cpi + 'sysplex_name')
++        exec_command(self, 'echo 0x001a000000060b00 > ' + cpi + 'system_level')
++        exec_command_and_wait_for_pattern(self,
++                                          'echo 1 > ' + cpi + 'set', ':/#')
++        try:
++            event = self.vm.event_wait('SCLP_CPI_INFO_AVAILABLE')
++        except TimeoutError:
++            self.fail('Timed out waiting for the SCLP_CPI_INFO_AVAILABLE event')
++        ts = self.vm.cmd('qom-get', path=sclpcpi, property='timestamp')
++        self.assertNotEqual(ts, 0)
++        name = self.vm.cmd('qom-get', path=sclpcpi, property='system_name')
++        self.assertEqual(name.strip(), 'TESTVM')
++        typ = self.vm.cmd('qom-get', path=sclpcpi, property='system_type')
++        self.assertEqual(typ.strip(), 'LINUX')
++        sysplex = self.vm.cmd('qom-get', path=sclpcpi, property='sysplex_name')
++        self.assertEqual(sysplex.strip(), 'TESTPLEX')
++        level = self.vm.cmd('qom-get', path=sclpcpi, property='system_level')
++        self.assertEqual(level, 0x001a000000060b00)
++
+ if __name__ == '__main__':
+     QemuSystemTest.main()
+-- 
+2.50.1
+

@@ -1,0 +1,29 @@
+From b96d91774d7358316cff003d0891c1cbc3857a3d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Daniel=20P=2E=20Berrang=C3=A9?= <berrange@redhat.com>
+Date: Wed, 3 Jul 2024 13:47:04 +0100
+Subject: [PATCH] Revert "meson: temporarily disable -Wunused-function"
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This reverts commit c682111eaa73d9b985187b8be330338f50b78a7a.
+
+No longer needed after introduction of downstream machines.
+
+Signed-off-by: Daniel P. Berrangé <berrange@redhat.com>
+---
+ meson.build | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/meson.build b/meson.build
+index 23494666d9..ef2e5be6e2 100644
+--- a/meson.build
++++ b/meson.build
+@@ -757,7 +757,6 @@ warn_flags = [
+   '-Wno-string-plus-int',
+   '-Wno-tautological-type-limit-compare',
+   '-Wno-typedef-redefinition',
+-  '-Wno-unused-function',
+ ]
+ 
+ if host_os != 'darwin'

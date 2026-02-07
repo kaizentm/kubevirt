@@ -1,0 +1,150 @@
+From be2a68162ad72e30332382b5d9e46458b3ac50d3 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:22 +0200
+Subject: [PATCH 03/31] target/i386/emulate: Allow instruction decoding from
+ stream
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [2/30] a2c8de87daaf40fd824b5f0e1c07f435dc5085f8
+
+Introduce a new helper function to decode x86 instructions from a
+raw instruction byte stream. MSHV delivers an instruction stream in a
+buffer of the vm_exit message. It can be used to speed up MMIO
+emulation, since instructions do not have to be fetched and translated.
+
+Added "fetch_instruction()" op to x86_emul_ops() to improve
+traceability.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-3-magnuskulke@linux.microsoft.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 1e25327b244a217078e3fa5df18322c70932f478)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ target/i386/emulate/x86_decode.c | 27 +++++++++++++++++++++++----
+ target/i386/emulate/x86_decode.h |  9 +++++++++
+ target/i386/emulate/x86_emu.c    |  3 ++-
+ target/i386/emulate/x86_emu.h    |  2 ++
+ 4 files changed, 36 insertions(+), 5 deletions(-)
+
+diff --git a/target/i386/emulate/x86_decode.c b/target/i386/emulate/x86_decode.c
+index 2eca39802e..97bd6f1a3b 100644
+--- a/target/i386/emulate/x86_decode.c
++++ b/target/i386/emulate/x86_decode.c
+@@ -71,10 +71,16 @@ static inline uint64_t decode_bytes(CPUX86State *env, struct x86_decode *decode,
+         VM_PANIC_EX("%s invalid size %d\n", __func__, size);
+         break;
+     }
+-    target_ulong va  = linear_rip(env_cpu(env), env->eip) + decode->len;
+-    emul_ops->read_mem(env_cpu(env), &val, va, size);
++
++    /* copy the bytes from the instruction stream, if available */
++    if (decode->stream && decode->len + size <= decode->stream->len) {
++        memcpy(&val, decode->stream->bytes + decode->len, size);
++    } else {
++        target_ulong va = linear_rip(env_cpu(env), env->eip) + decode->len;
++        emul_ops->fetch_instruction(env_cpu(env), &val, va, size);
++    }
+     decode->len += size;
+-    
++
+     return val;
+ }
+ 
+@@ -2076,9 +2082,10 @@ static void decode_opcodes(CPUX86State *env, struct x86_decode *decode)
+     }
+ }
+ 
+-uint32_t decode_instruction(CPUX86State *env, struct x86_decode *decode)
++static uint32_t decode_opcode(CPUX86State *env, struct x86_decode *decode)
+ {
+     memset(decode, 0, sizeof(*decode));
++
+     decode_prefix(env, decode);
+     set_addressing_size(env, decode);
+     set_operand_size(env, decode);
+@@ -2088,6 +2095,18 @@ uint32_t decode_instruction(CPUX86State *env, struct x86_decode *decode)
+     return decode->len;
+ }
+ 
++uint32_t decode_instruction(CPUX86State *env, struct x86_decode *decode)
++{
++    return decode_opcode(env, decode);
++}
++
++uint32_t decode_instruction_stream(CPUX86State *env, struct x86_decode *decode,
++                                   struct x86_insn_stream *stream)
++{
++    decode->stream = stream;
++    return decode_opcode(env, decode);
++}
++
+ void init_decoder(void)
+ {
+     int i;
+diff --git a/target/i386/emulate/x86_decode.h b/target/i386/emulate/x86_decode.h
+index 927645af1a..1cadf3694f 100644
+--- a/target/i386/emulate/x86_decode.h
++++ b/target/i386/emulate/x86_decode.h
+@@ -272,6 +272,11 @@ typedef struct x86_decode_op {
+     };
+ } x86_decode_op;
+ 
++typedef struct x86_insn_stream {
++    const uint8_t *bytes;
++    size_t len;
++} x86_insn_stream;
++
+ typedef struct x86_decode {
+     int len;
+     uint8_t opcode[4];
+@@ -298,11 +303,15 @@ typedef struct x86_decode {
+     struct x86_modrm modrm;
+     struct x86_decode_op op[4];
+     bool is_fpu;
++
++    x86_insn_stream *stream;
+ } x86_decode;
+ 
+ uint64_t sign(uint64_t val, int size);
+ 
+ uint32_t decode_instruction(CPUX86State *env, struct x86_decode *decode);
++uint32_t decode_instruction_stream(CPUX86State *env, struct x86_decode *decode,
++                                   struct x86_insn_stream *stream);
+ 
+ void *get_reg_ref(CPUX86State *env, int reg, int rex_present,
+                   int is_extended, int size);
+diff --git a/target/i386/emulate/x86_emu.c b/target/i386/emulate/x86_emu.c
+index db7a7f7437..4409f7bc13 100644
+--- a/target/i386/emulate/x86_emu.c
++++ b/target/i386/emulate/x86_emu.c
+@@ -1246,7 +1246,8 @@ static void init_cmd_handler(void)
+ bool exec_instruction(CPUX86State *env, struct x86_decode *ins)
+ {
+     if (!_cmd_handler[ins->cmd].handler) {
+-        printf("Unimplemented handler (" TARGET_FMT_lx ") for %d (%x %x) \n", env->eip,
++        printf("Unimplemented handler (" TARGET_FMT_lx ") for %d (%x %x)\n",
++                env->eip,
+                 ins->cmd, ins->opcode[0],
+                 ins->opcode_len > 1 ? ins->opcode[1] : 0);
+         env->eip += ins->len;
+diff --git a/target/i386/emulate/x86_emu.h b/target/i386/emulate/x86_emu.h
+index a1a961284b..05686b162f 100644
+--- a/target/i386/emulate/x86_emu.h
++++ b/target/i386/emulate/x86_emu.h
+@@ -24,6 +24,8 @@
+ #include "cpu.h"
+ 
+ struct x86_emul_ops {
++    void (*fetch_instruction)(CPUState *cpu, void *data, target_ulong addr,
++                              int bytes);
+     void (*read_mem)(CPUState *cpu, void *data, target_ulong addr, int bytes);
+     void (*write_mem)(CPUState *cpu, void *data, target_ulong addr, int bytes);
+     void (*read_segment_descriptor)(CPUState *cpu, struct x86_segment_descriptor *desc,
+-- 
+2.51.1
+

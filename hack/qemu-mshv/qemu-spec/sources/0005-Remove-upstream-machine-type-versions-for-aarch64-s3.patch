@@ -1,0 +1,136 @@
+From f37d0232b038edd22b87e24100e9bce0f5103bb7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Daniel=20P=2E=20Berrang=C3=A9?= <berrange@redhat.com>
+Date: Wed, 3 Jul 2024 13:25:13 +0100
+Subject: [PATCH] Remove upstream machine type versions for aarch64, s390x and
+ x86_64 architectures
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The upstream versions will later be replaced by RHEL machine type
+definitions.
+
+Signed-off-by: Daniel P. Berrangé <berrange@redhat.com>
+Signed-off-by: Mirslav Rezanina <mrezanin@redhat.com>
+
+Rebase notes (9.1.0 rc0)
+ - Split off from downstream machine type addition patch
+---
+ hw/arm/virt.c              | 2 ++
+ hw/i386/pc_piix.c          | 2 ++
+ hw/i386/pc_q35.c           | 2 ++
+ hw/ppc/spapr.c             | 5 +++++
+ hw/s390x/s390-virtio-ccw.c | 2 ++
+ 5 files changed, 13 insertions(+)
+
+diff --git a/hw/arm/virt.c b/hw/arm/virt.c
+index 6a6b841f91..e454b29de6 100644
+--- a/hw/arm/virt.c
++++ b/hw/arm/virt.c
+@@ -3468,6 +3468,7 @@ static void machvirt_machine_init(void)
+ }
+ type_init(machvirt_machine_init);
+ 
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+ static void virt_machine_10_1_options(MachineClass *mc)
+ {
+ }
+@@ -3643,3 +3644,4 @@ static void virt_machine_4_1_options(MachineClass *mc)
+     mc->auto_enable_numa_with_memhp = false;
+ }
+ DEFINE_VIRT_MACHINE(4, 1)
++#endif /* disabled for RHEL */
+diff --git a/hw/i386/pc_piix.c b/hw/i386/pc_piix.c
+index c03324281b..acf010e20f 100644
+--- a/hw/i386/pc_piix.c
++++ b/hw/i386/pc_piix.c
+@@ -475,6 +475,7 @@ static void pc_i440fx_init(MachineState *machine)
+ #define DEFINE_I440FX_MACHINE_AS_LATEST(major, minor) \
+     DEFINE_PC_VER_MACHINE(pc_i440fx, "pc-i440fx", pc_i440fx_init, true, "pc", major, minor);
+ 
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+ static void pc_i440fx_machine_options(MachineClass *m)
+ {
+     PCMachineClass *pcmc = PC_MACHINE_CLASS(m);
+@@ -802,6 +803,7 @@ static void pc_i440fx_machine_2_6_options(MachineClass *m)
+ }
+ 
+ DEFINE_I440FX_MACHINE(2, 6);
++#endif /* Disabled for Red Hat Enterprise Linux */
+ 
+ #ifdef CONFIG_ISAPC
+ static void isapc_machine_options(MachineClass *m)
+diff --git a/hw/i386/pc_q35.c b/hw/i386/pc_q35.c
+index b309b2b378..2203ffd67e 100644
+--- a/hw/i386/pc_q35.c
++++ b/hw/i386/pc_q35.c
+@@ -374,6 +374,7 @@ static void pc_q35_machine_options(MachineClass *m)
+                      pc_q35_compat_defaults, pc_q35_compat_defaults_len);
+ }
+ 
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+ static void pc_q35_machine_10_1_options(MachineClass *m)
+ {
+     pc_q35_machine_options(m);
+@@ -685,3 +686,4 @@ static void pc_q35_machine_2_6_options(MachineClass *m)
+ }
+ 
+ DEFINE_Q35_MACHINE(2, 6);
++#endif /* Disabled for Red Hat Enterprise Linux */
+diff --git a/hw/ppc/spapr.c b/hw/ppc/spapr.c
+index 1855a3cd8d..6a5f75af7d 100644
+--- a/hw/ppc/spapr.c
++++ b/hw/ppc/spapr.c
+@@ -4793,6 +4793,7 @@ static void spapr_machine_9_2_class_options(MachineClass *mc)
+ 
+ DEFINE_SPAPR_MACHINE(9, 2);
+ 
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+ /*
+  * pseries-9.1
+  */
+@@ -4999,6 +5000,7 @@ static void spapr_machine_4_1_class_options(MachineClass *mc)
+ }
+ 
+ DEFINE_SPAPR_MACHINE(4, 1);
++#endif /* disabled for RHEL */
+ 
+ /*
+  * pseries-4.0
+@@ -5014,6 +5016,8 @@ static bool phb_placement_4_0(SpaprMachineState *spapr, uint32_t index,
+     }
+     return true;
+ }
++
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+ static void spapr_machine_4_0_class_options(MachineClass *mc)
+ {
+     SpaprMachineClass *smc = SPAPR_MACHINE_CLASS(mc);
+@@ -5066,6 +5070,7 @@ static void spapr_machine_3_0_class_options(MachineClass *mc)
+ }
+ 
+ DEFINE_SPAPR_MACHINE(3, 0);
++#endif /* disabled for RHEL */
+ 
+ static void spapr_machine_register_types(void)
+ {
+diff --git a/hw/s390x/s390-virtio-ccw.c b/hw/s390x/s390-virtio-ccw.c
+index a79bd13275..022376376e 100644
+--- a/hw/s390x/s390-virtio-ccw.c
++++ b/hw/s390x/s390-virtio-ccw.c
+@@ -911,6 +911,7 @@ static const TypeInfo ccw_machine_info = {
+     DEFINE_CCW_MACHINE_IMPL(false, major, minor)
+ 
+ 
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+ static void ccw_machine_10_1_instance_options(MachineState *machine)
+ {
+ }
+@@ -1166,6 +1167,7 @@ static void ccw_machine_4_2_class_options(MachineClass *mc)
+     compat_props_add(mc->compat_props, hw_compat_4_2, hw_compat_4_2_len);
+ }
+ DEFINE_CCW_MACHINE(4, 2);
++#endif /* disabled for RHEL */
+ 
+ static void ccw_machine_register_types(void)
+ {

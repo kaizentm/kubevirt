@@ -1,0 +1,154 @@
+From 0e0943cee211f37ed1cadad872ff66225c1b4f8a Mon Sep 17 00:00:00 2001
+From: Cornelia Huck <cohuck@redhat.com>
+Date: Thu, 11 Sep 2025 17:41:59 +0200
+Subject: [PATCH] arm/kvm: report registers we failed to set
+
+RH-Author: Eric Auger <eric.auger@redhat.com>
+RH-MergeRequest: 409: arm/kvm: report registers we failed to set
+RH-Jira: RHEL-119369
+RH-Acked-by: Cornelia Huck <cohuck@redhat.com>
+RH-Acked-by: Sebastian Ott <sebott@redhat.com>
+RH-Acked-by: Donald Dutile <None>
+RH-Acked-by: Gavin Shan <gshan@redhat.com>
+RH-Commit: [1/1] ac1c4b5105f4982453c61c94cb27c85b30c77e82 (eauger1/centos-qemu-kvm)
+
+If we fail migration because of a mismatch of some registers between
+source and destination, the error message is not very informative:
+
+qemu-system-aarch64: error while loading state for instance 0x0 ofdevice 'cpu'
+qemu-system-aarch64: Failed to put registers after init: Invalid argument
+
+At least try to give the user a hint which registers had a problem,
+even if they cannot really do anything about it right now.
+
+Sample output:
+
+Could not set register op0:3 op1:0 crn:0 crm:0 op2:0 to c00fac31 (is 413fd0c1)
+
+We could be even more helpful once we support writable ID registers,
+at which point the user might actually be able to configure something
+that is migratable.
+
+Suggested-by: Eric Auger <eric.auger@redhat.com>
+Reviewed-by: Sebastian Ott <sebott@redhat.com>
+Signed-off-by: Cornelia Huck <cohuck@redhat.com>
+Message-id: 20250911154159.158046-1-cohuck@redhat.com
+Signed-off-by: Peter Maydell <peter.maydell@linaro.org>
+(cherry picked from commit 19f6dcfe6b8b2a3523362812fc696ab83050d316)
+Signed-off-by: Eric Auger <eric.auger@redhat.com>
+---
+ target/arm/kvm.c | 86 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 86 insertions(+)
+
+diff --git a/target/arm/kvm.c b/target/arm/kvm.c
+index 6672344855..c1ec6654ca 100644
+--- a/target/arm/kvm.c
++++ b/target/arm/kvm.c
+@@ -900,6 +900,58 @@ bool write_kvmstate_to_list(ARMCPU *cpu)
+     return ok;
+ }
+ 
++/* pretty-print a KVM register */
++#define CP_REG_ARM64_SYSREG_OP(_reg, _op)                       \
++    ((uint8_t)((_reg & CP_REG_ARM64_SYSREG_ ## _op ## _MASK) >> \
++               CP_REG_ARM64_SYSREG_ ## _op ## _SHIFT))
++
++static gchar *kvm_print_sve_register_name(uint64_t regidx)
++{
++    uint16_t sve_reg = regidx & 0x000000000000ffff;
++
++    if (regidx == KVM_REG_ARM64_SVE_VLS) {
++        return g_strdup_printf("SVE VLS");
++    }
++    /* zreg, preg, ffr */
++    switch (sve_reg & 0xfc00) {
++    case 0:
++        return g_strdup_printf("SVE zreg n:%d slice:%d",
++                               (sve_reg & 0x03e0) >> 5, sve_reg & 0x001f);
++    case 0x04:
++        return g_strdup_printf("SVE preg n:%d slice:%d",
++                               (sve_reg & 0x01e0) >> 5, sve_reg & 0x001f);
++    case 0x06:
++        return g_strdup_printf("SVE ffr slice:%d", sve_reg & 0x001f);
++    default:
++        return g_strdup_printf("SVE ???");
++    }
++}
++
++static gchar *kvm_print_register_name(uint64_t regidx)
++{
++        switch ((regidx & KVM_REG_ARM_COPROC_MASK)) {
++        case KVM_REG_ARM_CORE:
++            return g_strdup_printf("core reg %"PRIx64, regidx);
++        case KVM_REG_ARM_DEMUX:
++            return g_strdup_printf("demuxed reg %"PRIx64, regidx);
++        case KVM_REG_ARM64_SYSREG:
++            return g_strdup_printf("op0:%d op1:%d crn:%d crm:%d op2:%d",
++                                   CP_REG_ARM64_SYSREG_OP(regidx, OP0),
++                                   CP_REG_ARM64_SYSREG_OP(regidx, OP1),
++                                   CP_REG_ARM64_SYSREG_OP(regidx, CRN),
++                                   CP_REG_ARM64_SYSREG_OP(regidx, CRM),
++                                   CP_REG_ARM64_SYSREG_OP(regidx, OP2));
++        case KVM_REG_ARM_FW:
++            return g_strdup_printf("fw reg %d", (int)(regidx & 0xffff));
++        case KVM_REG_ARM64_SVE:
++            return kvm_print_sve_register_name(regidx);
++        case KVM_REG_ARM_FW_FEAT_BMAP:
++            return g_strdup_printf("fw feat reg %d", (int)(regidx & 0xffff));
++        default:
++            return g_strdup_printf("%"PRIx64, regidx);
++        }
++}
++
+ bool write_list_to_kvmstate(ARMCPU *cpu, int level)
+ {
+     CPUState *cs = CPU(cpu);
+@@ -927,11 +979,45 @@ bool write_list_to_kvmstate(ARMCPU *cpu, int level)
+             g_assert_not_reached();
+         }
+         if (ret) {
++            gchar *reg_str = kvm_print_register_name(regidx);
++
+             /* We might fail for "unknown register" and also for
+              * "you tried to set a register which is constant with
+              * a different value from what it actually contains".
+              */
+             ok = false;
++            switch (ret) {
++            case -ENOENT:
++                error_report("Could not set register %s: unknown to KVM",
++                             reg_str);
++                break;
++            case -EINVAL:
++                if ((regidx & KVM_REG_SIZE_MASK) == KVM_REG_SIZE_U32) {
++                    if (!kvm_get_one_reg(cs, regidx, &v32)) {
++                        error_report("Could not set register %s to %x (is %x)",
++                                     reg_str, (uint32_t)cpu->cpreg_values[i],
++                                     v32);
++                    } else {
++                        error_report("Could not set register %s to %x",
++                                     reg_str, (uint32_t)cpu->cpreg_values[i]);
++                    }
++                } else /* U64 */ {
++                    uint64_t v64;
++
++                    if (!kvm_get_one_reg(cs, regidx, &v64)) {
++                        error_report("Could not set register %s to %"PRIx64" (is %"PRIx64")",
++                                     reg_str, cpu->cpreg_values[i], v64);
++                    } else {
++                        error_report("Could not set register %s to %"PRIx64,
++                                     reg_str, cpu->cpreg_values[i]);
++                    }
++                }
++                break;
++            default:
++                error_report("Could not set register %s: %s",
++                             reg_str, strerror(-ret));
++            }
++            g_free(reg_str);
+         }
+     }
+     return ok;
+-- 
+2.50.1
+

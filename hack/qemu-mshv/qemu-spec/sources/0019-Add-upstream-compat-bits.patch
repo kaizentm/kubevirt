@@ -1,0 +1,155 @@
+From 512d36fc33342330362861f68c102504d37f5ff9 Mon Sep 17 00:00:00 2001
+From: Miroslav Rezanina <mrezanin@redhat.com>
+Date: Tue, 30 Sep 2025 12:22:25 +0200
+Subject: [PATCH] Add upstream compat bits
+
+Adding copied upstream compatibility bits
+---
+ hw/arm/virt.c              |  1 +
+ hw/core/machine.c          | 22 ++++++++++++++++++++++
+ hw/i386/pc.c               | 12 ++++++++++++
+ hw/i386/pc_piix.c          |  4 ++++
+ hw/i386/pc_q35.c           |  4 ++++
+ hw/s390x/s390-virtio-ccw.c |  1 +
+ include/hw/boards.h        |  3 +++
+ include/hw/i386/pc.h       |  3 +++
+ 8 files changed, 50 insertions(+)
+
+diff --git a/hw/arm/virt.c b/hw/arm/virt.c
+index 21ab9257e7..cb303e263b 100644
+--- a/hw/arm/virt.c
++++ b/hw/arm/virt.c
+@@ -3694,6 +3694,7 @@ DEFINE_VIRT_MACHINE(4, 1)
+ 
+ static void virt_rhel_machine_9_6_0_options(MachineClass *mc)
+ {
++    compat_props_add(mc->compat_props, hw_compat_rhel_9_8, hw_compat_rhel_9_8_len);
+ }
+ DEFINE_VIRT_MACHINE_AS_LATEST(9, 6, 0)
+ 
+diff --git a/hw/core/machine.c b/hw/core/machine.c
+index 2e69dc40f0..f774a6ebdb 100644
+--- a/hw/core/machine.c
++++ b/hw/core/machine.c
+@@ -303,6 +303,28 @@ const size_t hw_compat_rhel_9_len = G_N_ELEMENTS(hw_compat_rhel_9);
+ const char *rhel_old_machine_deprecation =
+     "machine types for previous major releases are deprecated";
+ 
++GlobalProperty hw_compat_rhel_9_8[] = {
++  /* hw_compat_rhel_9_8 from hw_compat_9_1 */
++    { TYPE_PCI_DEVICE, "x-pcie-ext-tag", "false" },
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    {"arm-cpu", "backcompat-pauth-default-use-qarma5", "true"},
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "virtio-balloon-pci", "vectors", "0" },
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "virtio-balloon-pci-transitional", "vectors", "0" },
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "virtio-balloon-pci-non-transitional", "vectors", "0" },
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "virtio-mem-pci", "vectors", "0" },
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "migration", "multifd-clean-tls-termination", "false" },
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "migration", "send-switchover-start", "off"},
++  /* hw_compat_rhel_9_8 from hw_compat_9_2 */
++    { "vfio-pci", "x-migration-multifd-transfer", "off" },
++};
++const size_t hw_compat_rhel_9_8_len = G_N_ELEMENTS(hw_compat_rhel_9_8);
++
+ GlobalProperty hw_compat_rhel_9_6[] = {
+   /* hw_compat_rhel_9_6 from hw_compat_9_0 */
+     {"arm-cpu", "backcompat-cntfrq", "true" },
+diff --git a/hw/i386/pc.c b/hw/i386/pc.c
+index 1b351085c0..79a6105f8b 100644
+--- a/hw/i386/pc.c
++++ b/hw/i386/pc.c
+@@ -295,6 +295,18 @@ GlobalProperty pc_rhel_compat[] = {
+ };
+ const size_t pc_rhel_compat_len = G_N_ELEMENTS(pc_rhel_compat);
+ 
++GlobalProperty pc_rhel_9_8_compat[] = {
++    /* pc_rhel_10_2_compat from pc_compat_10_0 */
++    { TYPE_X86_CPU, "x-consistent-cache", "false" },
++    { TYPE_X86_CPU, "x-vendor-cpuid-only-v2", "false" },
++    /* pc_rhel_9_8_compat from pc_compat_9_1 */
++    { "ICH9-LPC", "x-smi-swsmi-timer", "off" },
++    { "ICH9-LPC", "x-smi-periodic-timer", "off" },
++    { TYPE_INTEL_IOMMU_DEVICE, "stale-tm", "on" },
++    { TYPE_INTEL_IOMMU_DEVICE, "aw-bits", "39" },
++};
++const size_t pc_rhel_9_8_compat_len = G_N_ELEMENTS(pc_rhel_9_8_compat);
++
+ GlobalProperty pc_rhel_9_6_compat[] = {
+     /* pc_rhel_9_6_compat from pc_compat_9_0 */
+     { TYPE_X86_CPU, "x-amd-topoext-features-only", "false" },
+diff --git a/hw/i386/pc_piix.c b/hw/i386/pc_piix.c
+index d9fd4d207e..1a46c16e19 100644
+--- a/hw/i386/pc_piix.c
++++ b/hw/i386/pc_piix.c
+@@ -910,6 +910,10 @@ static void pc_i440fx_rhel_machine_7_6_0_options(MachineClass *m)
+     object_class_property_set_description(oc, "x-south-bridge",
+                                      "Use a different south bridge than PIIX3");
+ 
++    compat_props_add(m->compat_props, hw_compat_rhel_9_8,
++                     hw_compat_rhel_9_8_len);
++    compat_props_add(m->compat_props, pc_rhel_9_8_compat,
++                     pc_rhel_9_8_compat_len);
+     compat_props_add(m->compat_props, hw_compat_rhel_9_6,
+                      hw_compat_rhel_9_6_len);
+     compat_props_add(m->compat_props, pc_rhel_9_6_compat,
+diff --git a/hw/i386/pc_q35.c b/hw/i386/pc_q35.c
+index 3165d9bbfe..a241f27c93 100644
+--- a/hw/i386/pc_q35.c
++++ b/hw/i386/pc_q35.c
+@@ -700,6 +700,10 @@ static void pc_q35_rhel_machine_9_6_0_options(MachineClass *m)
+ 
+     /* NB: remember to move this line to the *latest* RHEL 9 machine */
+     compat_props_add(m->compat_props, hw_compat_rhel_9, hw_compat_rhel_9_len);
++    compat_props_add(m->compat_props, hw_compat_rhel_9_8,
++                     hw_compat_rhel_9_8_len);
++    compat_props_add(m->compat_props, pc_rhel_9_8_compat,
++                     pc_rhel_9_8_compat_len);
+ }
+ 
+ DEFINE_Q35_MACHINE_AS_LATEST(9, 6, 0);
+diff --git a/hw/s390x/s390-virtio-ccw.c b/hw/s390x/s390-virtio-ccw.c
+index 46161d16a5..d5d32f6a75 100644
+--- a/hw/s390x/s390-virtio-ccw.c
++++ b/hw/s390x/s390-virtio-ccw.c
+@@ -1177,6 +1177,7 @@ static void ccw_rhel_machine_9_6_0_class_options(MachineClass *mc)
+ {
+     /* NB: remember to move this line to the *latest* RHEL 9 machine */
+     compat_props_add(mc->compat_props, hw_compat_rhel_9, hw_compat_rhel_9_len);
++    compat_props_add(mc->compat_props, hw_compat_rhel_9_8, hw_compat_rhel_9_8_len);
+ }
+ DEFINE_CCW_MACHINE_AS_LATEST(9, 6, 0);
+ 
+diff --git a/include/hw/boards.h b/include/hw/boards.h
+index ad077677f4..0a5ee450c1 100644
+--- a/include/hw/boards.h
++++ b/include/hw/boards.h
+@@ -864,6 +864,9 @@ extern const size_t hw_compat_rhel_9_len;
+ extern GlobalProperty hw_compat_rhel_9_6[];
+ extern const size_t hw_compat_rhel_9_6_len;
+ 
++extern GlobalProperty hw_compat_rhel_9_8[];
++extern const size_t hw_compat_rhel_9_8_len;
++
+ extern GlobalProperty hw_compat_rhel_9_5[];
+ extern const size_t hw_compat_rhel_9_5_len;
+ 
+diff --git a/include/hw/i386/pc.h b/include/hw/i386/pc.h
+index 75c797bb0e..38c8471afc 100644
+--- a/include/hw/i386/pc.h
++++ b/include/hw/i386/pc.h
+@@ -304,6 +304,9 @@ extern const size_t pc_compat_2_6_len;
+ extern GlobalProperty pc_rhel_compat[];
+ extern const size_t pc_rhel_compat_len;
+ 
++extern GlobalProperty pc_rhel_9_8_compat[];
++extern const size_t pc_rhel_9_8_compat_len;
++
+ extern GlobalProperty pc_rhel_9_6_compat[];
+ extern const size_t pc_rhel_9_6_compat_len;
+ 

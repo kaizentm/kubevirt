@@ -1,0 +1,42 @@
+From 3234aa5a584713cc4423bfb5215ef38d8789ff73 Mon Sep 17 00:00:00 2001
+From: Paolo Bonzini <pbonzini@redhat.com>
+Date: Wed, 22 Oct 2025 14:54:30 +0200
+Subject: [PATCH 31/31] accel/mshv: use return value of handle_pio_str_read
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [30/30] 75d6f9f124f9e967b6a605241e1f725173bd1142
+
+Coverity complains because we assign to ret here but
+then never read it again before we overwrite it with
+the call to set_x64_registers().
+
+Analyzed-by: Peter Maydell <peter.maydell@linaro.org>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 1557adc82698416bc68033765cfffb0a0b91c6bf)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ target/i386/mshv/mshv-cpu.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/target/i386/mshv/mshv-cpu.c b/target/i386/mshv/mshv-cpu.c
+index 1f7b9cb37e..1c3db02188 100644
+--- a/target/i386/mshv/mshv-cpu.c
++++ b/target/i386/mshv/mshv-cpu.c
+@@ -1489,6 +1489,10 @@ static int handle_pio_str(CPUState *cpu, hv_x64_io_port_intercept_message *info)
+         reg_values[0] = info->rsi;
+     } else {
+         ret = handle_pio_str_read(cpu, info, repeat, port, direction_flag);
++        if (ret < 0) {
++            error_report("Failed to handle pio str read");
++            return -1;
++        }
+         reg_names[0] = HV_X64_REGISTER_RDI;
+         reg_values[0] = info->rdi;
+     }
+-- 
+2.51.1
+

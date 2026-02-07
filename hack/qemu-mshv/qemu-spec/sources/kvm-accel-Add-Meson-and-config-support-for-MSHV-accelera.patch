@@ -1,0 +1,131 @@
+From 566ceb746665ec2729791f979f9a4771f299c564 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:21 +0200
+Subject: [PATCH 02/31] accel: Add Meson and config support for MSHV
+ accelerator
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [1/30] f47b1d42871811bead1e3430b18694284d70a534
+
+Introduce a Meson feature option and default-config entry to allow
+building QEMU with MSHV (Microsoft Hypervisor) acceleration support.
+
+This is the first step toward implementing an MSHV backend in QEMU.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-2-magnuskulke@linux.microsoft.com
+[Add error for unavailable accelerator. - Paolo]
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 37e12da5df8eb74042f11e9e7bec8a50b8090adb)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ accel/Kconfig                 |  3 +++
+ meson.build                   | 13 +++++++++++++
+ meson_options.txt             |  2 ++
+ scripts/meson-buildoptions.sh |  3 +++
+ 4 files changed, 21 insertions(+)
+
+diff --git a/accel/Kconfig b/accel/Kconfig
+index 4263cab722..a60f114923 100644
+--- a/accel/Kconfig
++++ b/accel/Kconfig
+@@ -13,6 +13,9 @@ config TCG
+ config KVM
+     bool
+ 
++config MSHV
++    bool
++
+ config XEN
+     bool
+     select FSDEV_9P if VIRTFS
+diff --git a/meson.build b/meson.build
+index ef2e5be6e2..96254f8075 100644
+--- a/meson.build
++++ b/meson.build
+@@ -334,6 +334,7 @@ elif cpu == 'x86_64'
+     'CONFIG_HVF': ['x86_64-softmmu'],
+     'CONFIG_NVMM': ['i386-softmmu', 'x86_64-softmmu'],
+     'CONFIG_WHPX': ['i386-softmmu', 'x86_64-softmmu'],
++    'CONFIG_MSHV': ['x86_64-softmmu'],
+   }
+ endif
+ 
+@@ -884,6 +885,14 @@ accelerators = []
+ if get_option('kvm').allowed() and host_os == 'linux'
+   accelerators += 'CONFIG_KVM'
+ endif
++
++if get_option('mshv').allowed() and host_os == 'linux'
++  if get_option('mshv').enabled() and host_machine.cpu() != 'x86_64'
++    error('mshv accelerator requires x64_64 host')
++  endif
++  accelerators += 'CONFIG_MSHV'
++endif
++
+ if get_option('whpx').allowed() and host_os == 'windows'
+   if get_option('whpx').enabled() and host_machine.cpu() != 'x86_64'
+     error('WHPX requires 64-bit host')
+@@ -953,6 +962,9 @@ endif
+ if 'CONFIG_WHPX' not in accelerators and get_option('whpx').enabled()
+   error('WHPX not available on this platform')
+ endif
++if 'CONFIG_MSHV' not in accelerators and get_option('mshv').enabled()
++  error('mshv not available on this platform')
++endif
+ 
+ xen = not_found
+ if get_option('xen').enabled() or (get_option('xen').auto() and have_system)
+@@ -4821,6 +4833,7 @@ if have_system
+   summary_info += {'HVF support':       config_all_accel.has_key('CONFIG_HVF')}
+   summary_info += {'WHPX support':      config_all_accel.has_key('CONFIG_WHPX')}
+   summary_info += {'NVMM support':      config_all_accel.has_key('CONFIG_NVMM')}
++  summary_info += {'MSHV support':      config_all_accel.has_key('CONFIG_MSHV')}
+   summary_info += {'Xen support':       xen.found()}
+   if xen.found()
+     summary_info += {'xen ctrl version':  xen.version()}
+diff --git a/meson_options.txt b/meson_options.txt
+index f45d7ded45..2267dee8a0 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -73,6 +73,8 @@ option('malloc', type : 'combo', choices : ['system', 'tcmalloc', 'jemalloc'],
+ 
+ option('kvm', type: 'feature', value: 'auto',
+        description: 'KVM acceleration support')
++option('mshv', type: 'feature', value: 'auto',
++       description: 'MSHV acceleration support')
+ option('whpx', type: 'feature', value: 'auto',
+        description: 'WHPX acceleration support')
+ option('hvf', type: 'feature', value: 'auto',
+diff --git a/scripts/meson-buildoptions.sh b/scripts/meson-buildoptions.sh
+index 4146dbc88d..9aff126c28 100644
+--- a/scripts/meson-buildoptions.sh
++++ b/scripts/meson-buildoptions.sh
+@@ -155,6 +155,7 @@ meson_options_help() {
+   printf "%s\n" '  membarrier      membarrier system call (for Linux 4.14+ or Windows'
+   printf "%s\n" '  modules         modules support (non Windows)'
+   printf "%s\n" '  mpath           Multipath persistent reservation passthrough'
++  printf "%s\n" '  mshv            MSHV acceleration support'
+   printf "%s\n" '  multiprocess    Out of process device emulation support'
+   printf "%s\n" '  netmap          netmap network backend support'
+   printf "%s\n" '  nettle          nettle cryptography support'
+@@ -409,6 +410,8 @@ _meson_option_parse() {
+     --disable-modules) printf "%s" -Dmodules=disabled ;;
+     --enable-mpath) printf "%s" -Dmpath=enabled ;;
+     --disable-mpath) printf "%s" -Dmpath=disabled ;;
++    --enable-mshv) printf "%s" -Dmshv=enabled ;;
++    --disable-mshv) printf "%s" -Dmshv=disabled ;;
+     --enable-multiprocess) printf "%s" -Dmultiprocess=enabled ;;
+     --disable-multiprocess) printf "%s" -Dmultiprocess=disabled ;;
+     --enable-netmap) printf "%s" -Dnetmap=enabled ;;
+-- 
+2.51.1
+

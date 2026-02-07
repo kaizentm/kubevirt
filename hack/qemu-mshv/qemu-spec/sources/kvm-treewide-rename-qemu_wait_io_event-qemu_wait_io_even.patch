@@ -1,0 +1,219 @@
+From 48b40bd483dbafcea66f84465796bdf1eb1fc962 Mon Sep 17 00:00:00 2001
+From: Paolo Bonzini <pbonzini@redhat.com>
+Date: Tue, 2 Sep 2025 07:17:09 +0200
+Subject: [PATCH 12/31] treewide: rename
+ qemu_wait_io_event/qemu_wait_io_event_common
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [11/30] cabe3f5e84e62f47c8ff23a3bc253c2f64e05804
+
+Do so before extending it to the user-mode emulators, where there is no
+such thing as an "I/O thread".
+
+Reviewed-by: Richard Henderson <richard.henderson@linaro.org>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 871de7078fcaf597605576b97b32fab14722ea43)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+
+ Conflicts: (due to missing cpu exit/interrupt_request refactoring)
+	cpu-common.c
+	include/hw/core/cpu.h
+---
+ accel/dummy-cpus.c                | 2 +-
+ accel/hvf/hvf-accel-ops.c         | 2 +-
+ accel/kvm/kvm-accel-ops.c         | 2 +-
+ accel/tcg/tcg-accel-ops-mttcg.c   | 2 +-
+ accel/tcg/tcg-accel-ops-rr.c      | 4 ++--
+ cpu-common.c                      | 1 +
+ include/hw/core/cpu.h             | 9 +++++++++
+ include/system/cpus.h             | 4 ++--
+ system/cpus.c                     | 6 +++---
+ target/i386/nvmm/nvmm-accel-ops.c | 2 +-
+ target/i386/whpx/whpx-accel-ops.c | 2 +-
+ 11 files changed, 23 insertions(+), 13 deletions(-)
+
+diff --git a/accel/dummy-cpus.c b/accel/dummy-cpus.c
+index 03cfc0fa01..225a47c31f 100644
+--- a/accel/dummy-cpus.c
++++ b/accel/dummy-cpus.c
+@@ -57,7 +57,7 @@ static void *dummy_cpu_thread_fn(void *arg)
+         qemu_sem_wait(&cpu->sem);
+ #endif
+         bql_lock();
+-        qemu_wait_io_event(cpu);
++        qemu_process_cpu_events(cpu);
+     } while (!cpu->unplug);
+ 
+     bql_unlock();
+diff --git a/accel/hvf/hvf-accel-ops.c b/accel/hvf/hvf-accel-ops.c
+index d488d6afba..7a27bdadb4 100644
+--- a/accel/hvf/hvf-accel-ops.c
++++ b/accel/hvf/hvf-accel-ops.c
+@@ -198,7 +198,7 @@ static void *hvf_cpu_thread_fn(void *arg)
+                 cpu_handle_guest_debug(cpu);
+             }
+         }
+-        qemu_wait_io_event(cpu);
++        qemu_process_cpu_events(cpu);
+     } while (!cpu->unplug || cpu_can_run(cpu));
+ 
+     hvf_vcpu_destroy(cpu);
+diff --git a/accel/kvm/kvm-accel-ops.c b/accel/kvm/kvm-accel-ops.c
+index b709187c7d..65a7f76a69 100644
+--- a/accel/kvm/kvm-accel-ops.c
++++ b/accel/kvm/kvm-accel-ops.c
+@@ -53,7 +53,7 @@ static void *kvm_vcpu_thread_fn(void *arg)
+                 cpu_handle_guest_debug(cpu);
+             }
+         }
+-        qemu_wait_io_event(cpu);
++        qemu_process_cpu_events(cpu);
+     } while (!cpu->unplug || cpu_can_run(cpu));
+ 
+     kvm_destroy_vcpu(cpu);
+diff --git a/accel/tcg/tcg-accel-ops-mttcg.c b/accel/tcg/tcg-accel-ops-mttcg.c
+index 337b993d3d..a3255000df 100644
+--- a/accel/tcg/tcg-accel-ops-mttcg.c
++++ b/accel/tcg/tcg-accel-ops-mttcg.c
+@@ -113,7 +113,7 @@ static void *mttcg_cpu_thread_fn(void *arg)
+             }
+         }
+ 
+-        qemu_wait_io_event(cpu);
++        qemu_process_cpu_events(cpu);
+     } while (!cpu->unplug || cpu_can_run(cpu));
+ 
+     tcg_cpu_destroy(cpu);
+diff --git a/accel/tcg/tcg-accel-ops-rr.c b/accel/tcg/tcg-accel-ops-rr.c
+index 6eec5c9eee..60ad1a39f0 100644
+--- a/accel/tcg/tcg-accel-ops-rr.c
++++ b/accel/tcg/tcg-accel-ops-rr.c
+@@ -117,7 +117,7 @@ static void rr_wait_io_event(void)
+     rr_start_kick_timer();
+ 
+     CPU_FOREACH(cpu) {
+-        qemu_wait_io_event_common(cpu);
++        qemu_process_cpu_events_common(cpu);
+     }
+ }
+ 
+@@ -203,7 +203,7 @@ static void *rr_cpu_thread_fn(void *arg)
+         /* process any pending work */
+         CPU_FOREACH(cpu) {
+             current_cpu = cpu;
+-            qemu_wait_io_event_common(cpu);
++            qemu_process_cpu_events_common(cpu);
+         }
+     }
+ 
+diff --git a/cpu-common.c b/cpu-common.c
+index ef5757d23b..8e4cbac290 100644
+--- a/cpu-common.c
++++ b/cpu-common.c
+@@ -137,6 +137,7 @@ static void queue_work_on_cpu(CPUState *cpu, struct qemu_work_item *wi)
+     wi->done = false;
+     qemu_mutex_unlock(&cpu->work_mutex);
+ 
++    /* conflict fixup due missing exit and interrupt refactoring */
+     qemu_cpu_kick(cpu);
+ }
+ 
+diff --git a/include/hw/core/cpu.h b/include/hw/core/cpu.h
+index 5eaf41a566..fadd6c5ac0 100644
+--- a/include/hw/core/cpu.h
++++ b/include/hw/core/cpu.h
+@@ -422,6 +422,15 @@ struct qemu_work_item;
+  * valid under cpu_list_lock.
+  * @created: Indicates whether the CPU thread has been successfully created.
+  * @halt_cond: condition variable sleeping threads can wait on.
++ * @exit_request: Another thread requests the CPU to call qemu_process_cpu_events().
++ *   Should be read only by CPU thread with load-acquire, to synchronize with
++ *   other threads' store-release operation.
++ *
++ *   In some cases, accelerator-specific code will write exit_request from
++ *   within the same thread, to "bump" the effect of qemu_cpu_kick() to
++ *   the one provided by cpu_exit(), especially when processing interrupt
++ *   flags.  In this case, the write and read happen in the same thread
++ *   and the write therefore can use qemu_atomic_set().
+  * @interrupt_request: Indicates a pending interrupt request.
+  * @halted: Nonzero if the CPU is in suspended state.
+  * @stop: Indicates a pending stop request.
+diff --git a/include/system/cpus.h b/include/system/cpus.h
+index 69be6a77a7..4aebec4870 100644
+--- a/include/system/cpus.h
++++ b/include/system/cpus.h
+@@ -17,8 +17,8 @@ bool cpu_work_list_empty(CPUState *cpu);
+ bool cpu_thread_is_idle(CPUState *cpu);
+ bool all_cpu_threads_idle(void);
+ bool cpu_can_run(CPUState *cpu);
+-void qemu_wait_io_event_common(CPUState *cpu);
+-void qemu_wait_io_event(CPUState *cpu);
++void qemu_process_cpu_events_common(CPUState *cpu);
++void qemu_process_cpu_events(CPUState *cpu);
+ void cpu_thread_signal_created(CPUState *cpu);
+ void cpu_thread_signal_destroyed(CPUState *cpu);
+ void cpu_handle_guest_debug(CPUState *cpu);
+diff --git a/system/cpus.c b/system/cpus.c
+index 256723558d..efffbd8df6 100644
+--- a/system/cpus.c
++++ b/system/cpus.c
+@@ -444,7 +444,7 @@ static void qemu_cpu_stop(CPUState *cpu, bool exit)
+     qemu_cond_broadcast(&qemu_pause_cond);
+ }
+ 
+-void qemu_wait_io_event_common(CPUState *cpu)
++void qemu_process_cpu_events_common(CPUState *cpu)
+ {
+     qatomic_set_mb(&cpu->thread_kicked, false);
+     if (cpu->stop) {
+@@ -453,7 +453,7 @@ void qemu_wait_io_event_common(CPUState *cpu)
+     process_queued_cpu_work(cpu);
+ }
+ 
+-void qemu_wait_io_event(CPUState *cpu)
++void qemu_process_cpu_events(CPUState *cpu)
+ {
+     bool slept = false;
+ 
+@@ -468,7 +468,7 @@ void qemu_wait_io_event(CPUState *cpu)
+         qemu_plugin_vcpu_resume_cb(cpu);
+     }
+ 
+-    qemu_wait_io_event_common(cpu);
++    qemu_process_cpu_events_common(cpu);
+ }
+ 
+ void cpus_kick_thread(CPUState *cpu)
+diff --git a/target/i386/nvmm/nvmm-accel-ops.c b/target/i386/nvmm/nvmm-accel-ops.c
+index 3799260bbd..c7b1d0f1d3 100644
+--- a/target/i386/nvmm/nvmm-accel-ops.c
++++ b/target/i386/nvmm/nvmm-accel-ops.c
+@@ -51,7 +51,7 @@ static void *qemu_nvmm_cpu_thread_fn(void *arg)
+         while (cpu_thread_is_idle(cpu)) {
+             qemu_cond_wait_bql(cpu->halt_cond);
+         }
+-        qemu_wait_io_event_common(cpu);
++        qemu_process_cpu_events_common(cpu);
+     } while (!cpu->unplug || cpu_can_run(cpu));
+ 
+     nvmm_destroy_vcpu(cpu);
+diff --git a/target/i386/whpx/whpx-accel-ops.c b/target/i386/whpx/whpx-accel-ops.c
+index da58805b1a..2ca4ee0263 100644
+--- a/target/i386/whpx/whpx-accel-ops.c
++++ b/target/i386/whpx/whpx-accel-ops.c
+@@ -51,7 +51,7 @@ static void *whpx_cpu_thread_fn(void *arg)
+         while (cpu_thread_is_idle(cpu)) {
+             qemu_cond_wait_bql(cpu->halt_cond);
+         }
+-        qemu_wait_io_event_common(cpu);
++        qemu_process_cpu_events_common(cpu);
+     } while (!cpu->unplug || cpu_can_run(cpu));
+ 
+     whpx_destroy_vcpu(cpu);
+-- 
+2.51.1
+

@@ -1,0 +1,169 @@
+From 5c048c7fe16c14e864571824fefbf5749bfed34a Mon Sep 17 00:00:00 2001
+From: Praveen K Paladugu <prapal@microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:44 +0200
+Subject: [PATCH 26/31] qapi/accel: Allow to query mshv capabilities
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [25/30] 951d3f2530367f0d95b23b712227384229161cd7
+
+Allow to query mshv capabilities via query-mshv QMP and info mshv HMP commands.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Acked-by: Dr. David Alan Gilbert <dave@treblig.org>
+Link: https://lore.kernel.org/r/20250916164847.77883-25-magnuskulke@linux.microsoft.com
+[Fix "since" version. - Paolo]
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit e7b08dfb902430b4f8226d23d7cf9b2762b6fc83)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ hmp-commands-info.hx       | 13 +++++++++++++
+ hw/core/machine-hmp-cmds.c | 15 +++++++++++++++
+ hw/core/machine-qmp-cmds.c | 14 ++++++++++++++
+ include/monitor/hmp.h      |  1 +
+ include/system/hw_accel.h  |  1 +
+ qapi/accelerator.json      | 29 +++++++++++++++++++++++++++++
+ 6 files changed, 73 insertions(+)
+
+diff --git a/hmp-commands-info.hx b/hmp-commands-info.hx
+index 6142f60e7b..eaaa880c1b 100644
+--- a/hmp-commands-info.hx
++++ b/hmp-commands-info.hx
+@@ -307,6 +307,19 @@ SRST
+     Show KVM information.
+ ERST
+ 
++    {
++        .name       = "mshv",
++        .args_type  = "",
++        .params     = "",
++        .help       = "show MSHV information",
++        .cmd        = hmp_info_mshv,
++    },
++
++SRST
++  ``info mshv``
++    Show MSHV information.
++ERST
++
+     {
+         .name       = "numa",
+         .args_type  = "",
+diff --git a/hw/core/machine-hmp-cmds.c b/hw/core/machine-hmp-cmds.c
+index 3a612e2232..682ed9f49b 100644
+--- a/hw/core/machine-hmp-cmds.c
++++ b/hw/core/machine-hmp-cmds.c
+@@ -163,6 +163,21 @@ void hmp_info_kvm(Monitor *mon, const QDict *qdict)
+     qapi_free_KvmInfo(info);
+ }
+ 
++void hmp_info_mshv(Monitor *mon, const QDict *qdict)
++{
++    MshvInfo *info;
++
++    info = qmp_query_mshv(NULL);
++    monitor_printf(mon, "mshv support: ");
++    if (info->present) {
++        monitor_printf(mon, "%s\n", info->enabled ? "enabled" : "disabled");
++    } else {
++        monitor_printf(mon, "not compiled\n");
++    }
++
++    qapi_free_MshvInfo(info);
++}
++
+ void hmp_info_uuid(Monitor *mon, const QDict *qdict)
+ {
+     UuidInfo *info;
+diff --git a/hw/core/machine-qmp-cmds.c b/hw/core/machine-qmp-cmds.c
+index 6aca1a626e..e24bf0d97b 100644
+--- a/hw/core/machine-qmp-cmds.c
++++ b/hw/core/machine-qmp-cmds.c
+@@ -28,6 +28,20 @@
+ #include "system/runstate.h"
+ #include "system/system.h"
+ #include "hw/s390x/storage-keys.h"
++#include <sys/stat.h>
++
++/*
++ * QMP query for MSHV
++ */
++MshvInfo *qmp_query_mshv(Error **errp)
++{
++    MshvInfo *info = g_malloc0(sizeof(*info));
++
++    info->enabled = mshv_enabled();
++    info->present = accel_find("mshv");
++
++    return info;
++}
+ 
+ /*
+  * fast means: we NEVER interrupt vCPU threads to retrieve
+diff --git a/include/monitor/hmp.h b/include/monitor/hmp.h
+index ae116d9804..31bd812e5f 100644
+--- a/include/monitor/hmp.h
++++ b/include/monitor/hmp.h
+@@ -24,6 +24,7 @@ strList *hmp_split_at_comma(const char *str);
+ void hmp_info_name(Monitor *mon, const QDict *qdict);
+ void hmp_info_version(Monitor *mon, const QDict *qdict);
+ void hmp_info_kvm(Monitor *mon, const QDict *qdict);
++void hmp_info_mshv(Monitor *mon, const QDict *qdict);
+ void hmp_info_status(Monitor *mon, const QDict *qdict);
+ void hmp_info_uuid(Monitor *mon, const QDict *qdict);
+ void hmp_info_chardev(Monitor *mon, const QDict *qdict);
+diff --git a/include/system/hw_accel.h b/include/system/hw_accel.h
+index fa9228d5d2..55497edc29 100644
+--- a/include/system/hw_accel.h
++++ b/include/system/hw_accel.h
+@@ -14,6 +14,7 @@
+ #include "hw/core/cpu.h"
+ #include "system/kvm.h"
+ #include "system/hvf.h"
++#include "system/mshv.h"
+ #include "system/whpx.h"
+ #include "system/nvmm.h"
+ 
+diff --git a/qapi/accelerator.json b/qapi/accelerator.json
+index fb28c8d920..664e027246 100644
+--- a/qapi/accelerator.json
++++ b/qapi/accelerator.json
+@@ -54,3 +54,32 @@
+ { 'command': 'x-accel-stats',
+   'returns': 'HumanReadableText',
+   'features': [ 'unstable' ] }
++
++##
++# @MshvInfo:
++#
++# Information about support for MSHV acceleration
++#
++# @enabled: true if MSHV acceleration is active
++#
++# @present: true if MSHV acceleration is built into this executable
++#
++# Since: 10.2.0
++##
++{ 'struct': 'MshvInfo', 'data': {'enabled': 'bool', 'present': 'bool'} }
++
++##
++# @query-mshv:
++#
++# Return information about MSHV acceleration
++#
++# Returns: @MshvInfo
++#
++# Since: 10.0.92
++#
++# .. qmp-example::
++#
++#     -> { "execute": "query-mshv" }
++#     <- { "return": { "enabled": true, "present": true } }
++##
++{ 'command': 'query-mshv', 'returns': 'MshvInfo' }
+-- 
+2.51.1
+

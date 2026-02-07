@@ -1,0 +1,172 @@
+From bbcb9aabff22f694f88e518de0261fc28d5dc2c3 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Tue, 16 Sep 2025 18:48:28 +0200
+Subject: [PATCH 09/31] accel/mshv: Register memory region listeners
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [8/30] 4b7ab25a2146d964cf526067925157c706566040
+
+Add memory listener hooks for the MSHV accelerator to track guest
+memory regions. This enables the backend to respond to region
+additions, removals and will be used to manage guest memory mappings
+inside the hypervisor.
+
+Actually registering physical memory in the hypervisor is still stubbed
+out.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-9-magnuskulke@linux.microsoft.com
+[mshv.h/mshv_int.h split. - Paolo]
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 5006ea1344d134356a9b2e1afd521cf8df0c6a85)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ accel/mshv/mem.c          | 25 +++++++++++++++
+ accel/mshv/meson.build    |  1 +
+ accel/mshv/mshv-all.c     | 67 +++++++++++++++++++++++++++++++++++++--
+ include/system/mshv_int.h |  4 +++
+ 4 files changed, 95 insertions(+), 2 deletions(-)
+ create mode 100644 accel/mshv/mem.c
+
+diff --git a/accel/mshv/mem.c b/accel/mshv/mem.c
+new file mode 100644
+index 0000000000..9889918c31
+--- /dev/null
++++ b/accel/mshv/mem.c
+@@ -0,0 +1,25 @@
++/*
++ * QEMU MSHV support
++ *
++ * Copyright Microsoft, Corp. 2025
++ *
++ * Authors:
++ *  Magnus Kulke      <magnuskulke@microsoft.com>
++ *
++ * SPDX-License-Identifier: GPL-2.0-or-later
++ *
++ */
++
++#include "qemu/osdep.h"
++#include "qemu/error-report.h"
++#include "system/address-spaces.h"
++#include "system/mshv.h"
++#include "system/mshv_int.h"
++
++void mshv_set_phys_mem(MshvMemoryListener *mml, MemoryRegionSection *section,
++                       bool add)
++{
++    error_report("unimplemented");
++    abort();
++}
++
+diff --git a/accel/mshv/meson.build b/accel/mshv/meson.build
+index 4c03ac7921..8a6beb3fb1 100644
+--- a/accel/mshv/meson.build
++++ b/accel/mshv/meson.build
+@@ -1,5 +1,6 @@
+ mshv_ss = ss.source_set()
+ mshv_ss.add(if_true: files(
++  'mem.c',
+   'mshv-all.c'
+ ))
+ 
+diff --git a/accel/mshv/mshv-all.c b/accel/mshv/mshv-all.c
+index ae12f0f58b..a684a36677 100644
+--- a/accel/mshv/mshv-all.c
++++ b/accel/mshv/mshv-all.c
+@@ -49,10 +49,73 @@ bool mshv_allowed;
+ 
+ MshvState *mshv_state;
+ 
++static void mem_region_add(MemoryListener *listener,
++                           MemoryRegionSection *section)
++{
++    MshvMemoryListener *mml;
++    mml = container_of(listener, MshvMemoryListener, listener);
++    memory_region_ref(section->mr);
++    mshv_set_phys_mem(mml, section, true);
++}
++
++static void mem_region_del(MemoryListener *listener,
++                           MemoryRegionSection *section)
++{
++    MshvMemoryListener *mml;
++    mml = container_of(listener, MshvMemoryListener, listener);
++    mshv_set_phys_mem(mml, section, false);
++    memory_region_unref(section->mr);
++}
++
++static MemoryListener mshv_memory_listener = {
++    .name = "mshv",
++    .priority = MEMORY_LISTENER_PRIORITY_ACCEL,
++    .region_add = mem_region_add,
++    .region_del = mem_region_del,
++};
++
++static MemoryListener mshv_io_listener = {
++    .name = "mshv", .priority = MEMORY_LISTENER_PRIORITY_DEV_BACKEND,
++    /* MSHV does not support PIO eventfd */
++};
++
++static void register_mshv_memory_listener(MshvState *s, MshvMemoryListener *mml,
++                                          AddressSpace *as, int as_id,
++                                          const char *name)
++{
++    int i;
++
++    mml->listener = mshv_memory_listener;
++    mml->listener.name = name;
++    memory_listener_register(&mml->listener, as);
++    for (i = 0; i < s->nr_as; ++i) {
++        if (!s->as[i].as) {
++            s->as[i].as = as;
++            s->as[i].ml = mml;
++            break;
++        }
++    }
++}
++
+ static int mshv_init(AccelState *as, MachineState *ms)
+ {
+-    error_report("unimplemented");
+-    abort();
++    MshvState *s;
++    s = MSHV_STATE(as);
++
++    accel_blocker_init();
++
++    s->vm = 0;
++
++    s->nr_as = 1;
++    s->as = g_new0(MshvAddressSpace, s->nr_as);
++
++    mshv_state = s;
++
++    register_mshv_memory_listener(s, &s->memory_listener, &address_space_memory,
++                                  0, "mshv-memory");
++    memory_listener_register(&mshv_io_listener, &address_space_io);
++
++    return 0;
+ }
+ 
+ static void mshv_start_vcpu_thread(CPUState *cpu)
+diff --git a/include/system/mshv_int.h b/include/system/mshv_int.h
+index 132491b599..cfa177ff72 100644
+--- a/include/system/mshv_int.h
++++ b/include/system/mshv_int.h
+@@ -38,4 +38,8 @@ struct MshvState {
+     MshvAddressSpace *as;
+ };
+ 
++/* memory */
++void mshv_set_phys_mem(MshvMemoryListener *mml, MemoryRegionSection *section,
++                       bool add);
++
+ #endif
+-- 
+2.51.1
+

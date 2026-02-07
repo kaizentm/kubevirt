@@ -1,0 +1,84 @@
+From 67251cdb869b79d3c6d82cdc8b3ae4322e56c34d Mon Sep 17 00:00:00 2001
+From: Jon Maloy <jmaloy@redhat.com>
+Date: Tue, 4 Nov 2025 17:23:29 -0500
+Subject: [PATCH 1/3] io: move websock resource release to close method
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Jon Maloy <jmaloy@redhat.com>
+RH-MergeRequest: 420: io: fix use after free in websocket handshake code
+RH-Jira: RHEL-120127
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Acked-by: Eric Blake <eblake@redhat.com>
+RH-Commit: [1/2] 43f3de85f64597dd95b55239e6b379ca8d26fff5 (jmaloy/jmaloy-qemu-kvm-2)
+
+JIRA: https://issues.redhat.com/browse/RHEL-120127
+CVE: CVE-2025-11234
+
+commit 322c3c4f3abee616a18b3bfe563ec29dd67eae63
+Author: Daniel P. Berrangé <berrange@redhat.com>
+Date:   Tue Sep 30 11:58:35 2025 +0100
+
+    io: move websock resource release to close method
+
+    The QIOChannelWebsock object releases all its resources in the
+    finalize callback. This is later than desired, as callers expect
+    to be able to call qio_channel_close() to fully close a channel
+    and release resources related to I/O.
+
+    The logic in the finalize method is at most a failsafe to handle
+    cases where a consumer forgets to call qio_channel_close.
+
+    This adds equivalent logic to the close method to release the
+    resources, using g_clear_handle_id/g_clear_pointer to be robust
+    against repeated invocations. The finalize method is tweaked
+    so that the GSource is removed before releasing the underlying
+    channel.
+
+    Reviewed-by: Eric Blake <eblake@redhat.com>
+    Signed-off-by: Daniel P. Berrangé <berrange@redhat.com>
+
+Signed-off-by: Jon Maloy <jmaloy@redhat.com>
+---
+ io/channel-websock.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/io/channel-websock.c b/io/channel-websock.c
+index 08ddb274f0..a19b902ff9 100644
+--- a/io/channel-websock.c
++++ b/io/channel-websock.c
+@@ -922,13 +922,13 @@ static void qio_channel_websock_finalize(Object *obj)
+     buffer_free(&ioc->encinput);
+     buffer_free(&ioc->encoutput);
+     buffer_free(&ioc->rawinput);
+-    object_unref(OBJECT(ioc->master));
+     if (ioc->io_tag) {
+         g_source_remove(ioc->io_tag);
+     }
+     if (ioc->io_err) {
+         error_free(ioc->io_err);
+     }
++    object_unref(OBJECT(ioc->master));
+ }
+ 
+ 
+@@ -1219,6 +1219,15 @@ static int qio_channel_websock_close(QIOChannel *ioc,
+     QIOChannelWebsock *wioc = QIO_CHANNEL_WEBSOCK(ioc);
+ 
+     trace_qio_channel_websock_close(ioc);
++    buffer_free(&wioc->encinput);
++    buffer_free(&wioc->encoutput);
++    buffer_free(&wioc->rawinput);
++    if (wioc->io_tag) {
++        g_clear_handle_id(&wioc->io_tag, g_source_remove);
++    }
++    if (wioc->io_err) {
++        g_clear_pointer(&wioc->io_err, error_free);
++    }
+     return qio_channel_close(wioc->master, errp);
+ }
+ 
+-- 
+2.50.1
+

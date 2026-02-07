@@ -1,0 +1,34 @@
+From bf3e2ead4f851f66ab1c9ce5cd13d8a73267dce4 Mon Sep 17 00:00:00 2001
+From: Paolo Bonzini <pbonzini@redhat.com>
+Date: Fri, 18 Jul 2025 18:03:50 +0200
+Subject: [PATCH] redhat: allow 5-level paging for TDX VMs
+
+RH-Author: Paolo Bonzini <pbonzini@redhat.com>
+RH-MergeRequest: 391: TDX support, including attestation and device assignment
+RH-Jira: RHEL-15710 RHEL-20798 RHEL-49728
+RH-Acked-by: Yash Mankad <None>
+RH-Acked-by: Peter Xu <peterx@redhat.com>
+RH-Acked-by: David Hildenbrand <david@redhat.com>
+RH-Commit: [110/115] dd69bc652e2a735234165832ea4bc674753d7fb7 (bonzini/rhel-qemu-kvm)
+
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+
+Patch-name: kvm-redhat-allow-5-level-paging-for-TDX-VMs.patch
+Patch-id: 387
+Patch-present-in-specfile: True
+---
+ target/i386/kvm/tdx.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index dbf0fa2c91..91fe19b7d4 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -754,6 +754,7 @@ static void tdx_cpu_instance_init(X86ConfidentialGuest *cg, CPUState *cpu)
+     }
+ 
+     object_property_set_bool(OBJECT(cpu), "pmu", false, &error_abort);
++    object_property_set_int(OBJECT(cpu), "host-phys-bits-limit", 0, &error_abort);
+ 
+     /* invtsc is fixed1 for TD guest */
+     object_property_set_bool(OBJECT(cpu), "invtsc", true, &error_abort);

@@ -1,0 +1,235 @@
+From 059217ae4b8554304cb27f36596aca385c6c6354 Mon Sep 17 00:00:00 2001
+From: Paolo Bonzini <pbonzini@redhat.com>
+Date: Mon, 13 Oct 2025 12:49:04 +0200
+Subject: [PATCH] monitor: generalize query-mshv/"info mshv" to
+ query-accelerators/"info accelerators"
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 444: [REHL9.8] L1HV: monitor: generalize query-mshv/"info mshv" to query-accelerators/"info accelerators"
+RH-Jira: RHEL-132193
+RH-Acked-by: MST <mst@redhat.com>
+RH-Acked-by: Paolo Bonzini <pbonzini@redhat.com>
+RH-Commit: [1/1] fc227898ff34b387c82dc25fe5f15ecaa38c736d (imammedo/qemu-kvm-cs)
+
+The recently-introduced query-mshv command is a duplicate of query-kvm,
+and neither provides a full view of which accelerators are supported
+by a particular binary of QEMU and which is in use.
+
+KVM was the first accelerator added to QEMU, predating QOM and TYPE_ACCEL,
+so it got a pass.  But now, instead of adding a badly designed copy, solve
+the problem completely for all accelerators with a command that provides
+the whole picture:
+
+    >> {"execute": "query-accelerators"}
+    << {"return": {"enabled": "tcg", "present": ["kvm", "mshv", "qtest", "tcg", "xen"]}}
+
+Cc: Praveen K Paladugu <prapal@microsoft.com>
+Cc: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Suggested-by: Markus Armbruster <armbru@redhat.com>
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit 71d5babbd6fffc7def1ecbf29f9753e3a2807761)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ hmp-commands-info.hx       | 15 ++++++++----
+ hw/core/machine-hmp-cmds.c | 23 +++++++++++--------
+ hw/core/machine-qmp-cmds.c | 24 +++++++++++++------
+ include/monitor/hmp.h      |  2 +-
+ qapi/accelerator.json      | 47 +++++++++++++++++++++++++++++---------
+ 5 files changed, 77 insertions(+), 34 deletions(-)
+
+diff --git a/hmp-commands-info.hx b/hmp-commands-info.hx
+index eaaa880c1b..3ed636e4e8 100644
+--- a/hmp-commands-info.hx
++++ b/hmp-commands-info.hx
+@@ -308,16 +308,21 @@ SRST
+ ERST
+ 
+     {
+-        .name       = "mshv",
++        .name       = "accelerators",
+         .args_type  = "",
+         .params     = "",
+-        .help       = "show MSHV information",
+-        .cmd        = hmp_info_mshv,
++        .help       = "show present and enabled information",
++        .cmd        = hmp_info_accelerators,
+     },
+ 
+ SRST
+-  ``info mshv``
+-    Show MSHV information.
++  ``info accelerators``
++    Show which accelerators are compiled into a QEMU binary, and what accelerator
++    is in use. For example::
++
++        kvm qtest [tcg]
++
++    indicates that TCG in use, and that KVM and qtest are also available.
+ ERST
+ 
+     {
+diff --git a/hw/core/machine-hmp-cmds.c b/hw/core/machine-hmp-cmds.c
+index 682ed9f49b..74a56600be 100644
+--- a/hw/core/machine-hmp-cmds.c
++++ b/hw/core/machine-hmp-cmds.c
+@@ -163,19 +163,22 @@ void hmp_info_kvm(Monitor *mon, const QDict *qdict)
+     qapi_free_KvmInfo(info);
+ }
+ 
+-void hmp_info_mshv(Monitor *mon, const QDict *qdict)
++void hmp_info_accelerators(Monitor *mon, const QDict *qdict)
+ {
+-    MshvInfo *info;
+-
+-    info = qmp_query_mshv(NULL);
+-    monitor_printf(mon, "mshv support: ");
+-    if (info->present) {
+-        monitor_printf(mon, "%s\n", info->enabled ? "enabled" : "disabled");
+-    } else {
+-        monitor_printf(mon, "not compiled\n");
++    AcceleratorInfo *info;
++    AcceleratorList *accel;
++
++    info = qmp_query_accelerators(NULL);
++    for (accel = info->present; accel; accel = accel->next) {
++        char trail = accel->next ? ' ' : '\n';
++        if (info->enabled == accel->value) {
++            monitor_printf(mon, "[%s]%c", Accelerator_str(accel->value), trail);
++        } else {
++            monitor_printf(mon, "%s%c", Accelerator_str(accel->value), trail);
++        }
+     }
+ 
+-    qapi_free_MshvInfo(info);
++    qapi_free_AcceleratorInfo(info);
+ }
+ 
+ void hmp_info_uuid(Monitor *mon, const QDict *qdict)
+diff --git a/hw/core/machine-qmp-cmds.c b/hw/core/machine-qmp-cmds.c
+index e24bf0d97b..51d5c230f7 100644
+--- a/hw/core/machine-qmp-cmds.c
++++ b/hw/core/machine-qmp-cmds.c
+@@ -31,15 +31,25 @@
+ #include <sys/stat.h>
+ 
+ /*
+- * QMP query for MSHV
++ * QMP query for enabled and present accelerators
+  */
+-MshvInfo *qmp_query_mshv(Error **errp)
++AcceleratorInfo *qmp_query_accelerators(Error **errp)
+ {
+-    MshvInfo *info = g_malloc0(sizeof(*info));
+-
+-    info->enabled = mshv_enabled();
+-    info->present = accel_find("mshv");
+-
++    AcceleratorInfo *info = g_malloc0(sizeof(*info));
++    AccelClass *current_class = ACCEL_GET_CLASS(current_accel());
++    int i;
++
++    for (i = ACCELERATOR__MAX; i-- > 0; ) {
++        const char *s = Accelerator_str(i);
++        AccelClass *this_class = accel_find(s);
++
++        if (this_class) {
++            QAPI_LIST_PREPEND(info->present, i);
++            if (this_class == current_class) {
++                info->enabled = i;
++            }
++        }
++    }
+     return info;
+ }
+ 
+diff --git a/include/monitor/hmp.h b/include/monitor/hmp.h
+index 31bd812e5f..897dfaa2b6 100644
+--- a/include/monitor/hmp.h
++++ b/include/monitor/hmp.h
+@@ -24,7 +24,7 @@ strList *hmp_split_at_comma(const char *str);
+ void hmp_info_name(Monitor *mon, const QDict *qdict);
+ void hmp_info_version(Monitor *mon, const QDict *qdict);
+ void hmp_info_kvm(Monitor *mon, const QDict *qdict);
+-void hmp_info_mshv(Monitor *mon, const QDict *qdict);
++void hmp_info_accelerators(Monitor *mon, const QDict *qdict);
+ void hmp_info_status(Monitor *mon, const QDict *qdict);
+ void hmp_info_uuid(Monitor *mon, const QDict *qdict);
+ void hmp_info_chardev(Monitor *mon, const QDict *qdict);
+diff --git a/qapi/accelerator.json b/qapi/accelerator.json
+index 664e027246..2b92060884 100644
+--- a/qapi/accelerator.json
++++ b/qapi/accelerator.json
+@@ -56,30 +56,55 @@
+   'features': [ 'unstable' ] }
+ 
+ ##
+-# @MshvInfo:
++# @Accelerator:
+ #
+ # Information about support for MSHV acceleration
+ #
+-# @enabled: true if MSHV acceleration is active
++# @hvf: Apple Hypervisor.framework
+ #
+-# @present: true if MSHV acceleration is built into this executable
++# @kvm: KVM
++#
++# @mshv: Hyper-V
++#
++# @nvmm: NetBSD NVMM
++#
++# @qtest: QTest (dummy accelerator)
++#
++# @tcg: TCG (dynamic translation)
++#
++# @whpx: Windows Hypervisor Platform
++#
++# @xen: Xen
++#
++# Since: 10.2.0
++##
++{ 'enum': 'Accelerator', 'data': ['hvf', 'kvm', 'mshv', 'nvmm', 'qtest', 'tcg', 'whpx', 'xen'] }
++
++##
++# @AcceleratorInfo:
++#
++# Information about support for various accelerators
++#
++# @enabled: the accelerator that is in use
++#
++# @present: the list of accelerators that are built into this executable
+ #
+ # Since: 10.2.0
+ ##
+-{ 'struct': 'MshvInfo', 'data': {'enabled': 'bool', 'present': 'bool'} }
++{ 'struct': 'AcceleratorInfo', 'data': {'enabled': 'Accelerator', 'present': ['Accelerator']} }
+ 
+ ##
+-# @query-mshv:
++# @query-accelerators:
+ #
+-# Return information about MSHV acceleration
++# Return information about accelerators
+ #
+-# Returns: @MshvInfo
++# Returns: @AcceleratorInfo
+ #
+-# Since: 10.0.92
++# Since: 10.2.0
+ #
+ # .. qmp-example::
+ #
+-#     -> { "execute": "query-mshv" }
+-#     <- { "return": { "enabled": true, "present": true } }
++#     -> { "execute": "query-accelerators" }
++#     <- { "return": { "enabled": "mshv", "present": ["kvm", "mshv", "qtest", "tcg"] } }
+ ##
+-{ 'command': 'query-mshv', 'returns': 'MshvInfo' }
++{ 'command': 'query-accelerators', 'returns': 'AcceleratorInfo' }
+-- 
+2.51.1
+
