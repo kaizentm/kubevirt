@@ -73,10 +73,6 @@ docker cp qemu-build:/root/rpmbuild/RPMS ./rpms-qemu
 
 cat >./rpms-qemu/build-info.json <<EOF
 {
-<<<<<<< Updated upstream
-  "qemu_version": "0:${QEMU_VERSION}-100.el9"
-=======
   "qemu_version": "17:${QEMU_VERSION}-100.el9"
->>>>>>> Stashed changes
 }
 EOF
