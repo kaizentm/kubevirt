@@ -22,8 +22,6 @@ package hypervisor
 import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "kubevirt.io/api/core/v1"
-
-	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 )
 
 type LauncherHypervisorResources interface {
@@ -31,10 +29,36 @@ type LauncherHypervisorResources interface {
 	GetMemoryOverhead(vmi *v1.VirtualMachineInstance, arch string, additionalOverheadRatio *string) resource.Quantity
 }
 
+const (
+	DefaultHypervisor = "kvm"
+)
+
+var hypervisors = map[string]LauncherHypervisorResources{}
+
+// RegisterHypervisor adds a given hypervisor to the hypervisor list.
+// In case the hypervisor already exists (based on its name), it overrides the
+// existing hypervisor.
+func RegisterHypervisor(name string, hypervisor LauncherHypervisorResources) {
+	hypervisors[name] = hypervisor
+}
+
+// UnregisterHypervisor removes a hypervisor from the hypervisor list.
+func UnregisterHypervisor(name string) {
+	delete(hypervisors, name)
+}
+
+// NewLauncherHypervisorResources returns the LauncherHypervisorResources instance
+// for the given hypervisor name. If the hypervisor is not registered or the name
+// is empty, it returns the default hypervisor.
 func NewLauncherHypervisorResources(hypervisor string) LauncherHypervisorResources {
-	switch hypervisor {
-	// Other hypervisors can be added here
-	default:
-		return kvm.NewKvmLauncherHypervisorResources()
+	if hypervisor == "" {
+		hypervisor = DefaultHypervisor
 	}
+
+	h, exist := hypervisors[hypervisor]
+	if !exist {
+		panic("hypervisor " + hypervisor + " is not registered")
+	}
+
+	return h
 }

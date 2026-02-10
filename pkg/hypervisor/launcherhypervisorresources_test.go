@@ -22,15 +22,61 @@ package hypervisor
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "kubevirt.io/api/core/v1"
-
-	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 )
 
-var _ = DescribeTable("Test NewLauncherHypervisorResources", func(hypervisorType string, expectedType interface{}) {
-	renderer := NewLauncherHypervisorResources(hypervisorType)
-	Expect(renderer).To(BeAssignableToTypeOf(expectedType))
-},
-	Entry("should return KVM renderer for unknown hypervisor", "unknownHypervisor", (*kvm.KvmLauncherHypervisorResources)(nil)),
-	Entry("should return KVM renderer for KVM hypervisor", v1.KvmHypervisorName, (*kvm.KvmLauncherHypervisorResources)(nil)),
-)
+var _ = Describe("Test hypervisor registration", func() {
+	var testHypervisor *mockHypervisor
+
+	BeforeEach(func() {
+		testHypervisor = &mockHypervisor{}
+	})
+
+	It("should register and retrieve hypervisor", func() {
+		RegisterHypervisor("test", testHypervisor)
+		retrieved := NewLauncherHypervisorResources("test")
+		Expect(retrieved).To(Equal(testHypervisor))
+	})
+
+	It("should use default hypervisor for empty string", func() {
+		defaultHypervisor := &mockHypervisor{}
+		RegisterHypervisor(DefaultHypervisor, defaultHypervisor)
+		retrieved := NewLauncherHypervisorResources("")
+		Expect(retrieved).To(Equal(defaultHypervisor))
+	})
+
+	It("should panic when hypervisor is not registered", func() {
+		UnregisterHypervisor("nonexistent")
+		Expect(func() {
+			NewLauncherHypervisorResources("nonexistent")
+		}).To(Panic())
+	})
+
+	It("should override existing hypervisor on re-registration", func() {
+		firstHypervisor := &mockHypervisor{}
+		secondHypervisor := &mockHypervisor{}
+		RegisterHypervisor("override-test", firstHypervisor)
+		RegisterHypervisor("override-test", secondHypervisor)
+		retrieved := NewLauncherHypervisorResources("override-test")
+		Expect(retrieved).To(Equal(secondHypervisor))
+	})
+
+	It("should unregister hypervisor", func() {
+		RegisterHypervisor("to-remove", testHypervisor)
+		UnregisterHypervisor("to-remove")
+		Expect(func() {
+			NewLauncherHypervisorResources("to-remove")
+		}).To(Panic())
+	})
+})
+
+type mockHypervisor struct{}
+
+func (m *mockHypervisor) GetHypervisorDevice() string {
+	return "mock"
+}
+
+func (m *mockHypervisor) GetMemoryOverhead(vmi *v1.VirtualMachineInstance, arch string, additionalOverheadRatio *string) resource.Quantity {
+	return resource.Quantity{}
+}

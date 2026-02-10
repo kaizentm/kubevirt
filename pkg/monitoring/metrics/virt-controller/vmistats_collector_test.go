@@ -34,6 +34,7 @@ import (
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 
 	virtcontroller "kubevirt.io/kubevirt/pkg/controller"
+	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 	"kubevirt.io/kubevirt/pkg/instancetype/apply"
 	"kubevirt.io/kubevirt/pkg/instancetype/find"
 	preferencefind "kubevirt.io/kubevirt/pkg/instancetype/preference/find"
@@ -624,6 +625,10 @@ var _ = Describe("VMI Stats Collector", func() {
 	})
 
 	Context("VMI Launcher Memory Overhead", func() {
+		BeforeEach(func() {
+			kvm.Register()
+		})
+
 		It("should collect kubevirt_vmi_launcher_memory_overhead_bytes metric for a VMI", func() {
 			vmi := &k6tv1.VirtualMachineInstance{
 				ObjectMeta: metav1.ObjectMeta{

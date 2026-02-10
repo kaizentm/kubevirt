@@ -28,6 +28,7 @@ import (
 	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/kubevirt/pkg/downwardmetrics"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/tpm"
 	"kubevirt.io/kubevirt/pkg/util"
 	"kubevirt.io/kubevirt/pkg/util/hardware"
@@ -45,6 +46,12 @@ const (
 
 type KvmLauncherHypervisorResources struct{}
 
+// Register registers the KVM hypervisor with the hypervisor registry.
+// This must be called before using NewLauncherHypervisorResources.
+func Register() {
+	hypervisor.RegisterHypervisor(kvmHypervisorDevice, NewKvmLauncherHypervisorResources())
+}
+
 func NewKvmLauncherHypervisorResources() *KvmLauncherHypervisorResources {
 	return &KvmLauncherHypervisorResources{}
 }
@@ -60,7 +67,9 @@ func (k *KvmLauncherHypervisorResources) GetHypervisorDevice() string {
 // The return value is overhead memory quantity
 //
 // Note: The overhead memory is a calculated estimation, the values are not to be assumed accurate.
-func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachineInstance, cpuArch string, additionalOverheadRatio *string) resource.Quantity {
+func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(
+	vmi *v1.VirtualMachineInstance, cpuArch string, additionalOverheadRatio *string,
+) resource.Quantity {
 	domain := vmi.Spec.Domain
 	vmiMemoryReq := domain.Resources.Requests.Memory()
 
@@ -68,7 +77,7 @@ func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachin
 
 	// Add the memory needed for pagetables (one bit for every 512b of RAM size)
 	pagetableMemory := resource.NewScaledQuantity(vmiMemoryReq.ScaledValue(resource.Kilo), resource.Kilo)
-	pagetableMemory.Set(pagetableMemory.Value() / 512)
+	pagetableMemory.Set(pagetableMemory.Value() / 512) //nolint:mnd // pagetable calculation uses hardware-defined 512 byte page size
 	overhead.Add(*pagetableMemory)
 
 	// Add fixed overhead for KubeVirt components, as seen in a random run, rounded up to the nearest MiB
@@ -80,37 +89,53 @@ func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachin
 	overhead.Add(resource.MustParse(VirtqemudOverhead))
 	overhead.Add(resource.MustParse(QemuOverhead))
 
-	// Add CPU table overhead (8 MiB per vCPU and 8 MiB per IO thread)
-	// overhead per vcpu in MiB
+	// Add CPU and IOThread overhead
+	overhead.Add(calculateVCPUOverhead(vmi))
+	overhead.Add(resource.MustParse("8Mi")) // static overhead for IOThread
+
+	// Add feature-specific overheads
+	addFeatureSpecificOverheads(vmi, cpuArch, &overhead)
+
+	// Apply additional overhead ratio if specified
+	return applyAdditionalOverheadRatio(overhead, additionalOverheadRatio)
+}
+
+// calculateVCPUOverhead calculates memory overhead based on vCPU count (8 MiB per vCPU)
+func calculateVCPUOverhead(vmi *v1.VirtualMachineInstance) resource.Quantity {
 	coresMemory := resource.MustParse("8Mi")
-	var vcpus int64
-	if domain.CPU != nil {
-		vcpus = hardware.GetNumberOfVCPUs(domain.CPU)
-	} else {
-		// Currently, a default guest CPU topology is set by the API webhook mutator, if not set by a user.
-		// However, this wasn't always the case.
-		// In case when the guest topology isn't set, take value from resources request or limits.
-		resources := vmi.Spec.Domain.Resources
-		if cpuLimit, ok := resources.Limits[k8sv1.ResourceCPU]; ok {
-			vcpus = cpuLimit.Value()
-		} else if cpuRequests, ok := resources.Requests[k8sv1.ResourceCPU]; ok {
-			vcpus = cpuRequests.Value()
-		}
-	}
-
-	// if neither CPU topology nor request or limits provided, set vcpus to 1
-	if vcpus < 1 {
-		vcpus = 1
-	}
+	vcpus := getVCPUCount(vmi)
 	value := coresMemory.Value() * vcpus
-	coresMemory = *resource.NewQuantity(value, coresMemory.Format)
-	overhead.Add(coresMemory)
+	return *resource.NewQuantity(value, coresMemory.Format)
+}
 
-	// static overhead for IOThread
-	overhead.Add(resource.MustParse("8Mi"))
+// getVCPUCount returns the number of vCPUs for the VMI
+func getVCPUCount(vmi *v1.VirtualMachineInstance) int64 {
+	domain := vmi.Spec.Domain
+	if domain.CPU != nil {
+		return hardware.GetNumberOfVCPUs(domain.CPU)
+	}
+
+	// Currently, a default guest CPU topology is set by the API webhook mutator, if not set by a user.
+	// However, this wasn't always the case.
+	// In case when the guest topology isn't set, take value from resources request or limits.
+	resources := vmi.Spec.Domain.Resources
+	if cpuLimit, ok := resources.Limits[k8sv1.ResourceCPU]; ok {
+		return cpuLimit.Value()
+	}
+	if cpuRequests, ok := resources.Requests[k8sv1.ResourceCPU]; ok {
+		return cpuRequests.Value()
+	}
+
+	// if neither CPU topology nor request or limits provided, default to 1
+	return 1
+}
+
+// addFeatureSpecificOverheads adds memory overhead for various VMI features
+func addFeatureSpecificOverheads(vmi *v1.VirtualMachineInstance, cpuArch string, overhead *resource.Quantity) {
+	domain := vmi.Spec.Domain
 
 	// Add video RAM overhead
-	if domain.Devices.AutoattachGraphicsDevice == nil || *domain.Devices.AutoattachGraphicsDevice == true {
+	if domain.Devices.AutoattachGraphicsDevice == nil || *domain.Devices.AutoattachGraphicsDevice {
 		overhead.Add(resource.MustParse("32Mi"))
 	}
 
@@ -134,7 +159,7 @@ func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachin
 		overhead.Add(resource.MustParse("1Mi"))
 	}
 
-	addProbeOverheads(vmi, &overhead)
+	addProbeOverheads(vmi, overhead)
 
 	// Consider memory overhead for SEV guests.
 	// Additional information can be found here: https://libvirt.org/kbase/launch_security_sev.html#memory
@@ -151,20 +176,22 @@ func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachin
 	if vmi.IsCPUDedicated() || vmi.WantsToHaveQOSGuaranteed() {
 		overhead.Add(resource.MustParse("100Mi"))
 	}
+}
 
-	// Multiplying the ratio is expected to be the last calculation before returning overhead
-	if additionalOverheadRatio != nil && *additionalOverheadRatio != "" {
-		ratio, err := strconv.ParseFloat(*additionalOverheadRatio, 64)
-		if err != nil {
-			// This error should never happen as it's already validated by webhooks
-			log.Log.Warningf("cannot add additional overhead to virt infra overhead calculation: %v", err)
-			return overhead
-		}
-
-		overhead = multiplyMemory(overhead, ratio)
+// applyAdditionalOverheadRatio applies an additional overhead ratio if specified
+func applyAdditionalOverheadRatio(overhead resource.Quantity, additionalOverheadRatio *string) resource.Quantity {
+	if additionalOverheadRatio == nil || *additionalOverheadRatio == "" {
+		return overhead
 	}
 
-	return overhead
+	ratio, err := strconv.ParseFloat(*additionalOverheadRatio, 64)
+	if err != nil {
+		// This error should never happen as it's already validated by webhooks
+		log.Log.Warningf("cannot add additional overhead to virt infra overhead calculation: %v", err)
+		return overhead
+	}
+
+	return multiplyMemory(overhead, ratio)
 }
 
 func addProbeOverheads(vmi *v1.VirtualMachineInstance, quantity *resource.Quantity) {

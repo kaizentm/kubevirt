@@ -77,6 +77,7 @@ go_test(
         "//pkg/container-disk:go_default_library",
         "//pkg/hooks:go_default_library",
         "//pkg/hypervisor:go_default_library",
+        "//pkg/hypervisor/kvm:go_default_library",
         "//pkg/libvmi:go_default_library",
         "//pkg/libvmi/status:go_default_library",
         "//pkg/network/istio:go_default_library",
