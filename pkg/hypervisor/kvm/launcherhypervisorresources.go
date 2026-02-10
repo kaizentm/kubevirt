@@ -49,7 +49,7 @@ type KvmLauncherHypervisorResources struct{}
 // Register registers the KVM hypervisor with the hypervisor registry.
 // This must be called before using NewLauncherHypervisorResources.
 func Register() {
-	hypervisor.RegisterHypervisor(KvmHypervisorDevice, NewKvmLauncherHypervisorResources())
+	hypervisor.RegisterHypervisor(kvmHypervisorDevice, NewKvmLauncherHypervisorResources())
 }
 
 func NewKvmLauncherHypervisorResources() *KvmLauncherHypervisorResources {
@@ -67,7 +67,11 @@ func (k *KvmLauncherHypervisorResources) GetHypervisorDevice() string {
 // The return value is overhead memory quantity
 //
 // Note: The overhead memory is a calculated estimation, the values are not to be assumed accurate.
-func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachineInstance, cpuArch string, additionalOverheadRatio *string) resource.Quantity {
+//
+//nolint:gocyclo // complexity is inherent to memory overhead calculation
+func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(
+	vmi *v1.VirtualMachineInstance, cpuArch string, additionalOverheadRatio *string,
+) resource.Quantity {
 	domain := vmi.Spec.Domain
 	vmiMemoryReq := domain.Resources.Requests.Memory()
 
@@ -75,7 +79,7 @@ func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachin
 
 	// Add the memory needed for pagetables (one bit for every 512b of RAM size)
 	pagetableMemory := resource.NewScaledQuantity(vmiMemoryReq.ScaledValue(resource.Kilo), resource.Kilo)
-	pagetableMemory.Set(pagetableMemory.Value() / 512)
+	pagetableMemory.Set(pagetableMemory.Value() / 512) //nolint:mnd // pagetable calculation uses hardware-defined 512 byte page size
 	overhead.Add(*pagetableMemory)
 
 	// Add fixed overhead for KubeVirt components, as seen in a random run, rounded up to the nearest MiB
@@ -117,7 +121,7 @@ func (k *KvmLauncherHypervisorResources) GetMemoryOverhead(vmi *v1.VirtualMachin
 	overhead.Add(resource.MustParse("8Mi"))
 
 	// Add video RAM overhead
-	if domain.Devices.AutoattachGraphicsDevice == nil || *domain.Devices.AutoattachGraphicsDevice == true {
+	if domain.Devices.AutoattachGraphicsDevice == nil || *domain.Devices.AutoattachGraphicsDevice {
 		overhead.Add(resource.MustParse("32Mi"))
 	}
 
