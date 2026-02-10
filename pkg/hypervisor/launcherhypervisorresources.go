@@ -31,6 +31,7 @@ import (
 type LauncherHypervisorResources interface {
 	GetHypervisorDevice() string
 	GetMemoryOverhead(vmi *v1.VirtualMachineInstance, arch string, additionalOverheadRatio *string) resource.Quantity
+	GetVirtType() string
 }
 
 func NewLauncherHypervisorResources(hypervisor string) LauncherHypervisorResources {
