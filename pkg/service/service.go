@@ -27,9 +27,12 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"kubevirt.io/client-go/kubecli"
+
+	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 )
 
 func init() {
+	kvm.Register()
 	kubecli.Init()
 }
 

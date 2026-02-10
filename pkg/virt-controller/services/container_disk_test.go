@@ -25,6 +25,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
 	"kubevirt.io/kubevirt/pkg/testutils"
 
 	k8sv1 "k8s.io/api/core/v1"
@@ -38,6 +39,7 @@ var _ = Describe("Container disk", func() {
 		var svc *TemplateService
 
 		BeforeEach(func() {
+			kvm.Register()
 			ctrl := gomock.NewController(GinkgoT())
 			config, _, _ := testutils.NewFakeClusterConfigUsingKVWithCPUArch(&v1.KubeVirt{
 				ObjectMeta: metav1.ObjectMeta{

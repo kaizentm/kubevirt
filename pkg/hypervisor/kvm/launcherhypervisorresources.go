@@ -28,6 +28,7 @@ import (
 	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/kubevirt/pkg/downwardmetrics"
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/tpm"
 	"kubevirt.io/kubevirt/pkg/util"
 	"kubevirt.io/kubevirt/pkg/util/hardware"
@@ -44,6 +45,12 @@ const (
 )
 
 type KvmLauncherHypervisorResources struct{}
+
+// Register registers the KVM hypervisor with the hypervisor registry.
+// This must be called before using NewLauncherHypervisorResources.
+func Register() {
+	hypervisor.RegisterHypervisor(KvmHypervisorDevice, NewKvmLauncherHypervisorResources())
+}
 
 func NewKvmLauncherHypervisorResources() *KvmLauncherHypervisorResources {
 	return &KvmLauncherHypervisorResources{}
