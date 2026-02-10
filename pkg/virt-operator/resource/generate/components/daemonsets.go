@@ -11,8 +11,10 @@ import (
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 
+	v1 "kubevirt.io/api/core/v1"
 	virtv1 "kubevirt.io/api/core/v1"
 
+	"kubevirt.io/kubevirt/pkg/hypervisor"
 	"kubevirt.io/kubevirt/pkg/pointer"
 	"kubevirt.io/kubevirt/pkg/storage/reservation"
 	"kubevirt.io/kubevirt/pkg/util"
@@ -137,6 +139,8 @@ func NewHandlerDaemonSet(config *operatorutil.KubeVirtDeploymentConfig, productN
 	pod.ServiceAccountName = HandlerServiceAccountName
 	pod.HostPID = true
 
+	hypervisorNodeInfo := hypervisor.NewHypervisorNodeInformation(v1.KvmHypervisorName)
+
 	// nodelabeller currently only support x86. The arch check will be done in node-labller.sh
 	pod.InitContainers = []corev1.Container{
 		{
@@ -147,7 +151,7 @@ func NewHandlerDaemonSet(config *operatorutil.KubeVirtDeploymentConfig, productN
 			Image: launcherImage,
 			Name:  "virt-launcher",
 			Args: []string{
-				"node-labeller.sh",
+				fmt.Sprintf("node-labeller.sh -d %s -t %s", hypervisorNodeInfo.GetHypervisorDevice(), hypervisorNodeInfo.GetVirtType()),
 			},
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: pointer.P(true),
