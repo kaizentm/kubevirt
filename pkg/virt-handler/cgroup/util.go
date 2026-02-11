@@ -59,6 +59,8 @@ const (
 	V2 CgroupVersion = "v2"
 
 	loggingVerbosity = 2
+
+	hypervisorMajorNumber = 10
 )
 
 var (
@@ -67,6 +69,10 @@ var (
 
 type execVirtChrootFunc func(r *runc_configs.Resources, subsystemPaths map[string]string, rootless bool, version CgroupVersion) error
 type getCurrentlyDefinedRulesFunc func(runcManager runc_cgroups.Manager) ([]*devices.Rule, error)
+type hypervisorDeviceInfo struct {
+	majorNumber int64
+	minorNumber int64
+}
 
 // addCurrentRules gets a slice of rules as a parameter and returns a new slice that contains all given rules
 // and all of the rules that are currently set. This way rules that are already defined won't be deleted by this
@@ -104,6 +110,13 @@ func addCurrentRules(currentRules, newRules []*devices.Rule) ([]*devices.Rule, e
 	return newRules, nil
 }
 
+func NewHypervisorDeviceInfo(minorNumber int64) hypervisorDeviceInfo {
+	return hypervisorDeviceInfo{
+		majorNumber: hypervisorMajorNumber,
+		minorNumber: minorNumber,
+	}
+}
+
 func getSourceBlockToFsMigratedVolumes(vmi *v1.VirtualMachineInstance, host string) map[string]bool {
 	vols := make(map[string]bool)
 	if vmi.Status.MigrationState != nil && vmi.Status.MigrationState.SourceNode != host {
@@ -126,10 +139,18 @@ func getSourceBlockToFsMigratedVolumes(vmi *v1.VirtualMachineInstance, host stri
 	return vols
 }
 
+func computeDevicePermissions() devices.Permissions {
+	if cgroups.IsCgroup2UnifiedMode() {
+		return "rwm"
+	} else {
+		return "rw"
+	}
+}
+
 // This builds up the known persistent block devices allow list for a VMI (as in, hotplugged volumes are handled separately)
 // This will be maintained and extended as new devices likely have to end up on this list as well
 // For example - https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/
-func generateDeviceRulesForVMI(vmi *v1.VirtualMachineInstance, isolationRes isolation.IsolationResult, host string) ([]*devices.Rule, error) {
+func generateDeviceRulesForVMI(vmi *v1.VirtualMachineInstance, isolationRes isolation.IsolationResult, host string, hypervisorDev hypervisorDeviceInfo) ([]*devices.Rule, error) {
 	mountRoot, err := isolationRes.MountRoot()
 	if err != nil {
 		return nil, err
@@ -191,6 +212,15 @@ func generateDeviceRulesForVMI(vmi *v1.VirtualMachineInstance, isolationRes isol
 		}
 	}
 
+	vmiDeviceRules = append(vmiDeviceRules,
+		&devices.Rule{
+			Type:        devices.CharDevice,
+			Major:       hypervisorDev.majorNumber,
+			Minor:       hypervisorDev.minorNumber,
+			Permissions: computeDevicePermissions(),
+			Allow:       true,
+		})
+
 	return vmiDeviceRules, nil
 }
 
@@ -224,12 +254,7 @@ func GenerateDefaultDeviceRules() []*devices.Rule {
 
 	const toAllow = true
 
-	var permissions devices.Permissions
-	if cgroups.IsCgroup2UnifiedMode() {
-		permissions = "rwm"
-	} else {
-		permissions = "rw"
-	}
+	permissions := computeDevicePermissions()
 
 	defaultRules := []*devices.Rule{
 		{ // /dev/ptmx (PTY master multiplex)
@@ -243,13 +268,6 @@ func GenerateDefaultDeviceRules() []*devices.Rule {
 			Type:        devices.CharDevice,
 			Major:       1,
 			Minor:       3,
-			Permissions: permissions,
-			Allow:       toAllow,
-		},
-		{ // /dev/kvm (hardware virtualization extensions)
-			Type:        devices.CharDevice,
-			Major:       10,
-			Minor:       232,
 			Permissions: permissions,
 			Allow:       toAllow,
 		},

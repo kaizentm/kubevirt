@@ -27,6 +27,7 @@ import (
 type HypervisorNodeInformation interface {
 	GetHypervisorDevice() string
 	GetVirtType() string
+	GetHypervisorDeviceMinorNumber() int64
 }
 
 func NewHypervisorNodeInformation(hypervisor string) HypervisorNodeInformation {

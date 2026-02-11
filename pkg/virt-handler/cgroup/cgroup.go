@@ -137,13 +137,13 @@ func newManagerFromPid(pid int, deviceRules []*devices.Rule) (manager Manager, e
 	return manager, err
 }
 
-func NewManagerFromVM(vmi *v1.VirtualMachineInstance, host string) (Manager, error) {
+func NewManagerFromVM(vmi *v1.VirtualMachineInstance, host string, hypervisorDev hypervisorDeviceInfo) (Manager, error) {
 	isolationRes, err := detectVMIsolation(vmi)
 	if err != nil {
 		return nil, err
 	}
 
-	vmiDeviceRules, err := generateDeviceRulesForVMI(vmi, isolationRes, host)
+	vmiDeviceRules, err := generateDeviceRulesForVMI(vmi, isolationRes, host, hypervisorDev)
 	if err != nil {
 		return nil, err
 	}
