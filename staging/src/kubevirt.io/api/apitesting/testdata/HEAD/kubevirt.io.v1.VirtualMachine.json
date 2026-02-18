@@ -337,6 +337,7 @@
                 "sriov": {},
                 "macvtap": {},
                 "passt": {},
+                "passtBinding": {},
                 "binding": {
                   "name": "nameValue"
                 },
@@ -458,7 +459,8 @@
             },
             "snp": {},
             "tdx": {}
-          }
+          },
+          "rebootPolicy": "rebootPolicyValue"
         },
         "nodeSelector": {
           "nodeSelectorKey": "nodeSelectorValue"

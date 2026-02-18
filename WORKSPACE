@@ -393,7 +393,7 @@ oci_pull(
 
 oci_pull(
     name = "alpine-ext-kernel-boot-demo-container-base",
-    digest = "sha256:de4bc8de772ff7570e6dda871ea9cdd502feeeff1973f16f84bfbd60ff8f4149",
+    digest = "sha256:bccd990554f55623d96fa70bc7efc553dd617523ebca76919b917ad3ee616c1d",
     image = "quay.io/kubevirt/alpine-ext-kernel-boot-demo",
 )
 
@@ -409,6 +409,10 @@ oci_pull(
     digest = "sha256:545e6a6310a27636260920bc07b994a299b6708a1b26910cfefd335fdfb60d2b",
     image = "registry.k8s.io/busybox",
 )
+
+load("//images/virt-template:deps.bzl", "virt_template_images")
+
+virt_template_images()
 
 http_archive(
     name = "io_bazel_rules_container_rpm",

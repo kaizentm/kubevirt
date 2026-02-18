@@ -58,6 +58,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/hooks"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/pkg/network/istio"
+	"kubevirt.io/kubevirt/pkg/network/multus"
 	storagetypes "kubevirt.io/kubevirt/pkg/storage/types"
 	"kubevirt.io/kubevirt/pkg/testutils"
 	"kubevirt.io/kubevirt/pkg/util"
@@ -70,6 +71,8 @@ import (
 var testHookSidecar = hooks.HookSidecar{Image: "test-image", ImagePullPolicy: "test-policy"}
 
 var _ = Describe("Template", func() {
+	const expectedNetworkResource = "amazing-network-resource.com"
+
 	var configFactory func(string) (*virtconfig.ClusterConfig, cache.Store, *TemplateService)
 	var qemuGid int64 = 107
 	var defaultArch = "amd64"
@@ -141,7 +144,7 @@ var _ = Describe("Template", func() {
 					func(vmi *v1.VirtualMachineInstance, _ *v1.KubeVirtConfiguration) (hooks.HookSidecarList, error) {
 						return hooks.UnmarshalHookSidecarList(vmi)
 					}),
-				WithNetBindingPluginMemoryCalculator(&stubNetBindingPluginMemoryCalculator{}),
+				WithNetMemoryCalculator(&stubNetMemoryCalculator{}),
 			)
 			// Set up mock clients
 			networkClient := fakenetworkclient.NewSimpleClientset()
@@ -173,6 +176,9 @@ var _ = Describe("Template", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test1",
 					Namespace: "other-namespace",
+					Annotations: map[string]string{
+						multus.ResourceNameAnnotation: expectedNetworkResource,
+					},
 				},
 			}
 			err := networkClient.Tracker().Create(gvr, network, "other-namespace")
@@ -3043,7 +3049,7 @@ var _ = Describe("Template", func() {
 				resourceQuotaStore,
 				namespaceStore,
 				WithSidecarCreator(testSidecarCreator),
-				WithNetBindingPluginMemoryCalculator(&stubNetBindingPluginMemoryCalculator{}),
+				WithNetMemoryCalculator(&stubNetMemoryCalculator{}),
 			)
 			vmi := v1.VirtualMachineInstance{ObjectMeta: metav1.ObjectMeta{
 				Name: "testvmi", Namespace: "default", UID: "1234",
@@ -5675,7 +5681,7 @@ var _ = Describe("Template", func() {
 
 			config, _, _ := testutils.NewFakeClusterConfigUsingKVConfig(&kvConfig.Spec.Configuration)
 
-			netBindingPluginMemoryOverheadCalculator := &stubNetBindingPluginMemoryCalculator{}
+			netBindingPluginMemoryOverheadCalculator := &stubNetMemoryCalculator{}
 			svc = NewTemplateService("kubevirt/virt-launcher",
 				240,
 				"/var/run/kubevirt",
@@ -5691,7 +5697,7 @@ var _ = Describe("Template", func() {
 				resourceQuotaStore,
 				namespaceStore,
 				WithSidecarCreator(testSidecarCreator),
-				WithNetBindingPluginMemoryCalculator(netBindingPluginMemoryOverheadCalculator),
+				WithNetMemoryCalculator(netBindingPluginMemoryOverheadCalculator),
 			)
 
 			vmi := libvmi.New(
@@ -5942,6 +5948,49 @@ var _ = Describe("Template", func() {
 			Expect(err).To(MatchError(expectedErr))
 		})
 	})
+
+	Context("NAD query disablement", func() {
+		It("Should not query NAD when DisableNADResourceInjection is enabled", func() {
+			config, kvStore, svc = configFactory(defaultArch)
+			enableFeatureGate(featuregate.DisableNADResourceInjection)
+
+			svc = NewTemplateService("kubevirt/virt-launcher",
+				240,
+				"/var/run/kubevirt",
+				"/var/run/kubevirt-ephemeral-disks",
+				"/var/run/kubevirt/container-disks",
+				v1.HotplugDiskDir,
+				"pull-secret-1",
+				pvcCache,
+				virtClient,
+				config,
+				qemuGid,
+				"kubevirt/vmexport",
+				resourceQuotaStore,
+				namespaceStore,
+			)
+
+			const netName = "net1"
+
+			vmi := libvmi.New(
+				libvmi.WithNamespace("other-namespace"),
+				libvmi.WithInterface(libvmi.InterfaceDeviceWithBridgeBinding(netName)),
+				libvmi.WithNetwork(libvmi.MultusNetwork(netName, "test1")),
+			)
+
+			pod, err := svc.RenderLaunchManifest(vmi)
+			Expect(err).ToNot(HaveOccurred())
+
+			computeContainer := pod.Spec.Containers[0]
+			Expect(computeContainer.Name).To(Equal("compute"))
+
+			_, reqExists := computeContainer.Resources.Requests[expectedNetworkResource]
+			Expect(reqExists).To(BeFalse())
+
+			_, limExists := computeContainer.Resources.Limits[expectedNetworkResource]
+			Expect(limExists).To(BeFalse())
+		})
+	})
 })
 
 func networkInfoAnnotVolume() k8sv1.Volume {
@@ -6068,11 +6117,11 @@ func validateAndExtractQemuTimeoutArg(args []string) string {
 	return timeoutString
 }
 
-type stubNetBindingPluginMemoryCalculator struct {
+type stubNetMemoryCalculator struct {
 	calculatedMemoryOverhead bool
 }
 
-func (smc *stubNetBindingPluginMemoryCalculator) Calculate(_ *v1.VirtualMachineInstance, _ map[string]v1.InterfaceBindingPlugin) resource.Quantity {
+func (smc *stubNetMemoryCalculator) Calculate(_ *v1.VirtualMachineInstance, _ map[string]v1.InterfaceBindingPlugin) resource.Quantity {
 	smc.calculatedMemoryOverhead = true
 
 	return resource.Quantity{}

@@ -511,6 +511,7 @@ spec:
             model: modelValue
             name: nameValue
             passt: {}
+            passtBinding: {}
             pciAddress: pciAddressValue
             ports:
             - name: nameValue
@@ -630,6 +631,7 @@ spec:
           hugepages:
             pageSize: pageSizeValue
           maxGuest: "0"
+        rebootPolicy: rebootPolicyValue
         resources:
           limits:
             limitsKey: "0"

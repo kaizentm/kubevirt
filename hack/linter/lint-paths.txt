@@ -27,6 +27,7 @@ pkg/network/netmachinery
 pkg/network/netns
 pkg/network/passt
 pkg/network/pod/annotations
+pkg/network/resources
 pkg/network/vmispec
 pkg/network/vmliveupdate
 pkg/pointer
@@ -34,7 +35,6 @@ pkg/storage/pod/annotations
 pkg/storage/reservation
 pkg/storage/velero
 pkg/tpm
-pkg/util/pdbs
 pkg/util/ratelimiter
 pkg/virt-controller/leaderelectionconfig
 pkg/virt-controller/watch/common

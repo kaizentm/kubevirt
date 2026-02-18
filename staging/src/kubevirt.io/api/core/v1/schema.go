@@ -57,6 +57,18 @@ const (
 	Pvpanic PanicDeviceModel = "pvpanic"
 )
 
+// RebootPolicy specifies how the domain should behave when a guest reboot is triggered.
+// +kubebuilder:validation:Enum=Reboot;Terminate
+type RebootPolicy string
+
+const (
+	// RebootPolicyReboot allows the guest to silently reboot without notifying KubeVirt (default behavior).
+	RebootPolicyReboot RebootPolicy = "Reboot"
+	// RebootPolicyTerminate terminates the VMI on guest reboot, allowing the VMI to be recreated
+	// by the controllers (e.g., to pick up new configuration from VM).
+	RebootPolicyTerminate RebootPolicy = "Terminate"
+)
+
 /*
  ATTENTION: Rerun code generators when comments on structs or fields are modified.
 */
@@ -221,6 +233,13 @@ type DomainSpec struct {
 	// Launch Security setting of the vmi.
 	// +optional
 	LaunchSecurity *LaunchSecurity `json:"launchSecurity,omitempty"`
+	// RebootPolicy specifies how the guest should behave on reboot.
+	// Reboot (default): The guest is allowed to reboot silently.
+	// Terminate: The VMI will be terminated on guest reboot, allowing
+	// higher level controllers (such as the VM controller) to recreate
+	// the VMI with any updated configuration such as boot order changes.
+	// +optional
+	RebootPolicy *RebootPolicy `json:"rebootPolicy,omitempty"`
 }
 
 // Chassis specifies the chassis info passed to the domain.
@@ -1480,6 +1499,7 @@ type InterfaceBindingMethod struct {
 	// Deprecated: Removed in v1.3
 	// +optional
 	DeprecatedPasst *DeprecatedInterfacePasst `json:"passt,omitempty"`
+	PasstBinding    *InterfacePasstBinding    `json:"passtBinding,omitempty"`
 }
 
 // InterfaceBridge connects to a given network via a linux bridge.
@@ -1504,6 +1524,9 @@ type DeprecatedInterfaceMacvtap struct{}
 // DeprecatedInterfacePasst is an alias to the deprecated InterfacePasst
 // Deprecated: Removed in v1.3
 type DeprecatedInterfacePasst struct{}
+
+// InterfacePasstBinding connects to a given network using passt usermode networking.
+type InterfacePasstBinding struct{}
 
 // PluginBinding represents a binding implemented in a plugin.
 type PluginBinding struct {

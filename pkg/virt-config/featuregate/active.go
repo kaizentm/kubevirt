@@ -144,10 +144,10 @@ const (
 	// PanicDevices allows defining panic devices for signaling crashes in the guest for a VirtualMachineInstance.
 	PanicDevicesGate = "PanicDevices"
 
-	// Alpha: v1.6.0
+	// Beta: v1.8.0
 	//
-	// PasstIPStackMigration enables seamless migration with passt network binding.
-	PasstIPStackMigration = "PasstIPStackMigration"
+	// PasstBinding enables the use of passt core network binding
+	PasstBinding = "PasstBinding"
 
 	// MigrationPriorityQueue enables controllers to assign priorities to migrations,
 	// ensuring system-initiated migrations (e.g., node drains, upgrades) take precedence
@@ -171,6 +171,25 @@ const (
 	// Owner: SIG network
 	// Beta: v1.8
 	PodSecondaryInterfaceNamingUpgrade = "PodSecondaryInterfaceNamingUpgrade"
+
+	// DisableNADResourceInjection disables the VMI controller query of NetworkAttachmentDefinition objects and
+	// the deployment of related RBAC rules by virt-operator.
+	// Owner: SIG network
+	// Beta: v1.8.0
+	DisableNADResourceInjection = "DisableNADResourceInjection"
+
+	// Owner: sig-compute / @MarSik
+	// Alpha: v1.8.0
+	//
+	// RebootPolicy enables setting the RebootPolicy field on VMI's DomainSpec
+	// which allows terminating the VMI on guest reboot instead of silently rebooting,
+	// enabling the VM controller to recreate the VMI with updated configuration.
+	RebootPolicy = "RebootPolicy"
+
+	// Owner: sig-compute / @0xFelix
+	// Template enables the deployment of virt-template components by virt-operator.
+	// Alpha: v1.8.0
+	Template = "Template"
 )
 
 func init() {
@@ -204,9 +223,12 @@ func init() {
 	RegisterFeatureGate(FeatureGate{Name: VideoConfig, State: Beta})
 	RegisterFeatureGate(FeatureGate{Name: PanicDevicesGate, State: Beta})
 	RegisterFeatureGate(FeatureGate{Name: UtilityVolumesGate, State: Alpha})
-	RegisterFeatureGate(FeatureGate{Name: PasstIPStackMigration, State: Alpha})
 	RegisterFeatureGate(FeatureGate{Name: ConfigurableHypervisor, State: Alpha})
+	RegisterFeatureGate(FeatureGate{Name: PasstBinding, State: Beta})
 	RegisterFeatureGate(FeatureGate{Name: IncrementalBackupGate, State: Alpha})
 	RegisterFeatureGate(FeatureGate{Name: MigrationPriorityQueue, State: Beta})
 	RegisterFeatureGate(FeatureGate{Name: PodSecondaryInterfaceNamingUpgrade, State: Beta})
+	RegisterFeatureGate(FeatureGate{Name: DisableNADResourceInjection, State: Beta})
+	RegisterFeatureGate(FeatureGate{Name: RebootPolicy, State: Alpha})
+	RegisterFeatureGate(FeatureGate{Name: Template, State: Alpha})
 }

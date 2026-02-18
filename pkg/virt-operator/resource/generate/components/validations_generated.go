@@ -1718,6 +1718,17 @@ var CRDsValidation map[string]string = map[string]string{
                   - VersionTLS13
                   type: string
               type: object
+            virtTemplateDeployment:
+              description: VirtTemplateDeployment controls the deployment of virt-template
+                components
+              nullable: true
+              properties:
+                enabled:
+                  description: Enabled controls the deployment of virt-template resources,
+                    defaults to True when feature gate is enabled.
+                  nullable: true
+                  type: boolean
+              type: object
             virtualMachineInstancesPerNode:
               type: integer
             virtualMachineOptions:
@@ -6559,6 +6570,10 @@ var CRDsValidation map[string]string = map[string]string{
                                   please refer to Kubevirt user guide for alternatives.
                                   Deprecated: Removed in v1.3
                                 type: object
+                              passtBinding:
+                                description: InterfacePasstBinding connects to a given
+                                  network using passt usermode networking.
+                                type: object
                               pciAddress:
                                 description: 'If specified, the virtual network interface
                                   will be placed on the guests pci address with the
@@ -7187,6 +7202,17 @@ var CRDsValidation map[string]string = map[string]string{
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                       type: object
+                    rebootPolicy:
+                      description: |-
+                        RebootPolicy specifies how the guest should behave on reboot.
+                        Reboot (default): The guest is allowed to reboot silently.
+                        Terminate: The VMI will be terminated on guest reboot, allowing
+                        higher level controllers (such as the VM controller) to recreate
+                        the VMI with any updated configuration such as boot order changes.
+                      enum:
+                      - Reboot
+                      - Terminate
+                      type: string
                     resources:
                       description: Resources describes the Compute Resources required
                         by this vmi.
@@ -9418,6 +9444,7 @@ var CRDsValidation map[string]string = map[string]string{
             the clone operation
           enum:
           - RandomizeNames
+          - PrefixTargetName
           type: string
       required:
       - source
@@ -12435,6 +12462,10 @@ var CRDsValidation map[string]string = map[string]string{
                           please refer to Kubevirt user guide for alternatives.
                           Deprecated: Removed in v1.3
                         type: object
+                      passtBinding:
+                        description: InterfacePasstBinding connects to a given network
+                          using passt usermode networking.
+                        type: object
                       pciAddress:
                         description: 'If specified, the virtual network interface
                           will be placed on the guests pci address with the specified
@@ -13052,6 +13083,17 @@ var CRDsValidation map[string]string = map[string]string{
                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                   x-kubernetes-int-or-string: true
               type: object
+            rebootPolicy:
+              description: |-
+                RebootPolicy specifies how the guest should behave on reboot.
+                Reboot (default): The guest is allowed to reboot silently.
+                Terminate: The VMI will be terminated on guest reboot, allowing
+                higher level controllers (such as the VM controller) to recreate
+                the VMI with any updated configuration such as boot order changes.
+              enum:
+              - Reboot
+              - Terminate
+              type: string
             resources:
               description: Resources describes the Compute Resources required by this
                 vmi.
@@ -16275,6 +16317,10 @@ var CRDsValidation map[string]string = map[string]string{
                           please refer to Kubevirt user guide for alternatives.
                           Deprecated: Removed in v1.3
                         type: object
+                      passtBinding:
+                        description: InterfacePasstBinding connects to a given network
+                          using passt usermode networking.
+                        type: object
                       pciAddress:
                         description: 'If specified, the virtual network interface
                           will be placed on the guests pci address with the specified
@@ -16892,6 +16938,17 @@ var CRDsValidation map[string]string = map[string]string{
                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                   x-kubernetes-int-or-string: true
               type: object
+            rebootPolicy:
+              description: |-
+                RebootPolicy specifies how the guest should behave on reboot.
+                Reboot (default): The guest is allowed to reboot silently.
+                Terminate: The VMI will be terminated on guest reboot, allowing
+                higher level controllers (such as the VM controller) to recreate
+                the VMI with any updated configuration such as boot order changes.
+              enum:
+              - Reboot
+              - Terminate
+              type: string
             resources:
               description: Resources describes the Compute Resources required by this
                 vmi.
@@ -18788,6 +18845,10 @@ var CRDsValidation map[string]string = map[string]string{
                                   please refer to Kubevirt user guide for alternatives.
                                   Deprecated: Removed in v1.3
                                 type: object
+                              passtBinding:
+                                description: InterfacePasstBinding connects to a given
+                                  network using passt usermode networking.
+                                type: object
                               pciAddress:
                                 description: 'If specified, the virtual network interface
                                   will be placed on the guests pci address with the
@@ -19416,6 +19477,17 @@ var CRDsValidation map[string]string = map[string]string{
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                       type: object
+                    rebootPolicy:
+                      description: |-
+                        RebootPolicy specifies how the guest should behave on reboot.
+                        Reboot (default): The guest is allowed to reboot silently.
+                        Terminate: The VMI will be terminated on guest reboot, allowing
+                        higher level controllers (such as the VM controller) to recreate
+                        the VMI with any updated configuration such as boot order changes.
+                      enum:
+                      - Reboot
+                      - Terminate
+                      type: string
                     resources:
                       description: Resources describes the Compute Resources required
                         by this vmi.
@@ -23811,6 +23883,11 @@ var CRDsValidation map[string]string = map[string]string{
                                           please refer to Kubevirt user guide for alternatives.
                                           Deprecated: Removed in v1.3
                                         type: object
+                                      passtBinding:
+                                        description: InterfacePasstBinding connects
+                                          to a given network using passt usermode
+                                          networking.
+                                        type: object
                                       pciAddress:
                                         description: 'If specified, the virtual network
                                           interface will be placed on the guests pci
@@ -24453,6 +24530,17 @@ var CRDsValidation map[string]string = map[string]string{
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
                               type: object
+                            rebootPolicy:
+                              description: |-
+                                RebootPolicy specifies how the guest should behave on reboot.
+                                Reboot (default): The guest is allowed to reboot silently.
+                                Terminate: The VMI will be terminated on guest reboot, allowing
+                                higher level controllers (such as the VM controller) to recreate
+                                the VMI with any updated configuration such as boot order changes.
+                              enum:
+                              - Reboot
+                              - Terminate
+                              type: string
                             resources:
                               description: Resources describes the Compute Resources
                                 required by this vmi.
@@ -29300,6 +29388,11 @@ var CRDsValidation map[string]string = map[string]string{
                                               please refer to Kubevirt user guide for alternatives.
                                               Deprecated: Removed in v1.3
                                             type: object
+                                          passtBinding:
+                                            description: InterfacePasstBinding connects
+                                              to a given network using passt usermode
+                                              networking.
+                                            type: object
                                           pciAddress:
                                             description: 'If specified, the virtual
                                               network interface will be placed on
@@ -29945,6 +30038,17 @@ var CRDsValidation map[string]string = map[string]string{
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
                                   type: object
+                                rebootPolicy:
+                                  description: |-
+                                    RebootPolicy specifies how the guest should behave on reboot.
+                                    Reboot (default): The guest is allowed to reboot silently.
+                                    Terminate: The VMI will be terminated on guest reboot, allowing
+                                    higher level controllers (such as the VM controller) to recreate
+                                    the VMI with any updated configuration such as boot order changes.
+                                  enum:
+                                  - Reboot
+                                  - Terminate
+                                  type: string
                                 resources:
                                   description: Resources describes the Compute Resources
                                     required by this vmi.

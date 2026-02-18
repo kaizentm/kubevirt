@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -37,6 +38,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/log"
 
+	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 )
 
@@ -83,6 +85,12 @@ const (
 
 	// lookup key in AdditionalProperties
 	AdditionalPropertiesPersistentReservationEnabled = "PersistentReservationEnabled"
+
+	// lookup key in AdditionalProperties
+	AdditionalPropertiesVirtTemplateDeploymentEnabled = "VirtTemplateDeploymentEnabled"
+
+	// lookup key in AdditionalProperties
+	AdditionalPropertiesHypervisorName = "HypervisorName"
 
 	// lookup key in AdditionalProperties
 	AdditionalPropertiesSynchronizationPort       = "SynchronizationPort"
@@ -158,13 +166,21 @@ func GetTargetConfigFromKVWithEnvVarManager(kv *v1.KubeVirt, envVarManager EnvVa
 		kv.Spec.Configuration.MigrationConfiguration.Network != nil {
 		additionalProperties[AdditionalPropertiesMigrationNetwork] = *kv.Spec.Configuration.MigrationConfiguration.Network
 	}
-	if kv.Spec.Configuration.DeveloperConfiguration != nil && len(kv.Spec.Configuration.DeveloperConfiguration.FeatureGates) > 0 {
-		for _, v := range kv.Spec.Configuration.DeveloperConfiguration.FeatureGates {
-			if v == featuregate.PersistentReservation {
-				additionalProperties[AdditionalPropertiesPersistentReservationEnabled] = ""
-			}
+
+	if isFeatureGateEnabledInKvConfig(&kv.Spec.Configuration, featuregate.PersistentReservation) {
+		additionalProperties[AdditionalPropertiesPersistentReservationEnabled] = ""
+	}
+
+	if isFeatureGateEnabledInKvConfig(&kv.Spec.Configuration, featuregate.Template) {
+		virtTemplateDeployment := kv.Spec.Configuration.VirtTemplateDeployment
+		if virtTemplateDeployment == nil || virtTemplateDeployment.Enabled == nil || *virtTemplateDeployment.Enabled {
+			additionalProperties[AdditionalPropertiesVirtTemplateDeploymentEnabled] = ""
 		}
 	}
+
+	hypervisor := virtconfig.GetHypervisorFromKvConfig(&kv.Spec.Configuration, isFeatureGateEnabledInKvConfig(&kv.Spec.Configuration, featuregate.ConfigurableHypervisor))
+	additionalProperties[AdditionalPropertiesHypervisorName] = hypervisor.Name
+
 	// don't use status.target* here, as that is always set, but we need to know if it was set by the spec and with that
 	// overriding shasums from env vars
 	return getConfig(kv.Spec.ImageRegistry,
@@ -172,6 +188,13 @@ func GetTargetConfigFromKVWithEnvVarManager(kv *v1.KubeVirt, envVarManager EnvVa
 		kv.Namespace,
 		additionalProperties,
 		envVarManager)
+}
+
+func isFeatureGateEnabledInKvConfig(kvConfig *v1.KubeVirtConfiguration, featureGate string) bool {
+	if kvConfig.DeveloperConfiguration != nil && len(kvConfig.DeveloperConfiguration.FeatureGates) > 0 {
+		return slices.Contains(kvConfig.DeveloperConfiguration.FeatureGates, featureGate)
+	}
+	return false
 }
 
 func getKVMapFromSpec(spec v1.KubeVirtSpec) map[string]string {
@@ -491,8 +514,22 @@ func (c *KubeVirtDeploymentConfig) GetImagePullSecrets() []k8sv1.LocalObjectRefe
 	return data
 }
 
+func (c *KubeVirtDeploymentConfig) GetHypervisorName() string {
+	value, found := c.AdditionalProperties[AdditionalPropertiesHypervisorName]
+	if found {
+		return value
+	} else {
+		return v1.KvmHypervisorName
+	}
+}
+
 func (c *KubeVirtDeploymentConfig) PersistentReservationEnabled() bool {
 	_, enabled := c.AdditionalProperties[AdditionalPropertiesPersistentReservationEnabled]
+	return enabled
+}
+
+func (c *KubeVirtDeploymentConfig) VirtTemplateDeploymentEnabled() bool {
+	_, enabled := c.AdditionalProperties[AdditionalPropertiesVirtTemplateDeploymentEnabled]
 	return enabled
 }
 
@@ -585,19 +622,22 @@ func (c *KubeVirtDeploymentConfig) generateInstallStrategyID() {
 
 // use KubeVirtDeploymentConfig by value because we modify sth just for the ID
 func getStringFromFields(c KubeVirtDeploymentConfig) string {
-	result := ""
-
 	// image prefix might be empty. In order to get the same ID for missing and empty, remove an empty one
 	if prefix, ok := c.AdditionalProperties[ImagePrefixKey]; ok && prefix == "" {
 		delete(c.AdditionalProperties, ImagePrefixKey)
 	}
 
-	v := reflect.ValueOf(c)
+	return fieldsToString(reflect.ValueOf(c))
+}
+
+func fieldsToString(v reflect.Value) string {
+	result := ""
 	for i := 0; i < v.NumField(); i++ {
 		fieldName := v.Type().Field(i).Name
 		result += fieldName
 		field := v.Field(i)
-		if field.Type().Kind() == reflect.Map {
+		switch field.Type().Kind() {
+		case reflect.Map:
 			keys := field.MapKeys()
 			nameKeys := make(map[string]reflect.Value, len(keys))
 			names := make([]string, 0, len(keys))
@@ -616,9 +656,12 @@ func getStringFromFields(c KubeVirtDeploymentConfig) string {
 				result += name
 				result += val
 			}
-		} else {
-			value := v.Field(i).String()
-			result += value
+		case reflect.Struct:
+			result += fieldsToString(field)
+		case reflect.String:
+			result += field.String()
+		default:
+			panic(fmt.Sprintf("fieldsToString unable to handle field %s", fieldName))
 		}
 	}
 	return result

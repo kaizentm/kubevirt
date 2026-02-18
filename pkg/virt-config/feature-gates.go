@@ -181,8 +181,8 @@ func (config *ClusterConfig) PanicDevicesEnabled() bool {
 	return config.isFeatureGateEnabled(featuregate.PanicDevicesGate)
 }
 
-func (config *ClusterConfig) PasstIPStackMigrationEnabled() bool {
-	return config.isFeatureGateEnabled(featuregate.PasstIPStackMigration)
+func (config *ClusterConfig) PasstBindingEnabled() bool {
+	return config.isFeatureGateEnabled(featuregate.PasstBinding)
 }
 
 func (config *ClusterConfig) DecentralizedLiveMigrationEnabled() bool {
@@ -211,4 +211,16 @@ func (config *ClusterConfig) MigrationPriorityQueueEnabled() bool {
 
 func (config *ClusterConfig) PodSecondaryInterfaceNamingUpgradeEnabled() bool {
 	return config.isFeatureGateEnabled(featuregate.PodSecondaryInterfaceNamingUpgrade)
+}
+
+func (config *ClusterConfig) ShouldDisableNADResourceInjection() bool {
+	return config.isFeatureGateEnabled(featuregate.DisableNADResourceInjection)
+}
+
+func (config *ClusterConfig) RebootPolicyEnabled() bool {
+	return config.isFeatureGateEnabled(featuregate.RebootPolicy)
+}
+
+func (config *ClusterConfig) TemplateEnabled() bool {
+	return config.isFeatureGateEnabled(featuregate.Template)
 }

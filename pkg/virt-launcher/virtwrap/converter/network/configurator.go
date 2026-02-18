@@ -29,6 +29,12 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/device"
 )
 
+const (
+	//nolint:gosec //linter is confusing passt for password
+	passtLogFilePath  = "/var/run/kubevirt/passt.log"
+	passtBackendPasst = "passt"
+)
+
 type DomainConfigurator struct {
 	domainAttachmentByInterfaceName map[string]string
 	useLaunchSecuritySEV            bool
@@ -82,66 +88,81 @@ func (d DomainConfigurator) Configure(vmi *v1.VirtualMachineInstance, domain *ap
 }
 
 func (d DomainConfigurator) configureInterface(iface *v1.Interface, vmi *v1.VirtualMachineInstance) (api.Interface, error) {
-	ifaceType := getInterfaceType(iface)
+	var builderOptions []builderOption
 
+	useLaunchSecurity := d.useLaunchSecuritySEV || d.useLaunchSecurityPV
+
+	ifaceType := getInterfaceType(iface)
 	modelType := ifaceType
 	if ifaceType == v1.VirtIO {
 		modelType = d.virtioModel
+
+		builderOptions = append(builderOptions, withDriver(newVirtioDriver(vmi, useLaunchSecurity)))
 	}
 
-	domainIface := api.Interface{
-		Model: &api.Model{
-			Type: modelType,
-		},
-		Alias: api.NewUserDefinedAlias(iface.Name),
-	}
-
-	if queueCount := uint(calculateNetworkQueues(vmi, ifaceType)); queueCount != 0 {
-		domainIface.Driver = &api.InterfaceDriver{Name: "vhost", Queues: &queueCount}
-	}
-
-	// Add a pciAddress if specified
 	if iface.PciAddress != "" {
 		addr, err := device.NewPciAddressField(iface.PciAddress)
 		if err != nil {
-			return domainIface, fmt.Errorf("failed to configure interface %s: %v", iface.Name, err)
+			return api.Interface{}, fmt.Errorf("failed to configure interface %s: %v", iface.Name, err)
 		}
-		domainIface.Address = addr
+		builderOptions = append(builderOptions, withPCIAddress(addr))
 	}
 
 	if iface.ACPIIndex > 0 {
-		domainIface.ACPI = &api.ACPI{Index: uint(iface.ACPIIndex)}
+		builderOptions = append(builderOptions, withACPIIndex(uint(iface.ACPIIndex)))
 	}
 
-	if d.domainAttachmentByInterfaceName[iface.Name] == string(v1.Tap) {
-		// use "ethernet" interface type, since we're using pre-configured tap devices
-		// https://libvirt.org/formatdomain.html#elementsNICSEthernet
-		domainIface.Type = "ethernet"
-		if iface.BootOrder != nil {
-			domainIface.BootOrder = &api.BootOrder{Order: *iface.BootOrder}
-		} else if d.isROMTuningSupported {
-			domainIface.Rom = &api.Rom{Enabled: "no"}
-		}
+	if iface.MacAddress != "" {
+		builderOptions = append(builderOptions, withMACAddress(iface.MacAddress))
 	}
 
-	if d.useLaunchSecuritySEV || d.useLaunchSecurityPV {
-		if d.isROMTuningSupported {
-			// It's necessary to disable the iPXE option ROM as iPXE is not aware of SEV
-			domainIface.Rom = &api.Rom{Enabled: "no"}
+	switch {
+	case d.domainAttachmentByInterfaceName[iface.Name] == string(v1.Tap):
+		builderOptions = append(builderOptions, d.tapBindingOptions(iface, useLaunchSecurity)...)
+
+	case iface.PasstBinding != nil:
+		passtOpts, err := d.passtBindingOptions(iface, vmi)
+		if err != nil {
+			return api.Interface{}, err
 		}
-		if ifaceType == v1.VirtIO {
-			if domainIface.Driver != nil {
-				domainIface.Driver.IOMMU = "on"
-			} else {
-				domainIface.Driver = &api.InterfaceDriver{Name: "vhost", IOMMU: "on"}
-			}
-		}
+		builderOptions = append(builderOptions, passtOpts...)
+	}
+
+	return newDomainInterface(iface.Name, modelType, builderOptions...), nil
+}
+
+func (d DomainConfigurator) tapBindingOptions(iface *v1.Interface, useLaunchSecurity bool) []builderOption {
+	// use "ethernet" interface type, since we're using pre-configured tap devices
+	// https://libvirt.org/formatdomain.html#elementsNICSEthernet
+	opts := []builderOption{withIfaceType("ethernet")}
+
+	if iface.BootOrder != nil {
+		opts = append(opts, withBootOrder(*iface.BootOrder))
+	}
+
+	if d.isROMTuningSupported && (iface.BootOrder == nil || useLaunchSecurity) {
+		opts = append(opts, withROMDisabled())
 	}
 
 	if iface.State == v1.InterfaceStateLinkDown {
-		domainIface.LinkState = &api.LinkState{State: "down"}
+		opts = append(opts, withLinkStateDown())
 	}
-	return domainIface, nil
+
+	return opts
+}
+
+func (d DomainConfigurator) passtBindingOptions(iface *v1.Interface, vmi *v1.VirtualMachineInstance) ([]builderOption, error) {
+	ifaceStatus := netvmispec.LookupInterfaceStatusByName(vmi.Status.Interfaces, iface.Name)
+	if ifaceStatus == nil || ifaceStatus.PodInterfaceName == "" {
+		return nil, fmt.Errorf("pod interface name not found in vmi %s status, for interface %s",
+			vmi.Name, iface.Name)
+	}
+	return []builderOption{
+		withIfaceType("vhostuser"),
+		withSource(api.InterfaceSource{Device: ifaceStatus.PodInterfaceName}),
+		withBackend(api.InterfaceBackend{Type: passtBackendPasst, LogFile: passtLogFilePath}),
+		withPortForward(generatePasstPortForward(iface, vmi)),
+	}, nil
 }
 
 func WithDomainAttachmentByInterfaceName(domainAttachmentByInterfaceName map[string]string) option {
@@ -189,9 +210,19 @@ func indexNetworksByName(networks []v1.Network) map[string]*v1.Network {
 	return netsByName
 }
 
-func calculateNetworkQueues(vmi *v1.VirtualMachineInstance, ifaceType string) uint32 {
-	if ifaceType != v1.VirtIO {
-		return 0
+func newVirtioDriver(vmi *v1.VirtualMachineInstance, requiresIOMMU bool) *api.InterfaceDriver {
+	var driver *api.InterfaceDriver
+	queueCount := uint(NetworkQueuesCapacity(vmi))
+
+	if queueCount > 0 || requiresIOMMU {
+		driver = &api.InterfaceDriver{Name: "vhost"}
+		if queueCount > 0 {
+			driver.Queues = &queueCount
+		}
+		if requiresIOMMU {
+			driver.IOMMU = "on"
+		}
 	}
-	return NetworkQueuesCapacity(vmi)
+
+	return driver
 }
