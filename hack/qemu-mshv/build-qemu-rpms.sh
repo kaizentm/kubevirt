@@ -56,7 +56,6 @@ docker exec -w /qemu-src qemu-build bash -c "
   set -ex
   mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
   cp qemu.spec ~/rpmbuild/SPECS
-  cp *.patch ~/rpmbuild/SOURCES/
   cp qemu-${QEMU_VERSION}.tar.xz ~/rpmbuild/SOURCES/
   cd ~/rpmbuild/SPECS
   dnf update -y
