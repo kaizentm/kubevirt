@@ -5,6 +5,7 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 
 	"kubevirt.io/kubevirt/pkg/hypervisor/kvm"
+	"kubevirt.io/kubevirt/pkg/hypervisor/mshv"
 )
 
 type LauncherResourceRenderer interface {
@@ -17,6 +18,8 @@ type LauncherResourceRenderer interface {
 func NewLauncherResourceRenderer(hypervisor string) LauncherResourceRenderer {
 	switch hypervisor {
 	// Other hypervisors can be added here
+	case v1.HyperVDirectHypervisorName:
+		return mshv.NewMshvLauncherResourceRenderer()
 	default:
 		return kvm.NewKvmLauncherResourceRenderer() // Default to KVM
 	}
