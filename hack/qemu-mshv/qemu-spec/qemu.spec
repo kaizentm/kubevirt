@@ -210,7 +210,7 @@ Packaging the latest (at time of writing) version of qemu that is not available 
 
 %prep
 %setup -q -n %{name}-%{version}
-%patch 0 -p1
+%autopatch -p1
 
 
 
