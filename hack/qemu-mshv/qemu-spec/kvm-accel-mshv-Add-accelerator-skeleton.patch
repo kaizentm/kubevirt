@@ -1,0 +1,291 @@
+From 185d76c5267fb97eb51df160b212cded1fb72e86 Mon Sep 17 00:00:00 2001
+From: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Date: Thu, 2 Oct 2025 18:25:02 +0200
+Subject: [PATCH 08/31] accel/mshv: Add accelerator skeleton
+
+RH-Author: Igor Mammedov <imammedo@redhat.com>
+RH-MergeRequest: 435: x86: enablement for Azure L1VH OCP readiness
+RH-Jira: RHEL-132193
+RH-Acked-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [7/30] 3490738c5fd68ed2d66f1ab5599252cbbc76ef5f
+
+Introduce the initial scaffold for the MSHV (Microsoft Hypervisor)
+accelerator backend. This includes the basic directory structure and
+stub implementations needed to integrate with QEMU's accelerator
+framework.
+
+Signed-off-by: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Link: https://lore.kernel.org/r/20250916164847.77883-8-magnuskulke@linux.microsoft.com
+[Move include of linux/mshv.h in the per-target section; create
+ include/system/mshv_int.h. - Paolo]
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+(cherry picked from commit d0d2918f968c55628e17e2733b799fcefb50f16b)
+Signed-off-by: Igor Mammedov <imammedo@redhat.com>
+---
+ accel/meson.build         |   1 +
+ accel/mshv/meson.build    |   6 ++
+ accel/mshv/mshv-all.c     | 144 ++++++++++++++++++++++++++++++++++++++
+ include/system/mshv.h     |  12 ++++
+ include/system/mshv_int.h |  41 +++++++++++
+ 5 files changed, 204 insertions(+)
+ create mode 100644 accel/mshv/meson.build
+ create mode 100644 accel/mshv/mshv-all.c
+ create mode 100644 include/system/mshv_int.h
+
+diff --git a/accel/meson.build b/accel/meson.build
+index 6349efe682..983dfd0bd5 100644
+--- a/accel/meson.build
++++ b/accel/meson.build
+@@ -10,6 +10,7 @@ if have_system
+   subdir('kvm')
+   subdir('xen')
+   subdir('stubs')
++  subdir('mshv')
+ endif
+ 
+ # qtest
+diff --git a/accel/mshv/meson.build b/accel/mshv/meson.build
+new file mode 100644
+index 0000000000..4c03ac7921
+--- /dev/null
++++ b/accel/mshv/meson.build
+@@ -0,0 +1,6 @@
++mshv_ss = ss.source_set()
++mshv_ss.add(if_true: files(
++  'mshv-all.c'
++))
++
++specific_ss.add_all(when: 'CONFIG_MSHV', if_true: mshv_ss)
+diff --git a/accel/mshv/mshv-all.c b/accel/mshv/mshv-all.c
+new file mode 100644
+index 0000000000..ae12f0f58b
+--- /dev/null
++++ b/accel/mshv/mshv-all.c
+@@ -0,0 +1,144 @@
++/*
++ * QEMU MSHV support
++ *
++ * Copyright Microsoft, Corp. 2025
++ *
++ * Authors:
++ *  Ziqiao Zhou       <ziqiaozhou@microsoft.com>
++ *  Magnus Kulke      <magnuskulke@microsoft.com>
++ *  Jinank Jain       <jinankjain@microsoft.com>
++ *
++ * SPDX-License-Identifier: GPL-2.0-or-later
++ *
++ */
++
++#include "qemu/osdep.h"
++#include "qapi/error.h"
++#include "qemu/error-report.h"
++#include "qemu/event_notifier.h"
++#include "qemu/module.h"
++#include "qemu/main-loop.h"
++#include "hw/boards.h"
++
++#include "hw/hyperv/hvhdk.h"
++#include "hw/hyperv/hvhdk_mini.h"
++#include "hw/hyperv/hvgdk.h"
++#include "linux/mshv.h"
++
++#include "qemu/accel.h"
++#include "qemu/guest-random.h"
++#include "accel/accel-ops.h"
++#include "accel/accel-cpu-ops.h"
++#include "system/cpus.h"
++#include "system/runstate.h"
++#include "system/accel-blocker.h"
++#include "system/address-spaces.h"
++#include "system/mshv.h"
++#include "system/mshv_int.h"
++#include "system/reset.h"
++#include "trace.h"
++#include <err.h>
++#include <stdint.h>
++#include <sys/ioctl.h>
++
++#define TYPE_MSHV_ACCEL ACCEL_CLASS_NAME("mshv")
++
++DECLARE_INSTANCE_CHECKER(MshvState, MSHV_STATE, TYPE_MSHV_ACCEL)
++
++bool mshv_allowed;
++
++MshvState *mshv_state;
++
++static int mshv_init(AccelState *as, MachineState *ms)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static void mshv_start_vcpu_thread(CPUState *cpu)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static void mshv_cpu_synchronize_post_init(CPUState *cpu)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static void mshv_cpu_synchronize_post_reset(CPUState *cpu)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static void mshv_cpu_synchronize_pre_loadvm(CPUState *cpu)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static void mshv_cpu_synchronize(CPUState *cpu)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static bool mshv_cpus_are_resettable(void)
++{
++    error_report("unimplemented");
++    abort();
++}
++
++static void mshv_accel_class_init(ObjectClass *oc, const void *data)
++{
++    AccelClass *ac = ACCEL_CLASS(oc);
++
++    ac->name = "MSHV";
++    ac->init_machine = mshv_init;
++    ac->allowed = &mshv_allowed;
++}
++
++static void mshv_accel_instance_init(Object *obj)
++{
++    MshvState *s = MSHV_STATE(obj);
++
++    s->vm = 0;
++}
++
++static const TypeInfo mshv_accel_type = {
++    .name = TYPE_MSHV_ACCEL,
++    .parent = TYPE_ACCEL,
++    .instance_init = mshv_accel_instance_init,
++    .class_init = mshv_accel_class_init,
++    .instance_size = sizeof(MshvState),
++};
++
++static void mshv_accel_ops_class_init(ObjectClass *oc, const void *data)
++{
++    AccelOpsClass *ops = ACCEL_OPS_CLASS(oc);
++
++    ops->create_vcpu_thread = mshv_start_vcpu_thread;
++    ops->synchronize_post_init = mshv_cpu_synchronize_post_init;
++    ops->synchronize_post_reset = mshv_cpu_synchronize_post_reset;
++    ops->synchronize_state = mshv_cpu_synchronize;
++    ops->synchronize_pre_loadvm = mshv_cpu_synchronize_pre_loadvm;
++    ops->cpus_are_resettable = mshv_cpus_are_resettable;
++    ops->handle_interrupt = generic_handle_interrupt;
++}
++
++static const TypeInfo mshv_accel_ops_type = {
++    .name = ACCEL_OPS_NAME("mshv"),
++    .parent = TYPE_ACCEL_OPS,
++    .class_init = mshv_accel_ops_class_init,
++    .abstract = true,
++};
++
++static void mshv_type_init(void)
++{
++    type_register_static(&mshv_accel_type);
++    type_register_static(&mshv_accel_ops_type);
++}
++
++type_init(mshv_type_init);
+diff --git a/include/system/mshv.h b/include/system/mshv.h
+index 2a504ed81f..434ea9682e 100644
+--- a/include/system/mshv.h
++++ b/include/system/mshv.h
+@@ -14,8 +14,17 @@
+ #ifndef QEMU_MSHV_H
+ #define QEMU_MSHV_H
+ 
++#include "qemu/osdep.h"
++#include "qemu/accel.h"
++#include "hw/hyperv/hyperv-proto.h"
++#include "hw/hyperv/hvhdk.h"
++#include "qapi/qapi-types-common.h"
++#include "system/memory.h"
++#include "accel/accel-ops.h"
++
+ #ifdef COMPILING_PER_TARGET
+ #ifdef CONFIG_MSHV
++#include <linux/mshv.h>
+ #define CONFIG_MSHV_IS_POSSIBLE
+ #endif
+ #else
+@@ -30,6 +39,9 @@ extern bool mshv_allowed;
+ #endif
+ #define mshv_msi_via_irqfd_enabled() false
+ 
++typedef struct MshvState MshvState;
++extern MshvState *mshv_state;
++
+ /* interrupt */
+ int mshv_irqchip_add_msi_route(int vector, PCIDevice *dev);
+ int mshv_irqchip_update_msi_route(int virq, MSIMessage msg, PCIDevice *dev);
+diff --git a/include/system/mshv_int.h b/include/system/mshv_int.h
+new file mode 100644
+index 0000000000..132491b599
+--- /dev/null
++++ b/include/system/mshv_int.h
+@@ -0,0 +1,41 @@
++/*
++ * QEMU MSHV support
++ *
++ * Copyright Microsoft, Corp. 2025
++ *
++ * Authors: Ziqiao Zhou  <ziqiaozhou@microsoft.com>
++ *          Magnus Kulke <magnuskulke@microsoft.com>
++ *          Jinank Jain  <jinankjain@microsoft.com>
++ *
++ * SPDX-License-Identifier: GPL-2.0-or-later
++ *
++ */
++
++#ifndef QEMU_MSHV_INT_H
++#define QEMU_MSHV_INT_H
++
++struct AccelCPUState {
++    int cpufd;
++    bool dirty;
++};
++
++typedef struct MshvMemoryListener {
++    MemoryListener listener;
++    int as_id;
++} MshvMemoryListener;
++
++typedef struct MshvAddressSpace {
++    MshvMemoryListener *ml;
++    AddressSpace *as;
++} MshvAddressSpace;
++
++struct MshvState {
++    AccelState parent_obj;
++    int vm;
++    MshvMemoryListener memory_listener;
++    /* number of listeners */
++    int nr_as;
++    MshvAddressSpace *as;
++};
++
++#endif
+-- 
+2.51.1
+

@@ -1,0 +1,32 @@
+From fda4591f6ca6bcec0728583086622bef4bda4ff4 Mon Sep 17 00:00:00 2001
+From: Sebastian Ott <sebott@redhat.com>
+Date: Wed, 15 Oct 2025 16:39:16 +0200
+Subject: [PATCH] hw/core/machine: rhel machine types compat fix
+
+Incorporate hw_compat_10_0 to downstream compat bits.
+
+Signed-off-by: Sebastian Ott <sebott@redhat.com>
+---
+ hw/core/machine.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/hw/core/machine.c b/hw/core/machine.c
+index f774a6ebdb..c10c733b7d 100644
+--- a/hw/core/machine.c
++++ b/hw/core/machine.c
+@@ -322,6 +322,15 @@ GlobalProperty hw_compat_rhel_9_8[] = {
+     { "migration", "send-switchover-start", "off"},
+   /* hw_compat_rhel_9_8 from hw_compat_9_2 */
+     { "vfio-pci", "x-migration-multifd-transfer", "off" },
++  /* hw_compat_rhel_9_8 from hw_compat_10_0 */
++    { "scsi-hd", "dpofua", "off" },
++  /* hw_compat_rhel_9_8 from hw_compat_10_0 */
++    { "vfio-pci", "x-migration-load-config-after-iter", "off" },
++  /* hw_compat_rhel_9_8 from hw_compat_10_0 */
++    { "ramfb", "use-legacy-x86-rom", "true"},
++  /* hw_compat_rhel_9_8 from hw_compat_10_0 */
++    { "vfio-pci-nohotplug", "use-legacy-x86-rom", "true" },
++
+ };
+ const size_t hw_compat_rhel_9_8_len = G_N_ELEMENTS(hw_compat_rhel_9_8);
+ 

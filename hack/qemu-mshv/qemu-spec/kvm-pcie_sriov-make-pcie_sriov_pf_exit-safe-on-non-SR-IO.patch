@@ -1,0 +1,74 @@
+From 12f78b7e20b751e64a3de3e594579673956d60dc Mon Sep 17 00:00:00 2001
+From: Stefan Hajnoczi <stefanha@redhat.com>
+Date: Wed, 24 Sep 2025 11:51:53 -0400
+Subject: [PATCH 01/31] pcie_sriov: make pcie_sriov_pf_exit() safe on
+ non-SR-IOV devices
+
+RH-Author: Stefan Hajnoczi <stefanha@redhat.com>
+RH-MergeRequest: 434: pcie_sriov: make pcie_sriov_pf_exit() safe on non-SR-IOV devices
+RH-Jira: RHEL-131144
+RH-Acked-by: Kevin Wolf <kwolf@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [1/1] 3b9b7e7385fe8e3700865955f6c3b9a350e8a545 (stefanha/centos-stream-qemu-kvm)
+
+Commit 3f9cfaa92c96 ("virtio-pci: Implement SR-IOV PF") added an
+unconditional call from virtio_pci_exit() to pcie_sriov_pf_exit().
+
+pcie_sriov_pf_exit() reads from the SR-IOV Capability in Configuration
+Space:
+
+  uint8_t *cfg = dev->config + dev->exp.sriov_cap;
+  ...
+  unparent_vfs(dev, pci_get_word(cfg + PCI_SRIOV_TOTAL_VF));
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This results in undefined behavior when dev->exp.sriov_cap is 0 because
+this is not an SR-IOV device. For example, unparent_vfs() segfaults when
+total_vfs happens to be non-zero.
+
+Fix this by returning early from pcie_sriov_pf_exit() when
+dev->exp.sriov_cap is 0 because this is not an SR-IOV device.
+
+Cc: Akihiko Odaki <odaki@rsg.ci.i.u-tokyo.ac.jp>
+Cc: Michael S. Tsirkin <mst@redhat.com>
+Reported-by: Qing Wang <qinwang@redhat.com>
+Buglink: https://issues.redhat.com/browse/RHEL-116443
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+Reviewed-by: Akihiko Odaki <odaki@rsg.ci.i.u-tokyo.ac.jp>
+Fixes: cab1398a60eb ("pcie_sriov: Reuse SR-IOV VF device instances")
+Reviewed-by: Michael S. Tsirkin <mst@redhat.com>
+Message-ID: <20250924155153.579495-1-stefanha@redhat.com>
+Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
+(cherry picked from commit bab681f752048c3bc22d561b1d314c7ec16419c9)
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+---
+ hw/pci/pcie_sriov.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/hw/pci/pcie_sriov.c b/hw/pci/pcie_sriov.c
+index 8a4bf0d6f7..cf1b5b5c05 100644
+--- a/hw/pci/pcie_sriov.c
++++ b/hw/pci/pcie_sriov.c
+@@ -195,7 +195,9 @@ bool pcie_sriov_pf_init(PCIDevice *dev, uint16_t offset,
+ 
+ void pcie_sriov_pf_exit(PCIDevice *dev)
+ {
+-    uint8_t *cfg = dev->config + dev->exp.sriov_cap;
++    if (dev->exp.sriov_cap == 0) {
++        return;
++    }
+ 
+     if (dev->exp.sriov_pf.vf_user_created) {
+         uint16_t ven_id = pci_get_word(dev->config + PCI_VENDOR_ID);
+@@ -211,6 +213,8 @@ void pcie_sriov_pf_exit(PCIDevice *dev)
+             pci_config_set_device_id(dev->exp.sriov_pf.vf[i]->config, vf_dev_id);
+         }
+     } else {
++        uint8_t *cfg = dev->config + dev->exp.sriov_cap;
++
+         unparent_vfs(dev, pci_get_word(cfg + PCI_SRIOV_TOTAL_VF));
+     }
+ }
+-- 
+2.51.1
+

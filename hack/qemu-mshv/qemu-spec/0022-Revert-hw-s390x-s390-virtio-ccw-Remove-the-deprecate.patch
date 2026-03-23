@@ -1,0 +1,69 @@
+From 98acfd50ce2a7e540c89196020f70a1e95071f1d Mon Sep 17 00:00:00 2001
+From: Thomas Huth <thuth@redhat.com>
+Date: Wed, 1 Oct 2025 11:42:35 +0200
+Subject: [PATCH] Revert "hw/s390x/s390-virtio-ccw: Remove the deprecated 3.1
+ machine type"
+
+This reverts commit 3b912daea079445aad40d8e189c40597b229cf10.
+
+JIRA: https://issues.redhat.com/browse/RHEL-105900
+Upstream status: downstream-only
+
+We still need the code for the old machine types since the -rhel7.6.0
+machine type is based on these old upstream machine types.
+
+Signed-off-by: Thomas Huth <thuth@redhat.com>
+---
+ hw/s390x/s390-virtio-ccw.c  | 16 ++++++++++++++++
+ target/s390x/gen-features.c |  4 ++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/hw/s390x/s390-virtio-ccw.c b/hw/s390x/s390-virtio-ccw.c
+index ff2efc1b93..40d9c209f4 100644
+--- a/hw/s390x/s390-virtio-ccw.c
++++ b/hw/s390x/s390-virtio-ccw.c
+@@ -1196,6 +1196,22 @@ static void ccw_machine_4_0_class_options(MachineClass *mc)
+ }
+ DEFINE_CCW_MACHINE(4, 0);
+ 
++static void ccw_machine_3_1_instance_options(MachineState *machine)
++{
++    static const S390FeatInit qemu_cpu_feat = { S390_FEAT_LIST_QEMU_V3_1 };
++    ccw_machine_4_0_instance_options(machine);
++    s390_cpudef_featoff_greater(14, 1, S390_FEAT_MULTIPLE_EPOCH);
++    s390_cpudef_group_featoff_greater(14, 1, S390_FEAT_GROUP_MULTIPLE_EPOCH_PTFF);
++    s390_set_qemu_cpu_model(0x2827, 12, 2, qemu_cpu_feat);
++}
++
++static void ccw_machine_3_1_class_options(MachineClass *mc)
++{
++    ccw_machine_4_0_class_options(mc);
++    compat_props_add(mc->compat_props, hw_compat_3_1, hw_compat_3_1_len);
++}
++DEFINE_CCW_MACHINE(3, 1);
++
+ #endif /* disabled for RHEL */
+ 
+ static void ccw_rhel_machine_9_6_0_instance_options(MachineState *machine)
+diff --git a/target/s390x/gen-features.c b/target/s390x/gen-features.c
+index 4346b92431..754fc843d2 100644
+--- a/target/s390x/gen-features.c
++++ b/target/s390x/gen-features.c
+@@ -849,6 +849,9 @@ static uint16_t qemu_MIN[] = {
+     S390_FEAT_GROUP_PLO,
+     S390_FEAT_ESAN3,
+     S390_FEAT_ZARCH,
++};
++
++static uint16_t qemu_V3_1[] = {
+     S390_FEAT_DAT_ENH,
+     S390_FEAT_IDTE_SEGMENT,
+     S390_FEAT_STFLE,
+@@ -1052,6 +1055,7 @@ static FeatGroupDefSpec FeatGroupDef[] = {
+  *******************************/
+ static FeatGroupDefSpec QemuFeatDef[] = {
+     QEMU_FEAT_INITIALIZER(MIN),
++    QEMU_FEAT_INITIALIZER(V3_1),
+     QEMU_FEAT_INITIALIZER(V4_0),
+     QEMU_FEAT_INITIALIZER(V4_1),
+     QEMU_FEAT_INITIALIZER(V6_0),

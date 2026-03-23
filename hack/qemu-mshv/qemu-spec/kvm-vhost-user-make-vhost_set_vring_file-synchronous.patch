@@ -1,0 +1,124 @@
+From 5a92c8718682799708c62848c961efd245b72f9e Mon Sep 17 00:00:00 2001
+From: German Maglione <gmaglione@redhat.com>
+Date: Wed, 22 Oct 2025 18:24:05 +0200
+Subject: [PATCH 1/2] vhost-user: make vhost_set_vring_file() synchronous
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Hanna Czenczek <hreitz@redhat.com>
+RH-MergeRequest: 461: vhost-user: make vhost_set_vring_file() synchronous
+RH-Jira: RHEL-147422
+RH-Acked-by: Stefano Garzarella <sgarzare@redhat.com>
+RH-Acked-by: Eugenio Pérez <eperezma@redhat.com>
+RH-Acked-by: German Maglione <None>
+RH-Commit: [1/1] 7af599d15bd72f3752a0eb9c1f2a8a942a4cc79b (hreitz/qemu-kvm-c-9-s)
+
+QEMU sends all of VHOST_USER_SET_VRING_KICK, _CALL, and _ERR without
+setting the NEED_REPLY flag, i.e. by the time the respective
+vhost_user_set_vring_*() function returns, it is completely up to chance
+whether the back-end has already processed the request and switched over
+to the new FD for interrupts.
+
+At least for vhost_user_set_vring_call(), that is a problem: It is
+called through vhost_virtqueue_mask(), which is generally used in the
+VirtioDeviceClass.guest_notifier_mask() implementation, which is in turn
+called by virtio_pci_one_vector_unmask().  The fact that we do not wait
+for the back-end to install the FD leads to a race there:
+
+Masking interrupts is implemented by redirecting interrupts to an
+internal event FD that is not connected to the guest.  Unmasking then
+re-installs the guest-connected IRQ FD, then checks if there are pending
+interrupts left on the masked event FD, and if so, issues an interrupt
+to the guest.
+
+Because guest_notifier_mask() (through vhost_user_set_vring_call())
+doesn't wait for the back-end to switch over to the actual IRQ FD, it's
+possible we check for pending interrupts while the back-end is still
+using the masked event FD, and then we will lose interrupts that occur
+before the back-end finally does switch over.
+
+Fix this by setting NEED_REPLY on those VHOST_USER_SET_VRING_* messages,
+so when we get that reply, we know that the back-end is now using the
+new FD.
+
+We have a few reports of a virtiofs mount hanging:
+- https://gitlab.com/virtio-fs/virtiofsd/-/issues/101
+- https://gitlab.com/virtio-fs/virtiofsd/-/issues/133
+- https://gitlab.com/virtio-fs/virtiofsd/-/issues/213
+
+This is quite difficult bug to reproduce, even for the reporters.
+It only happens on production, every few weeks, and/or on 1 in 300 VMs.
+So, we are not 100% sure this fixes that issue. However, we think this
+is still a bug, and at least we have one report that claims this fixed
+the issue:
+
+https://gitlab.com/virtio-fs/virtiofsd/-/issues/133#note_2743209419
+
+Fixes: 5f6f6664bf24 ("Add vhost-user as a vhost backend.")
+Signed-off-by: German Maglione <gmaglione@redhat.com>
+Signed-off-by: Hanna Czenczek <hreitz@redhat.com>
+Reviewed-by: Eugenio Pérez <eperezma@redhat.com>
+Reviewed-by: Stefano Garzarella <sgarzare@redhat.com>
+Reviewed-by: Michael S. Tsirkin <mst@redhat.com>
+Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
+Message-Id: <20251022162405.318672-1-gmaglione@redhat.com>
+(cherry picked from commit 1ba9a5220325dd5260a0c37b6299ce38364a5120)
+Signed-off-by: Hanna Czenczek <hreitz@redhat.com>
+---
+ hw/virtio/vhost-user.c | 24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/hw/virtio/vhost-user.c b/hw/virtio/vhost-user.c
+index 1e1d6b0d6e..3e1e1d8d7e 100644
+--- a/hw/virtio/vhost-user.c
++++ b/hw/virtio/vhost-user.c
+@@ -1327,8 +1327,11 @@ static int vhost_set_vring_file(struct vhost_dev *dev,
+                                 VhostUserRequest request,
+                                 struct vhost_vring_file *file)
+ {
++    int ret;
+     int fds[VHOST_USER_MAX_RAM_SLOTS];
+     size_t fd_num = 0;
++    bool reply_supported = virtio_has_feature(dev->protocol_features,
++                                              VHOST_USER_PROTOCOL_F_REPLY_ACK);
+     VhostUserMsg msg = {
+         .hdr.request = request,
+         .hdr.flags = VHOST_USER_VERSION,
+@@ -1336,13 +1339,32 @@ static int vhost_set_vring_file(struct vhost_dev *dev,
+         .hdr.size = sizeof(msg.payload.u64),
+     };
+ 
++    if (reply_supported) {
++        msg.hdr.flags |= VHOST_USER_NEED_REPLY_MASK;
++    }
++
+     if (file->fd > 0) {
+         fds[fd_num++] = file->fd;
+     } else {
+         msg.payload.u64 |= VHOST_USER_VRING_NOFD_MASK;
+     }
+ 
+-    return vhost_user_write(dev, &msg, fds, fd_num);
++    ret = vhost_user_write(dev, &msg, fds, fd_num);
++    if (ret < 0) {
++        return ret;
++    }
++
++    if (reply_supported) {
++        /*
++         * wait for the back-end's confirmation that the new FD is active,
++         * otherwise guest_notifier_mask() could check for pending interrupts
++         * while the back-end is still using the masked event FD, losing
++         * interrupts that occur before the back-end installs the FD
++         */
++        return process_message_reply(dev, &msg);
++    }
++
++    return 0;
+ }
+ 
+ static int vhost_user_set_vring_kick(struct vhost_dev *dev,
+-- 
+2.52.0
+

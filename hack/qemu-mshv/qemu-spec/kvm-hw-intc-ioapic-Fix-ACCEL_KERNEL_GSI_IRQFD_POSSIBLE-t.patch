@@ -1,0 +1,68 @@
+From b10f6682b2a1462efb83ba6f407d9450e82b63ac Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?C=C3=A9dric=20Le=20Goater?= <clg@redhat.com>
+Date: Thu, 6 Nov 2025 11:51:48 +0100
+Subject: [PATCH 5/6] hw/intc/ioapic: Fix ACCEL_KERNEL_GSI_IRQFD_POSSIBLE typo
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Cédric Le Goater <clg@redhat.com>
+RH-MergeRequest: 453: hw/intc/ioapic: Fix ACCEL_KERNEL_GSI_IRQFD_POSSIBLE typo
+RH-Jira: RHEL-140187
+RH-Acked-by: Thomas Huth <thuth@redhat.com>
+RH-Acked-by: Igor Mammedov <imammedo@redhat.com>
+RH-Commit: [1/1] 2a6d42467dceb8abf7679f1b73f1491bbf67ebc1 (clegoate/qemu-kvm-centos)
+
+Commit 638ac1c78457 introduced a regression in interrupt remapping
+when running a VM configured with an intel-iommu device and an
+assigned PCI VF. During boot, Linux reports repeated messages :
+
+ [   15.416794] __common_interrupt: 2.37 No irq handler for vector
+ [   15.417266] __common_interrupt: 2.37 No irq handler for vector
+ [   15.417733] __common_interrupt: 2.37 No irq handler for vector
+ [   15.418202] __common_interrupt: 2.37 No irq handler for vector
+ [   15.418670] __common_interrupt: 2.37 No irq handler for vector
+
+and may eventually hang.
+
+The issue is caused by the incorrect use of the macro
+ACCEL_KERNEL_GSI_IRQFD_POSSIBLE, which should instead be
+ACCEL_GSI_IRQFD_POSSIBLE.
+
+Fixes: 638ac1c78457 ("hw/intc: Generalize APIC helper names from kvm_* to accel_*")
+Cc: Magnus Kulke <magnuskulke@linux.microsoft.com>
+Signed-off-by: Cédric Le Goater <clg@redhat.com>
+Reviewed-by: Philippe Mathieu-Daudé <philmd@linaro.org>
+Message-ID: <20251106105148.737093-1-clg@redhat.com>
+Signed-off-by: Philippe Mathieu-Daudé <philmd@linaro.org>
+(cherry picked from commit 3abfbb571143ba865488b6c11f8ad75dda97d1a3)
+Signed-off-by: Cédric Le Goater <clg@redhat.com>
+---
+ hw/intc/ioapic.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/hw/intc/ioapic.c b/hw/intc/ioapic.c
+index e431d00311..38e4384648 100644
+--- a/hw/intc/ioapic.c
++++ b/hw/intc/ioapic.c
+@@ -216,7 +216,7 @@ static void ioapic_update_kvm_routes(IOAPICCommonState *s)
+ #endif
+ }
+ 
+-#ifdef ACCEL_KERNEL_GSI_IRQFD_POSSIBLE
++#ifdef ACCEL_GSI_IRQFD_POSSIBLE
+ static void ioapic_iec_notifier(void *private, bool global,
+                                 uint32_t index, uint32_t mask)
+ {
+@@ -434,7 +434,7 @@ static const MemoryRegionOps ioapic_io_ops = {
+ 
+ static void ioapic_machine_done_notify(Notifier *notifier, void *data)
+ {
+-#ifdef ACCEL_KERNEL_GSI_IRQFD_POSSIBLE
++#ifdef ACCEL_GSI_IRQFD_POSSIBLE
+     IOAPICCommonState *s = container_of(notifier, IOAPICCommonState,
+                                         machine_done);
+ 
+-- 
+2.52.0
+

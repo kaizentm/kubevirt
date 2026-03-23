@@ -1,0 +1,66 @@
+From 4ccd1607b625210713d2989c78edf8bc0a19979c Mon Sep 17 00:00:00 2001
+From: Hanna Czenczek <hreitz@redhat.com>
+Date: Mon, 10 Nov 2025 16:48:45 +0100
+Subject: [PATCH 3/5] block/io: Take reqs_lock for tracked_requests
+
+RH-Author: Hanna Czenczek <hreitz@redhat.com>
+RH-MergeRequest: 455: Multithreading fixes for rbd, curl, qcow2
+RH-Jira: RHEL-67115
+RH-Acked-by: Stefan Hajnoczi <stefanha@redhat.com>
+RH-Acked-by: Kevin Wolf <kwolf@redhat.com>
+RH-Commit: [3/5] 2acca3f6a63997d0678a06e9d6341bce5bcbcb70 (hreitz/qemu-kvm-c-9-s)
+
+bdrv_co_get_self_request() does not take a lock around iterating through
+bs->tracked_requests.  With multiqueue, it may thus iterate over a list
+that is in the process of being modified, producing an assertion
+failure:
+
+../block/file-posix.c:3702: raw_do_pwrite_zeroes: Assertion `req' failed.
+
+[0] abort() at /lib64/libc.so.6
+[1] __assert_fail_base.cold() at /lib64/libc.so.6
+[2] raw_do_pwrite_zeroes() at ../block/file-posix.c:3702
+[3] bdrv_co_do_pwrite_zeroes() at ../block/io.c:1910
+[4] bdrv_aligned_pwritev() at ../block/io.c:2109
+[5] bdrv_co_do_zero_pwritev() at ../block/io.c:2192
+[6] bdrv_co_pwritev_part() at ../block/io.c:2292
+[7] bdrv_co_pwritev() at ../block/io.c:2225
+[8] handle_alloc_space() at ../block/qcow2.c:2573
+[9] qcow2_co_pwritev_task() at ../block/qcow2.c:2625
+
+Fix this by taking reqs_lock.
+
+Cc: qemu-stable@nongnu.org
+Signed-off-by: Hanna Czenczek <hreitz@redhat.com>
+Message-ID: <20251110154854.151484-11-hreitz@redhat.com>
+Reviewed-by: Stefan Hajnoczi <stefanha@redhat.com>
+Reviewed-by: Kevin Wolf <kwolf@redhat.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+(cherry picked from commit 9b9ee60c07f52009f9bb659f54c42afae95c1d94)
+Signed-off-by: Hanna Czenczek <hreitz@redhat.com>
+---
+ block/io.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/block/io.c b/block/io.c
+index 9bd8ba8431..37df1e0253 100644
+--- a/block/io.c
++++ b/block/io.c
+@@ -721,11 +721,14 @@ BdrvTrackedRequest *coroutine_fn bdrv_co_get_self_request(BlockDriverState *bs)
+     Coroutine *self = qemu_coroutine_self();
+     IO_CODE();
+ 
++    qemu_mutex_lock(&bs->reqs_lock);
+     QLIST_FOREACH(req, &bs->tracked_requests, list) {
+         if (req->co == self) {
++            qemu_mutex_unlock(&bs->reqs_lock);
+             return req;
+         }
+     }
++    qemu_mutex_unlock(&bs->reqs_lock);
+ 
+     return NULL;
+ }
+-- 
+2.52.0
+

@@ -1,0 +1,73 @@
+From eecb1da59016499f0ab4d25fc71386897e38cde4 Mon Sep 17 00:00:00 2001
+From: Kevin Wolf <kwolf@redhat.com>
+Date: Wed, 19 Nov 2025 18:27:20 +0100
+Subject: [PATCH] block-backend: Fix race when resuming queued requests
+
+RH-Author: Kevin Wolf <kwolf@redhat.com>
+RH-MergeRequest: 433: block-backend: Fix race when resuming queued requests [c9s]
+RH-Jira: RHEL-133008
+RH-Acked-by: Stefan Hajnoczi <stefanha@redhat.com>
+RH-Acked-by: Hanna Czenczek <hreitz@redhat.com>
+RH-Commit: [1/1] f045041153480168d8aba63d074b27b008f9a5f0 (kmwolf/centos-qemu-kvm)
+
+When new requests arrive at a BlockBackend that is currently drained,
+these requests are queued until the drain section ends.
+
+There is a race window between blk_root_drained_end() waking up a queued
+request in an iothread from the main thread and blk_wait_while_drained()
+actually being woken up in the iothread and calling blk_inc_in_flight().
+If the BlockBackend is drained again during this window, drain won't
+wait for this request and it will sneak in when the BlockBackend is
+already supposed to be quiesced. This causes assertion failures in
+bdrv_drain_all_begin() and can have other unintended consequences.
+
+Fix this by increasing the in_flight counter immediately when scheduling
+the request to be resumed so that the next drain will wait for it to
+complete.
+
+Cc: qemu-stable@nongnu.org
+Reported-by: Andrey Drobyshev <andrey.drobyshev@virtuozzo.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+Message-ID: <20251119172720.135424-1-kwolf@redhat.com>
+Reviewed-by: Hanna Czenczek <hreitz@redhat.com>
+Tested-by: Andrey Drobyshev <andrey.drobyshev@virtuozzo.com>
+Reviewed-by: Fiona Ebner <f.ebner@proxmox.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+(cherry picked from commit 8eeaa706ba73251063cb80d87ae838d2d5b08e9a)
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+---
+ block/block-backend.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/block/block-backend.c b/block/block-backend.c
+index f8d6ba65c1..d6df369188 100644
+--- a/block/block-backend.c
++++ b/block/block-backend.c
+@@ -1318,9 +1318,9 @@ static void coroutine_fn blk_wait_while_drained(BlockBackend *blk)
+          * section.
+          */
+         qemu_mutex_lock(&blk->queued_requests_lock);
++        /* blk_root_drained_end() has the corresponding blk_inc_in_flight() */
+         blk_dec_in_flight(blk);
+         qemu_co_queue_wait(&blk->queued_requests, &blk->queued_requests_lock);
+-        blk_inc_in_flight(blk);
+         qemu_mutex_unlock(&blk->queued_requests_lock);
+     }
+ }
+@@ -2767,9 +2767,11 @@ static void blk_root_drained_end(BdrvChild *child)
+             blk->dev_ops->drained_end(blk->dev_opaque);
+         }
+         qemu_mutex_lock(&blk->queued_requests_lock);
+-        while (qemu_co_enter_next(&blk->queued_requests,
+-                                  &blk->queued_requests_lock)) {
++        while (!qemu_co_queue_empty(&blk->queued_requests)) {
+             /* Resume all queued requests */
++            blk_inc_in_flight(blk);
++            qemu_co_enter_next(&blk->queued_requests,
++                               &blk->queued_requests_lock);
+         }
+         qemu_mutex_unlock(&blk->queued_requests_lock);
+     }
+-- 
+2.51.1
+

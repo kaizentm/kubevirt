@@ -1,0 +1,62 @@
+From 2b12179e5fffa2d5eba61d828eb2a3f3c96864fb Mon Sep 17 00:00:00 2001
+From: Gerd Hoffmann <kraxel@redhat.com>
+Date: Thu, 6 Nov 2025 11:56:40 +0100
+Subject: [PATCH 6/6] q35: increase default tseg size
+
+RH-Author: Gerd Hoffmann <kraxel@redhat.com>
+RH-MergeRequest: 448: q35: increase default tseg size
+RH-Jira: RHEL-139057
+RH-Acked-by: Igor Mammedov <imammedo@redhat.com>
+RH-Acked-by: Jon Maloy <jmaloy@redhat.com>
+RH-Commit: [1/1] f69fba674307d2f1822045ddb41012d8b826724e (kraxel.rh/centos-src-qemu-kvm)
+
+With virtual machines becoming larger (more CPUs, more memory) the
+memory needed by the SMM code in OVMF to manage page tables and vcpu
+state grows too.
+
+Default SMM memory (aka TSEG) size is 16 MB, and this often is not
+enough.  Bump it to 64 MB for new machine types.
+
+Signed-off-by: Gerd Hoffmann <kraxel@redhat.com>
+Reviewed-by: Michael S. Tsirkin <mst@redhat.com>
+Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
+Message-Id: <20251106105640.1642109-1-kraxel@redhat.com>
+(cherry picked from commit fa4136387928749d5a1b4fa3606ae0ce6dce75aa)
+
+[ RHEL: drop compat property update for upstream machine types ]
+[ RHEL: add compat property for rhel 9.6 + older machine types ]
+
+Resolves: RHEL-139057
+---
+ hw/i386/pc.c      | 1 +
+ hw/pci-host/q35.c | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/hw/i386/pc.c b/hw/i386/pc.c
+index dc3f140fdc..1f4154de5e 100644
+--- a/hw/i386/pc.c
++++ b/hw/i386/pc.c
+@@ -299,6 +299,7 @@ const size_t pc_rhel_compat_len = G_N_ELEMENTS(pc_rhel_compat);
+ 
+ GlobalProperty pc_rhel_9_8_compat[] = {
+     /* pc_rhel_10_2_compat from pc_compat_10_0 */
++    { "mch", "extended-tseg-mbytes", "16" },
+     { TYPE_X86_CPU, "x-consistent-cache", "false" },
+     { TYPE_X86_CPU, "x-vendor-cpuid-only-v2", "false" },
+     { TYPE_X86_CPU, "x-arch-cap-always-on", "true" },
+diff --git a/hw/pci-host/q35.c b/hw/pci-host/q35.c
+index 1951ae440c..a708758d36 100644
+--- a/hw/pci-host/q35.c
++++ b/hw/pci-host/q35.c
+@@ -663,7 +663,7 @@ static void mch_realize(PCIDevice *d, Error **errp)
+ 
+ static const Property mch_props[] = {
+     DEFINE_PROP_UINT16("extended-tseg-mbytes", MCHPCIState, ext_tseg_mbytes,
+-                       16),
++                       64),
+     DEFINE_PROP_BOOL("smbase-smram", MCHPCIState, has_smram_at_smbase, true),
+ };
+ 
+-- 
+2.52.0
+

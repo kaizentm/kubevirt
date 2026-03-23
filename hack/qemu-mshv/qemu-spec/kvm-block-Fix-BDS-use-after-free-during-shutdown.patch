@@ -1,0 +1,65 @@
+From 53e5b063f6c23b804e3539ca66a0a2f428a97cd1 Mon Sep 17 00:00:00 2001
+From: Kevin Wolf <kwolf@redhat.com>
+Date: Mon, 15 Dec 2025 16:07:14 +0100
+Subject: [PATCH] block: Fix BDS use after free during shutdown
+
+RH-Author: Thomas Huth <thuth@redhat.com>
+RH-MergeRequest: 452: Fix crash that happens when powering-off a guest during migration [cs9]
+RH-Jira: RHEL-138240
+RH-Acked-by: Kevin Wolf <kwolf@redhat.com>
+RH-Acked-by: Cornelia Huck <cohuck@redhat.com>
+RH-Commit: [1/1] c0ab4eb9fbfade013bde4e88549c0f0290160061 (thuth/qemu-kvm-cs)
+
+JIRA: https://issues.redhat.com/browse/RHEL-138240
+
+During shutdown, blockdev_close_all_bdrv_states() drops any block node
+references that are still owned by the monitor (i.e. the user). However,
+in doing so, it forgot to also remove the node from monitor_bdrv_states
+(which qmp_blockdev_del() correctly does), which means that later calls
+of bdrv_first()/bdrv_next() will still return the (now stale) pointer to
+the node.
+
+Usually there is no such call after this point, but in some cases it can
+happen. In the reported case, there was an ongoing migration, and the
+migration thread wasn't shut down yet: migration_shutdown() called by
+qemu_cleanup() doesn't actually wait for the migration to be shut down,
+but may just move it to MIGRATION_STATUS_CANCELLING. The next time
+migration_iteration_finish() runs, it sees the status and tries to
+re-activate all block devices that migration may have previously
+inactivated. This is where bdrv_first()/bdrv_next() get called and the
+access to the already freed node happens.
+
+It is debatable if migration_shutdown() should really return before
+migration has settled, but leaving a dangling pointer in the list of
+monitor-owned block nodes is clearly a bug either way and fixing it
+solves the immediate problem, so fix it.
+
+Cc: qemu-stable@nongnu.org
+Reported-by: Thomas Huth <thuth@redhat.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+Message-ID: <20251215150714.130214-1-kwolf@redhat.com>
+Reviewed-by: Thomas Huth <thuth@redhat.com>
+Tested-by: Thomas Huth <thuth@redhat.com>
+Reviewed-by: Stefan Hajnoczi <stefanha@redhat.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+(cherry picked from commit 307bc43095b8ab1765fd66c26003d5da06681c05)
+Signed-off-by: Thomas Huth <thuth@redhat.com>
+---
+ blockdev.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/blockdev.c b/blockdev.c
+index b451fee6e1..76c8dd0573 100644
+--- a/blockdev.c
++++ b/blockdev.c
+@@ -685,6 +685,7 @@ void blockdev_close_all_bdrv_states(void)
+ 
+     GLOBAL_STATE_CODE();
+     QTAILQ_FOREACH_SAFE(bs, &monitor_bdrv_states, monitor_list, next_bs) {
++        QTAILQ_REMOVE(&monitor_bdrv_states, bs, monitor_list);
+         bdrv_unref(bs);
+     }
+ }
+-- 
+2.52.0
+

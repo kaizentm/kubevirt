@@ -1,0 +1,30 @@
+From 45028f888ffc2b43276c2d77b72fbd85effdc838 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Daniel=20P=2E=20Berrang=C3=A9?= <berrange@redhat.com>
+Date: Wed, 3 Jul 2024 18:45:58 +0100
+Subject: [PATCH] Increase deletion schedule to 3 releases
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The RHEL-9 series still keeps the rhel 7.6.0 machine types as a
+special exception to our normal rule of deleting machine types
+after 2 releases. The exception will go away in RHEL-10.
+
+Signed-off-by: Daniel P. Berrangé <berrange@redhat.com>
+---
+ include/hw/boards.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/hw/boards.h b/include/hw/boards.h
+index ba3978402f..1e03667fd1 100644
+--- a/include/hw/boards.h
++++ b/include/hw/boards.h
+@@ -642,7 +642,7 @@ struct MachineState {
+  * and ver_machine_deletion_version logic in docs/conf.py and
+  * the text in docs/about/deprecated.rst
+  */
+-#define MACHINE_VER_DELETION_MAJOR 2
++#define MACHINE_VER_DELETION_MAJOR 3
+ #define MACHINE_VER_DEPRECATION_MAJOR 1
+ 
+ /*

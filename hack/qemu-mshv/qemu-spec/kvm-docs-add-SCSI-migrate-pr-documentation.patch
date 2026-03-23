@@ -1,0 +1,122 @@
+From 567a4e1af5d53804269a1fabc0b49e3ebad94648 Mon Sep 17 00:00:00 2001
+From: Stefan Hajnoczi <stefanha@redhat.com>
+Date: Thu, 29 Jan 2026 16:20:35 -0500
+Subject: [PATCH 5/5] docs: add SCSI migrate-pr documentation
+
+RH-Author: Stefan Hajnoczi <stefanha@redhat.com>
+RH-MergeRequest: 466: scsi: persistent reservation live migration
+RH-Jira: RHEL-149396
+RH-Acked-by: Kevin Wolf <kwolf@redhat.com>
+RH-Acked-by: Paolo Bonzini <pbonzini@redhat.com>
+RH-Commit: [5/5] 96c9ada05f37484cd792c729b6bafd9ed1c71684 (stefanha/centos-stream-qemu-kvm)
+
+Suggested-by: Paolo Bonzini <pbonzini@redhat.com>
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+Reviewed-by: Paolo Bonzini <pbonzini@redhat.com>
+Message-id: 20260129212035.219676-6-stefanha@redhat.com
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+(cherry picked from commit a67819adb2212977360e9290bd005badb07dd2e4)
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+
+Conflicts:
+- docs/system/device-emulation.rst
+  Context conflict.
+---
+ docs/system/device-emulation.rst        |  1 +
+ docs/system/devices/scsi/index.rst      | 10 +++++
+ docs/system/devices/scsi/migrate-pr.rst | 54 +++++++++++++++++++++++++
+ 3 files changed, 65 insertions(+)
+ create mode 100644 docs/system/devices/scsi/index.rst
+ create mode 100644 docs/system/devices/scsi/migrate-pr.rst
+
+diff --git a/docs/system/device-emulation.rst b/docs/system/device-emulation.rst
+index 911381643f..72a9dbd54d 100644
+--- a/docs/system/device-emulation.rst
++++ b/docs/system/device-emulation.rst
+@@ -91,6 +91,7 @@ Emulated Devices
+    devices/keyboard.rst
+    devices/net.rst
+    devices/nvme.rst
++   devices/scsi/index.rst
+    devices/usb.rst
+    devices/vhost-user.rst
+    devices/virtio-gpu.rst
+diff --git a/docs/system/devices/scsi/index.rst b/docs/system/devices/scsi/index.rst
+new file mode 100644
+index 0000000000..4f0929b0ca
+--- /dev/null
++++ b/docs/system/devices/scsi/index.rst
+@@ -0,0 +1,10 @@
++SCSI Devices
++============
++
++Several SCSI devices are available in QEMU. They are primarily used for block
++storage.
++
++.. toctree::
++   :maxdepth: 1
++
++   migrate-pr.rst
+diff --git a/docs/system/devices/scsi/migrate-pr.rst b/docs/system/devices/scsi/migrate-pr.rst
+new file mode 100644
+index 0000000000..a8f2790a86
+--- /dev/null
++++ b/docs/system/devices/scsi/migrate-pr.rst
+@@ -0,0 +1,54 @@
++..
++    SPDX-License-Identifier: GPL-2.0-or-later
++
++.. _scsi_migrate_pr:
++
++SCSI Persistent Reservation Live Migration
++==========================================
++
++This document explains how to live migrate SCSI Persistent Reservations.
++
++The ``scsi-block`` device migrates SCSI Persistent Reservations when the
++``migrate-pr=on`` parameter is given. Migration is enabled by default in
++versioned machine types since QEMU 11.0. It is disabled by default on older
++machine types and needs to be explicitly enabled with ``--device
++scsi-block,migrate-pr=on,...``.
++
++When migration is enabled, QEMU snoops PERSISTENT RESERVATION OUT commands and
++tracks the reservation key registered by the guest as well as reservations that
++the guest acquires. This information is migrated along with the guest and the
++destination QEMU submits a PERSISTENT RESERVATION OUT command with the PREEMPT
++service action to atomically transfer the reservation to the destination before
++the guest starts running on the destination.
++
++The following persistent reservation capabilities reported by the PERSISTENT
++RESERVATION IN command with the REPORT CAPABILITIES service action are masked
++from the guest by QEMU when migration is enabled:
++
++ * Specify Initiator Ports Capable (SIP_C)
++ * All Target Ports Capable (ATC_C)
++
++When migration is disabled, the ``scsi-block`` device is live migrated but
++reservations remain in place on the source. Usually this is not the intended
++behavior unless there is another mechanism to update reservations during
++migration. The PERSISTENT RESERVATION IN command also does not mask
++capabilities reported to the guest when migration is disabled.
++
++Limitations
++-----------
++
++QEMU does not remember snooped reservation details across restart, so software
++inside the guest must acquire the reservation after boot in order for live
++migration to work. Similarly, if the reservation is acquired outside the guest
++then it will not live migrate along with the guest.
++
++Snooping only considers the PERSISTENT RESERVATION OUT commands from the guest
++and does not track reservation changes made by other SCSI initiators. QEMU's
++snooped reservation details can become stale if another SCSI initiator
++makes changes to the reservation.
++
++Guests running on the same host share a single SCSI initiator identity unless
++Fibre Channel N_Port ID Virtualization is configured. As a consequence,
++multiple guests on the same hosts may observe unexpected behavior if they use
++the same physical LUN. From the LUN's perspective all guests are the same
++initiator and there is no way to distinguish between guests.
+-- 
+2.52.0
+

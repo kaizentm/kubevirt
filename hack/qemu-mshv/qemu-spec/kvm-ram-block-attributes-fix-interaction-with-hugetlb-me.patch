@@ -1,0 +1,125 @@
+From 3a4219fadaaeeb64be2803d390fdf5f4d16bcd04 Mon Sep 17 00:00:00 2001
+From: Paolo Bonzini <pbonzini@redhat.com>
+Date: Wed, 19 Nov 2025 12:51:32 +0100
+Subject: [PATCH 1/2] ram-block-attributes: fix interaction with hugetlb memory
+ backends
+
+RH-Author: Paolo Bonzini <pbonzini@redhat.com>
+RH-MergeRequest: 425: SNP fixes for RHEL 9.8
+RH-Jira: RHEL-126693
+RH-Acked-by: Bandan Das <bdas@redhat.com>
+RH-Acked-by: Eric Blake <eblake@redhat.com>
+RH-Acked-by: Peter Xu <peterx@redhat.com>
+RH-Commit: [1/2] 690e7c2e120145725d5e4485cfc7c8a7e7a053cf (bonzini/qemu-kvm-centos)
+
+JIRA: https://issues.redhat.com/browse/RHEL-126693
+
+Currently, CoCo VMs can perform conversion at the base page granularity,
+which is the granularity that has to be tracked. In relevant setups, the
+target page size is assumed to be equal to the host page size, thus
+fixing the block size to the host page size.
+
+However, since private memory and shared memory have different backend
+at present, users can specify shared memory with a hugetlbfs backend
+while private memory with guest_memfd backend only supports 4K page
+size. In this scenario, ram_block->page_size is different from the host
+page size which will trigger an assertion when retrieving the block
+size.
+
+To address this, return the host page size directly to relax the
+restriction. This changes fixes a regression of using hugetlbfs backend
+for shared memory within CoCo VMs, with or without VFIO devices' presence.
+
+Acked-by: David Hildenbrand <david@redhat.com>
+Tested-by: Farrah Chen <farrah.chen@intel.com>
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+Link: https://lore.kernel.org/r/20251023095526.48365-2-chenyi.qiang@intel.com
+[peterx: fix subject, per david]
+Cc: qemu-stable <qemu-stable@nongnu.org>
+Signed-off-by: Peter Xu <peterx@redhat.com>
+(cherry picked from commit 8922a758b29251d9009ec509e7f580b76509ab3d)
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ system/ram-block-attributes.c | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/system/ram-block-attributes.c b/system/ram-block-attributes.c
+index 68e8a02703..a7579de5b4 100644
+--- a/system/ram-block-attributes.c
++++ b/system/ram-block-attributes.c
+@@ -22,16 +22,14 @@ OBJECT_DEFINE_SIMPLE_TYPE_WITH_INTERFACES(RamBlockAttributes,
+                                           { })
+ 
+ static size_t
+-ram_block_attributes_get_block_size(const RamBlockAttributes *attr)
++ram_block_attributes_get_block_size(void)
+ {
+     /*
+      * Because page conversion could be manipulated in the size of at least 4K
+      * or 4K aligned, Use the host page size as the granularity to track the
+      * memory attribute.
+      */
+-    g_assert(attr && attr->ram_block);
+-    g_assert(attr->ram_block->page_size == qemu_real_host_page_size());
+-    return attr->ram_block->page_size;
++    return qemu_real_host_page_size();
+ }
+ 
+ 
+@@ -40,7 +38,7 @@ ram_block_attributes_rdm_is_populated(const RamDiscardManager *rdm,
+                                       const MemoryRegionSection *section)
+ {
+     const RamBlockAttributes *attr = RAM_BLOCK_ATTRIBUTES(rdm);
+-    const size_t block_size = ram_block_attributes_get_block_size(attr);
++    const size_t block_size = ram_block_attributes_get_block_size();
+     const uint64_t first_bit = section->offset_within_region / block_size;
+     const uint64_t last_bit =
+         first_bit + int128_get64(section->size) / block_size - 1;
+@@ -81,7 +79,7 @@ ram_block_attributes_for_each_populated_section(const RamBlockAttributes *attr,
+ {
+     unsigned long first_bit, last_bit;
+     uint64_t offset, size;
+-    const size_t block_size = ram_block_attributes_get_block_size(attr);
++    const size_t block_size = ram_block_attributes_get_block_size();
+     int ret = 0;
+ 
+     first_bit = section->offset_within_region / block_size;
+@@ -122,7 +120,7 @@ ram_block_attributes_for_each_discarded_section(const RamBlockAttributes *attr,
+ {
+     unsigned long first_bit, last_bit;
+     uint64_t offset, size;
+-    const size_t block_size = ram_block_attributes_get_block_size(attr);
++    const size_t block_size = ram_block_attributes_get_block_size();
+     int ret = 0;
+ 
+     first_bit = section->offset_within_region / block_size;
+@@ -163,7 +161,7 @@ ram_block_attributes_rdm_get_min_granularity(const RamDiscardManager *rdm,
+     const RamBlockAttributes *attr = RAM_BLOCK_ATTRIBUTES(rdm);
+ 
+     g_assert(mr == attr->ram_block->mr);
+-    return ram_block_attributes_get_block_size(attr);
++    return ram_block_attributes_get_block_size();
+ }
+ 
+ static void
+@@ -265,7 +263,7 @@ ram_block_attributes_is_valid_range(RamBlockAttributes *attr, uint64_t offset,
+     g_assert(mr);
+ 
+     uint64_t region_size = memory_region_size(mr);
+-    const size_t block_size = ram_block_attributes_get_block_size(attr);
++    const size_t block_size = ram_block_attributes_get_block_size();
+ 
+     if (!QEMU_IS_ALIGNED(offset, block_size) ||
+         !QEMU_IS_ALIGNED(size, block_size)) {
+@@ -322,7 +320,7 @@ int ram_block_attributes_state_change(RamBlockAttributes *attr,
+                                       uint64_t offset, uint64_t size,
+                                       bool to_discard)
+ {
+-    const size_t block_size = ram_block_attributes_get_block_size(attr);
++    const size_t block_size = ram_block_attributes_get_block_size();
+     const unsigned long first_bit = offset / block_size;
+     const unsigned long nbits = size / block_size;
+     const unsigned long last_bit = first_bit + nbits - 1;
+-- 
+2.51.1
+

@@ -1,0 +1,172 @@
+From 61f4f7d4b2c20fda8d00cd455c9030e5028ad31b Mon Sep 17 00:00:00 2001
+From: Hanna Czenczek <hreitz@redhat.com>
+Date: Mon, 10 Nov 2025 16:48:40 +0100
+Subject: [PATCH 2/5] curl: Fix coroutine waking
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Hanna Czenczek <hreitz@redhat.com>
+RH-MergeRequest: 455: Multithreading fixes for rbd, curl, qcow2
+RH-Jira: RHEL-67115
+RH-Acked-by: Stefan Hajnoczi <stefanha@redhat.com>
+RH-Acked-by: Kevin Wolf <kwolf@redhat.com>
+RH-Commit: [2/5] 7ee0adbf976b39a51336f7e34e9ef13050f2055d (hreitz/qemu-kvm-c-9-s)
+
+If we wake a coroutine from a different context, we must ensure that it
+will yield exactly once (now or later), awaiting that wake.
+
+curl’s current .ret == -EINPROGRESS loop may lead to the coroutine not
+yielding if the request finishes before the loop gets run.  To fix it,
+we must drop the loop and yield exactly once, if we need to yield.
+
+Finding out that latter part ("if we need to yield") makes it a bit
+complicated: Requests may be served from a cache internal to the curl
+block driver, or fail before being submitted.  In these cases, we must
+not yield.  However, if we find a matching but still ongoing request in
+the cache, we will have to await that, i.e. still yield.
+
+To address this, move the yield inside of the respective functions:
+- Inside of curl_find_buf() when awaiting ongoing concurrent requests,
+- Inside of curl_setup_preadv() when having created a new request.
+
+Rename curl_setup_preadv() to curl_do_preadv() to reflect this.
+
+(Can be reproduced with multiqueue by adding a usleep(100000) before the
+`while (acb.ret == -EINPROGRESS)` loop.)
+
+Also, add a comment why aio_co_wake() is safe regardless of whether the
+coroutine and curl_multi_check_completion() run in the same context.
+
+Cc: qemu-stable@nongnu.org
+Signed-off-by: Hanna Czenczek <hreitz@redhat.com>
+Message-ID: <20251110154854.151484-6-hreitz@redhat.com>
+Reviewed-by: Kevin Wolf <kwolf@redhat.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+(cherry picked from commit 53d5c7ffac7bd4e0d12174432ebb2b3e88614b15)
+Signed-off-by: Hanna Czenczek <hreitz@redhat.com>
+---
+ block/curl.c | 45 +++++++++++++++++++++++++++++++--------------
+ 1 file changed, 31 insertions(+), 14 deletions(-)
+
+diff --git a/block/curl.c b/block/curl.c
+index 5467678024..d69bcdff79 100644
+--- a/block/curl.c
++++ b/block/curl.c
+@@ -262,8 +262,8 @@ read_end:
+ }
+ 
+ /* Called with s->mutex held.  */
+-static bool curl_find_buf(BDRVCURLState *s, uint64_t start, uint64_t len,
+-                          CURLAIOCB *acb)
++static bool coroutine_fn
++curl_find_buf(BDRVCURLState *s, uint64_t start, uint64_t len, CURLAIOCB *acb)
+ {
+     int i;
+     uint64_t end = start + len;
+@@ -311,6 +311,10 @@ static bool curl_find_buf(BDRVCURLState *s, uint64_t start, uint64_t len,
+             for (j=0; j<CURL_NUM_ACB; j++) {
+                 if (!state->acb[j]) {
+                     state->acb[j] = acb;
++                    /* Await ongoing request */
++                    qemu_mutex_unlock(&s->mutex);
++                    qemu_coroutine_yield();
++                    qemu_mutex_lock(&s->mutex);
+                     return true;
+                 }
+             }
+@@ -382,6 +386,16 @@ static void curl_multi_check_completion(BDRVCURLState *s)
+                 acb->ret = error ? -EIO : 0;
+                 state->acb[i] = NULL;
+                 qemu_mutex_unlock(&s->mutex);
++                /*
++                 * Current AioContext is the BDS context, which may or may not
++                 * be the request (coroutine) context.
++                 * - If it is, the coroutine must have yielded or the FD handler
++                 *   (curl_multi_do()/curl_multi_timeout_do()) could not have
++                 *   been called and we would not be here
++                 * - If it is not, it doesn't matter whether it has already
++                 *   yielded or not; it will be scheduled once it does yield
++                 * So aio_co_wake() is safe to call.
++                 */
+                 aio_co_wake(acb->co);
+                 qemu_mutex_lock(&s->mutex);
+             }
+@@ -882,7 +896,7 @@ out_noclean:
+     return -EINVAL;
+ }
+ 
+-static void coroutine_fn curl_setup_preadv(BlockDriverState *bs, CURLAIOCB *acb)
++static void coroutine_fn curl_do_preadv(BlockDriverState *bs, CURLAIOCB *acb)
+ {
+     CURLState *state;
+     int running;
+@@ -894,10 +908,13 @@ static void coroutine_fn curl_setup_preadv(BlockDriverState *bs, CURLAIOCB *acb)
+ 
+     qemu_mutex_lock(&s->mutex);
+ 
+-    // In case we have the requested data already (e.g. read-ahead),
+-    // we can just call the callback and be done.
++    /*
++     * In case we have the requested data already (e.g. read-ahead),
++     * we can just call the callback and be done.  This may have to
++     * await an ongoing request, in which case it itself will yield.
++     */
+     if (curl_find_buf(s, start, acb->bytes, acb)) {
+-        goto out;
++        goto dont_yield;
+     }
+ 
+     // No cache found, so let's start a new request
+@@ -912,7 +929,7 @@ static void coroutine_fn curl_setup_preadv(BlockDriverState *bs, CURLAIOCB *acb)
+     if (curl_init_state(s, state) < 0) {
+         curl_clean_state(state);
+         acb->ret = -EIO;
+-        goto out;
++        goto dont_yield;
+     }
+ 
+     acb->start = 0;
+@@ -927,7 +944,7 @@ static void coroutine_fn curl_setup_preadv(BlockDriverState *bs, CURLAIOCB *acb)
+     if (state->buf_len && state->orig_buf == NULL) {
+         curl_clean_state(state);
+         acb->ret = -ENOMEM;
+-        goto out;
++        goto dont_yield;
+     }
+     state->acb[0] = acb;
+ 
+@@ -939,13 +956,16 @@ static void coroutine_fn curl_setup_preadv(BlockDriverState *bs, CURLAIOCB *acb)
+         acb->ret = -EIO;
+ 
+         curl_clean_state(state);
+-        goto out;
++        goto dont_yield;
+     }
+ 
+     /* Tell curl it needs to kick things off */
+     curl_multi_socket_action(s->multi, CURL_SOCKET_TIMEOUT, 0, &running);
++    qemu_mutex_unlock(&s->mutex);
++    qemu_coroutine_yield();
++    return;
+ 
+-out:
++dont_yield:
+     qemu_mutex_unlock(&s->mutex);
+ }
+ 
+@@ -961,10 +981,7 @@ static int coroutine_fn curl_co_preadv(BlockDriverState *bs,
+         .bytes = bytes
+     };
+ 
+-    curl_setup_preadv(bs, &acb);
+-    while (acb.ret == -EINPROGRESS) {
+-        qemu_coroutine_yield();
+-    }
++    curl_do_preadv(bs, &acb);
+     return acb.ret;
+ }
+ 
+-- 
+2.52.0
+

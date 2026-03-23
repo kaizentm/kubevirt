@@ -1,0 +1,258 @@
+From b442024a21912abc44edf9d305f1bdce863c6a3a Mon Sep 17 00:00:00 2001
+From: Miroslav Rezanina <mrezanin@redhat.com>
+Date: Wed, 2 Sep 2020 09:39:41 +0200
+Subject: [PATCH] Enable make check
+
+Fixing tests after device disabling and machine types changes and enabling
+make check run during build.
+
+Signed-off-by: Miroslav Rezanina <mrezanin@redhat.com>
+
+fix test
+---
+ tests/functional/meson.build                  |  2 +-
+ tests/functional/test_aarch64_tcg_plugins.py  |  2 +-
+ .../functional/test_x86_cpu_model_versions.py |  3 +-
+ tests/qemu-iotests/meson.build                | 34 +++++++++----------
+ tests/qemu-iotests/testenv.py                 |  3 ++
+ tests/qtest/arm-cpu-features.c                |  2 ++
+ tests/qtest/fuzz-e1000e-test.c                |  2 +-
+ tests/qtest/fuzz-virtio-scsi-test.c           |  2 +-
+ tests/qtest/intel-hda-test.c                  |  2 +-
+ tests/qtest/libqos/meson.build                |  2 +-
+ tests/qtest/lpc-ich9-test.c                   |  2 +-
+ tests/qtest/meson.build                       |  2 --
+ tests/qtest/pvpanic-test.c                    |  2 +-
+ tests/qtest/virtio-net-failover.c             |  1 +
+ 14 files changed, 33 insertions(+), 28 deletions(-)
+
+diff --git a/tests/functional/meson.build b/tests/functional/meson.build
+index 311c6f1806..c7f9051c90 100644
+--- a/tests/functional/meson.build
++++ b/tests/functional/meson.build
+@@ -319,7 +319,7 @@ tests_sparc64_system_thorough = [
+ 
+ tests_x86_64_system_quick = [
+   'cpu_queries',
+-  'mem_addr_space',
++#  'mem_addr_space',
+   'migration',
+   'pc_cpu_hotplug_props',
+   'virtio_version',
+diff --git a/tests/functional/test_aarch64_tcg_plugins.py b/tests/functional/test_aarch64_tcg_plugins.py
+index cb7e9298fb..a5560cedb9 100755
+--- a/tests/functional/test_aarch64_tcg_plugins.py
++++ b/tests/functional/test_aarch64_tcg_plugins.py
+@@ -64,7 +64,7 @@ class PluginKernelNormal(PluginKernelBase):
+ 
+     def test_aarch64_virt_insn(self):
+         self.set_machine('virt')
+-        self.cpu='cortex-a53'
++        self.cpu='cortex-a57'
+         kernel_path = self.ASSET_KERNEL.fetch()
+         kernel_command_line = (self.KERNEL_COMMON_COMMAND_LINE +
+                                'console=ttyAMA0')
+diff --git a/tests/functional/test_x86_cpu_model_versions.py b/tests/functional/test_x86_cpu_model_versions.py
+index 36c968f1c0..01213d9c14 100755
+--- a/tests/functional/test_x86_cpu_model_versions.py
++++ b/tests/functional/test_x86_cpu_model_versions.py
+@@ -23,7 +23,7 @@
+ 
+ import re
+ 
+-from qemu_test import QemuSystemTest
++from qemu_test import QemuSystemTest, skipFlakyTest
+ 
+ class X86CPUModelAliases(QemuSystemTest):
+     """
+@@ -72,6 +72,7 @@ def validate_variant_aliases(self, cpus):
+         self.assertNotIn("EPYC-IBPB-v1", cpus,
+                          "EPYC-IBPB shouldn't be versioned")
+ 
++    @skipFlakyTest("Incompatible with RHEL 7.6.0 machine")
+     def test_unversioned_alias(self):
+         """
+         Check if unversioned CPU model is an alias pointing to right version
+diff --git a/tests/qemu-iotests/meson.build b/tests/qemu-iotests/meson.build
+index fad340ad59..3c0d5241f6 100644
+--- a/tests/qemu-iotests/meson.build
++++ b/tests/qemu-iotests/meson.build
+@@ -51,21 +51,21 @@ foreach format, speed: qemu_iotests_formats
+       check: true,
+   )
+ 
+-  foreach item: rc.stdout().strip().split()
+-      args = [qemu_iotests_check_cmd,
+-              '-tap', '-' + format, item,
+-              '--source-dir', meson.current_source_dir(),
+-              '--build-dir', meson.current_build_dir()]
+-      # Some individual tests take as long as 45 seconds
+-      # Bump the timeout to 3 minutes for some headroom
+-      # on slow machines to minimize spurious failures
+-      test('io-' + format + '-' + item,
+-           python,
+-           args: args,
+-           depends: qemu_iotests_binaries,
+-           env: qemu_iotests_env,
+-           protocol: 'tap',
+-           timeout: 180,
+-           suite: suites)
+-  endforeach
++#  foreach item: rc.stdout().strip().split()
++#      args = [qemu_iotests_check_cmd,
++#              '-tap', '-' + format, item,
++#              '--source-dir', meson.current_source_dir(),
++#              '--build-dir', meson.current_build_dir()]
++#      # Some individual tests take as long as 45 seconds
++#      # Bump the timeout to 3 minutes for some headroom
++#      # on slow machines to minimize spurious failures
++#      test('io-' + format + '-' + item,
++#           python,
++#           args: args,
++#           depends: qemu_iotests_binaries,
++#           env: qemu_iotests_env,
++#           protocol: 'tap',
++#           timeout: 180,
++#           suite: suites)
++#  endforeach
+ endforeach
+diff --git a/tests/qemu-iotests/testenv.py b/tests/qemu-iotests/testenv.py
+index 6326e46b7b..bc849ae9cf 100644
+--- a/tests/qemu-iotests/testenv.py
++++ b/tests/qemu-iotests/testenv.py
+@@ -252,6 +252,9 @@ def __init__(self, source_dir: str, build_dir: str,
+             if self.qemu_prog.endswith(f'qemu-system-{suffix}'):
+                 self.qemu_options += f' -machine {machine}'
+ 
++        if self.qemu_prog.endswith('qemu-system-x86_64'):
++            self.qemu_options += ' -cpu Nehalem'
++
+         # QEMU_DEFAULT_MACHINE
+         self.qemu_default_machine = get_default_machine(self.qemu_prog)
+ 
+diff --git a/tests/qtest/arm-cpu-features.c b/tests/qtest/arm-cpu-features.c
+index 2d3304bb4a..ddb9fd1a4b 100644
+--- a/tests/qtest/arm-cpu-features.c
++++ b/tests/qtest/arm-cpu-features.c
+@@ -416,6 +416,7 @@ static void sve_tests_sve_off_kvm(const void *data)
+ 
+ static void pauth_tests_default(QTestState *qts, const char *cpu_type)
+ {
++#if 0 /* Disabled for Red Hat Enterprise Linux */
+     assert_has_feature_enabled(qts, cpu_type, "pauth");
+     assert_has_feature_disabled(qts, cpu_type, "pauth-impdef");
+     assert_has_feature_disabled(qts, cpu_type, "pauth-qarma3");
+@@ -428,6 +429,7 @@ static void pauth_tests_default(QTestState *qts, const char *cpu_type)
+     assert_set_feature(qts, cpu_type, "pauth-qarma3", false);
+     assert_set_feature(qts, cpu_type, "pauth-qarma5", true);
+     assert_set_feature(qts, cpu_type, "pauth-qarma5", false);
++#endif /* disabled for RHEL */
+     assert_error(qts, cpu_type,
+                  "cannot enable pauth-impdef, pauth-qarma3 or pauth-qarma5 without pauth",
+                  "{ 'pauth': false, 'pauth-impdef': true }");
+diff --git a/tests/qtest/fuzz-e1000e-test.c b/tests/qtest/fuzz-e1000e-test.c
+index 5052883fb6..b5286f4b12 100644
+--- a/tests/qtest/fuzz-e1000e-test.c
++++ b/tests/qtest/fuzz-e1000e-test.c
+@@ -17,7 +17,7 @@ static void test_lp1879531_eth_get_rss_ex_dst_addr(void)
+ {
+     QTestState *s;
+ 
+-    s = qtest_init("-nographic -monitor none -serial none -M pc-q35-5.0");
++    s = qtest_init("-nographic -monitor none -serial none -M pc-q35-rhel8.4.0");
+ 
+     qtest_outl(s, 0xcf8, 0x80001010);
+     qtest_outl(s, 0xcfc, 0xe1020000);
+diff --git a/tests/qtest/fuzz-virtio-scsi-test.c b/tests/qtest/fuzz-virtio-scsi-test.c
+index e37b48b2cc..88647da054 100644
+--- a/tests/qtest/fuzz-virtio-scsi-test.c
++++ b/tests/qtest/fuzz-virtio-scsi-test.c
+@@ -19,7 +19,7 @@ static void test_mmio_oob_from_memory_region_cache(void)
+ {
+     QTestState *s;
+ 
+-    s = qtest_init("-M pc-q35-5.2 -m 512M "
++    s = qtest_init("-M pc-q35-rhel8.4.0 -m 512M "
+                    "-device virtio-scsi,num_queues=8,addr=03.0 ");
+ 
+     qtest_outl(s, 0xcf8, 0x80001811);
+diff --git a/tests/qtest/intel-hda-test.c b/tests/qtest/intel-hda-test.c
+index 663bb6c485..2efc43e3f7 100644
+--- a/tests/qtest/intel-hda-test.c
++++ b/tests/qtest/intel-hda-test.c
+@@ -42,7 +42,7 @@ static void test_issue542_ich6(void)
+ {
+     QTestState *s;
+ 
+-    s = qtest_init("-nographic -nodefaults -M pc-q35-6.2 "
++    s = qtest_init("-nographic -nodefaults -M pc-q35-rhel9.0.0 "
+                    AUDIODEV
+                    "-device intel-hda,id=" HDA_ID CODEC_DEVICES);
+ 
+diff --git a/tests/qtest/libqos/meson.build b/tests/qtest/libqos/meson.build
+index 1ddaf7b095..1cb403e90d 100644
+--- a/tests/qtest/libqos/meson.build
++++ b/tests/qtest/libqos/meson.build
+@@ -43,7 +43,7 @@ libqos_srcs = files(
+         'virtio-rng.c',
+         'virtio-scsi.c',
+         'virtio-serial.c',
+-        'virtio-iommu.c',
++#        'virtio-iommu.c',
+         'virtio-gpio.c',
+         'virtio-scmi.c',
+         'generic-pcihost.c',
+diff --git a/tests/qtest/lpc-ich9-test.c b/tests/qtest/lpc-ich9-test.c
+index 8ac95b89f7..cd2102555c 100644
+--- a/tests/qtest/lpc-ich9-test.c
++++ b/tests/qtest/lpc-ich9-test.c
+@@ -15,7 +15,7 @@ static void test_lp1878642_pci_bus_get_irq_level_assert(void)
+ {
+     QTestState *s;
+ 
+-    s = qtest_init("-M pc-q35-5.0 "
++    s = qtest_init("-M pc-q35-rhel8.4.0 "
+                    "-nographic -monitor none -serial none");
+ 
+     qtest_outl(s, 0xcf8, 0x8000f840); /* PMBASE */
+diff --git a/tests/qtest/meson.build b/tests/qtest/meson.build
+index 669d07c06b..b6b1e920bc 100644
+--- a/tests/qtest/meson.build
++++ b/tests/qtest/meson.build
+@@ -90,11 +90,9 @@ qtests_i386 = \
+   (config_all_devices.has_key('CONFIG_LSI_SCSI_PCI') ? ['fuzz-lsi53c895a-test'] : []) +     \
+   (config_all_devices.has_key('CONFIG_VIRTIO_SCSI') ? ['fuzz-virtio-scsi-test'] : []) +     \
+   (config_all_devices.has_key('CONFIG_VIRTIO_BALLOON') ? ['virtio-balloon-test'] : []) + \
+-  (config_all_devices.has_key('CONFIG_Q35') ? ['q35-test'] : []) +                          \
+   (config_all_devices.has_key('CONFIG_SB16') ? ['fuzz-sb16-test'] : []) +                   \
+   (config_all_devices.has_key('CONFIG_SDHCI_PCI') ? ['fuzz-sdcard-test'] : []) +            \
+   (config_all_devices.has_key('CONFIG_ESP_PCI') ? ['am53c974-test'] : []) +                 \
+-  (config_all_devices.has_key('CONFIG_VTD') ? ['intel-iommu-test'] : []) +                 \
+   (host_os != 'windows' and                                                                \
+    config_all_devices.has_key('CONFIG_ACPI_ERST') ? ['erst-test'] : []) +                   \
+   (config_all_devices.has_key('CONFIG_PCIE_PORT') and                                       \
+diff --git a/tests/qtest/pvpanic-test.c b/tests/qtest/pvpanic-test.c
+index 094c56b0cd..338f94dcd9 100644
+--- a/tests/qtest/pvpanic-test.c
++++ b/tests/qtest/pvpanic-test.c
+@@ -65,7 +65,7 @@ static void test_pvshutdown(void)
+     QDict *response, *data;
+     QTestState *qts;
+ 
+-    qts = qtest_init("-device pvpanic");
++    qts = qtest_init("-M q35 -device pvpanic");
+ 
+     val = qtest_inb(qts, 0x505);
+     g_assert_cmpuint(val, ==, PVPANIC_EVENTS);
+diff --git a/tests/qtest/virtio-net-failover.c b/tests/qtest/virtio-net-failover.c
+index 5baf81c3e6..aa87bf5698 100644
+--- a/tests/qtest/virtio-net-failover.c
++++ b/tests/qtest/virtio-net-failover.c
+@@ -27,6 +27,7 @@
+ #define PCI_SEL_BASE            0x0010
+ 
+ #define BASE_MACHINE "-M q35 -nodefaults " \
++    "-global ICH9-LPC.acpi-pci-hotplug-with-bridge-support=on " \
+     "-device pcie-root-port,id=root0,addr=0x1,bus=pcie.0,chassis=1 " \
+     "-device pcie-root-port,id=root1,addr=0x2,bus=pcie.0,chassis=2 "
+ 

@@ -1,0 +1,41 @@
+From 5bcee9ac3471c365a558dc950dc80a8589b98869 Mon Sep 17 00:00:00 2001
+From: Yanghang Liu <yanghliu@redhat.com>
+Date: Tue, 25 Nov 2025 14:44:43 +0800
+Subject: [PATCH] Fix the typo of vfio-pci device's enable-migration option
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: YangHang Liu <None>
+RH-MergeRequest: 429: RHEL9: Fix the typo of vfio-pci device's enable-migration option
+RH-Jira: RHEL-129949
+RH-Acked-by: Cédric Le Goater <clg@redhat.com>
+RH-Acked-by: Jon Maloy <jmaloy@redhat.com>
+RH-Commit: [1/1] 35096f1d9bcefe532adea8f79e92efad5ec904eb (yanghliu/qemu-kvm)
+
+Signed-off-by: Yanghang Liu <yanghliu@redhat.com>
+Reported-by: Mario Casquero <mcasquer@redhat.com>
+Reviewed-by: Michael Tokarev <mjt@tls.msk.ru>
+Signed-off-by: Michael Tokarev <mjt@tls.msk.ru>
+(cherry picked from commit 5f9ac963735598c1efbdce9c4a09f0a64e13d613)
+Signed-off-by: Yanghang Liu <yanghliu@redhat.com>
+---
+ hw/vfio/pci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hw/vfio/pci.c b/hw/vfio/pci.c
+index 83ecffb535..7c057ee2f9 100644
+--- a/hw/vfio/pci.c
++++ b/hw/vfio/pci.c
+@@ -3847,7 +3847,7 @@ static void vfio_pci_dev_class_init(ObjectClass *klass, const void *data)
+                                           "(DEBUG)");
+     object_class_property_set_description(klass, /* 5.2, 8.0 non-experimetal */
+                                           "enable-migration",
+-                                          "Enale device migration. Also requires a host VFIO PCI "
++                                          "Enable device migration. Also requires a host VFIO PCI "
+                                           "variant or mdev driver with migration support enabled");
+     object_class_property_set_description(klass, /* 8.1 */
+                                           "vf-token",
+-- 
+2.51.1
+

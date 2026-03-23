@@ -1,0 +1,87 @@
+From 7a20dca1405b6d7c202fa852b1f3dd505baab7e5 Mon Sep 17 00:00:00 2001
+From: Shalini Chellathurai Saroja <shalini@linux.ibm.com>
+Date: Thu, 16 Oct 2025 14:17:07 +0200
+Subject: [PATCH 1/5] qapi/machine-s390x: add QAPI event
+ SCLP_CPI_INFO_AVAILABLE
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Thomas Huth <thuth@redhat.com>
+RH-MergeRequest: 415: Patches for the Control Program Identification feature on s390x
+RH-Jira: RHEL-73009
+RH-Acked-by: Cédric Le Goater <clg@redhat.com>
+RH-Acked-by: Miroslav Rezanina <mrezanin@redhat.com>
+RH-Commit: [1/2] 8fb4f174652f3ca889d7623df09eb6c202c0c5cc (thuth/qemu-kvm-cs)
+
+JIRA: https://issues.redhat.com/browse/RHEL-73009
+
+Add QAPI event SCLP_CPI_INFO_AVAILABLE to notify the availability
+of Control-Program Identification data in QOM.
+
+Signed-off-by: Shalini Chellathurai Saroja <shalini@linux.ibm.com>
+Suggested-by: Thomas Huth <thuth@redhat.com>
+Reviewed-by: Hendrik Brueckner <brueckner@linux.ibm.com>
+Reviewed-by: Thomas Huth <thuth@redhat.com>
+Message-ID: <20251016121708.334133-1-shalini@linux.ibm.com>
+Signed-off-by: Thomas Huth <thuth@redhat.com>
+(cherry picked from commit 0ce63280dc6fe9fce1d89922f2d17dcae77827e6)
+---
+ hw/s390x/sclpcpi.c      |  4 ++++
+ qapi/machine-s390x.json | 21 +++++++++++++++++++++
+ 2 files changed, 25 insertions(+)
+
+diff --git a/hw/s390x/sclpcpi.c b/hw/s390x/sclpcpi.c
+index 7aa039d510..68fc1b809b 100644
+--- a/hw/s390x/sclpcpi.c
++++ b/hw/s390x/sclpcpi.c
+@@ -54,6 +54,7 @@
+ #include "hw/s390x/event-facility.h"
+ #include "hw/s390x/ebcdic.h"
+ #include "qapi/qapi-visit-machine.h"
++#include "qapi/qapi-events-machine-s390x.h"
+ #include "migration/vmstate.h"
+ 
+ typedef struct Data {
+@@ -106,6 +107,9 @@ static int write_event_data(SCLPEvent *event, EventBufferHeader *evt_buf_hdr)
+     e->timestamp = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+ 
+     cpim->ebh.flags = SCLP_EVENT_BUFFER_ACCEPTED;
++
++    qapi_event_send_sclp_cpi_info_available();
++
+     return SCLP_RC_NORMAL_COMPLETION;
+ }
+ 
+diff --git a/qapi/machine-s390x.json b/qapi/machine-s390x.json
+index 966dbd61d2..8412668b67 100644
+--- a/qapi/machine-s390x.json
++++ b/qapi/machine-s390x.json
+@@ -119,3 +119,24 @@
+ { 'command': 'query-s390x-cpu-polarization', 'returns': 'CpuPolarizationInfo',
+   'features': [ 'unstable' ]
+ }
++
++##
++# @SCLP_CPI_INFO_AVAILABLE:
++#
++# Emitted when the Control-Program Identification data is available
++# in the QOM tree.
++#
++# Features:
++#
++# @unstable: This event is experimental.
++#
++# Since: 10.2
++#
++# .. qmp-example::
++#
++#     <- { "event": "SCLP_CPI_INFO_AVAILABLE",
++#          "timestamp": { "seconds": 1401385907, "microseconds": 422329 } }
++##
++{ 'event': 'SCLP_CPI_INFO_AVAILABLE',
++  'features': [ 'unstable' ]
++}
+-- 
+2.50.1
+

@@ -1,0 +1,255 @@
+From 8524b4a772f47d2be59ce2f07c7c6d5a8af056d0 Mon Sep 17 00:00:00 2001
+From: Kevin Wolf <kwolf@redhat.com>
+Date: Fri, 24 Oct 2025 14:30:38 +0200
+Subject: [PATCH 2/6] block: Expose block limits for images in QMP
+
+RH-Author: Kevin Wolf <kwolf@redhat.com>
+RH-MergeRequest: 440: block: Expose block limits in monitor and qemu-img info
+RH-Jira: RHEL-132989
+RH-Acked-by: Hanna Czenczek <hreitz@redhat.com>
+RH-Acked-by: Stefan Hajnoczi <stefanha@redhat.com>
+RH-Commit: [2/4] 2c68f297c55a64249fd10ab2e06ae9446096a0a9 (kmwolf/centos-qemu-kvm)
+
+This information can be useful both for debugging and for management
+tools trying to configure guest devices with the optimal limits
+(possibly across multiple hosts). There is no reason not to make it
+available, so just add it to BlockNodeInfo.
+
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+Reviewed-by: Eric Blake <eblake@redhat.com>
+Reviewed-by: Hanna Czenczek <hreitz@redhat.com>
+Message-ID: <20251024123041.51254-3-kwolf@redhat.com>
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+(cherry picked from commit d2634e18286a5772f04cc724e64f8b16a2124587)
+Signed-off-by: Kevin Wolf <kwolf@redhat.com>
+---
+ block/qapi.c                     | 34 ++++++++++++++--
+ qapi/block-core.json             | 66 ++++++++++++++++++++++++++++++++
+ tests/qemu-iotests/184           |  5 ++-
+ tests/qemu-iotests/184.out       |  8 ----
+ tests/qemu-iotests/common.filter |  3 +-
+ 5 files changed, 102 insertions(+), 14 deletions(-)
+
+diff --git a/block/qapi.c b/block/qapi.c
+index 12fbf8d1b7..54521d0a68 100644
+--- a/block/qapi.c
++++ b/block/qapi.c
+@@ -235,7 +235,8 @@ int bdrv_query_snapshot_info_list(BlockDriverState *bs,
+  * in @info, setting @errp on error.
+  */
+ static void GRAPH_RDLOCK
+-bdrv_do_query_node_info(BlockDriverState *bs, BlockNodeInfo *info, Error **errp)
++bdrv_do_query_node_info(BlockDriverState *bs, BlockNodeInfo *info, bool limits,
++                        Error **errp)
+ {
+     int64_t size;
+     const char *backing_filename;
+@@ -269,6 +270,33 @@ bdrv_do_query_node_info(BlockDriverState *bs, BlockNodeInfo *info, Error **errp)
+         info->dirty_flag = bdi.is_dirty;
+         info->has_dirty_flag = true;
+     }
++
++    if (limits) {
++        info->limits = g_new(BlockLimitsInfo, 1);
++        *info->limits = (BlockLimitsInfo) {
++            .request_alignment          = bs->bl.request_alignment,
++            .has_max_discard            = bs->bl.max_pdiscard != 0,
++            .max_discard                = bs->bl.max_pdiscard,
++            .has_discard_alignment      = bs->bl.pdiscard_alignment != 0,
++            .discard_alignment          = bs->bl.pdiscard_alignment,
++            .has_max_write_zeroes       = bs->bl.max_pwrite_zeroes != 0,
++            .max_write_zeroes           = bs->bl.max_pwrite_zeroes,
++            .has_write_zeroes_alignment = bs->bl.pwrite_zeroes_alignment != 0,
++            .write_zeroes_alignment     = bs->bl.pwrite_zeroes_alignment,
++            .has_opt_transfer           = bs->bl.opt_transfer != 0,
++            .opt_transfer               = bs->bl.opt_transfer,
++            .has_max_transfer           = bs->bl.max_transfer != 0,
++            .max_transfer               = bs->bl.max_transfer,
++            .has_max_hw_transfer        = bs->bl.max_hw_transfer != 0,
++            .max_hw_transfer            = bs->bl.max_hw_transfer,
++            .max_iov                    = bs->bl.max_iov,
++            .has_max_hw_iov             = bs->bl.max_hw_iov != 0,
++            .max_hw_iov                 = bs->bl.max_hw_iov,
++            .min_mem_alignment          = bs->bl.min_mem_alignment,
++            .opt_mem_alignment          = bs->bl.opt_mem_alignment,
++        };
++    }
++
+     info->format_specific = bdrv_get_specific_info(bs, &err);
+     if (err) {
+         error_propagate(errp, err);
+@@ -343,7 +371,7 @@ void bdrv_query_image_info(BlockDriverState *bs,
+     ImageInfo *info;
+ 
+     info = g_new0(ImageInfo, 1);
+-    bdrv_do_query_node_info(bs, qapi_ImageInfo_base(info), errp);
++    bdrv_do_query_node_info(bs, qapi_ImageInfo_base(info), true, errp);
+     if (*errp) {
+         goto fail;
+     }
+@@ -397,7 +425,7 @@ void bdrv_query_block_graph_info(BlockDriverState *bs,
+     BdrvChild *c;
+ 
+     info = g_new0(BlockGraphInfo, 1);
+-    bdrv_do_query_node_info(bs, qapi_BlockGraphInfo_base(info), errp);
++    bdrv_do_query_node_info(bs, qapi_BlockGraphInfo_base(info), false, errp);
+     if (*errp) {
+         goto fail;
+     }
+diff --git a/qapi/block-core.json b/qapi/block-core.json
+index dc6eb4ae23..2c037183f0 100644
+--- a/qapi/block-core.json
++++ b/qapi/block-core.json
+@@ -275,6 +275,69 @@
+       'file': 'ImageInfoSpecificFileWrapper'
+   } }
+ 
++##
++# @BlockLimitsInfo:
++#
++# @request-alignment: Alignment requirement, in bytes, for
++#     offset/length of I/O requests.
++#
++# @max-discard: Maximum number of bytes that can be discarded at once.
++#     If not present, there is no specific maximum.
++#
++# @discard-alignment: Optimal alignment for discard requests in bytes.
++#     Note that this doesn't have to be a power of two.  If not
++#     present, discards don't have a alignment requirement different
++#     from @request-alignment.
++#
++# @max-write-zeroes: Maximum number of bytes that can be zeroed out at
++#     once.  If not present, there is no specific maximum.
++#
++# @write-zeroes-alignment: Optimal alignment for write zeroes requests
++#     in bytes.  Note that this doesn't have to be a power of two.  If
++#     not present, write_zeroes doesn't have a alignment requirement
++#     different from @request-alignment.
++#
++# @opt-transfer: Optimal transfer length in bytes.  If not present,
++#     there is no preferred size.
++#
++# @max-transfer: Maximal transfer length in bytes.  If not present,
++#     there is no specific maximum.
++#
++# @max-hw-transfer: Maximal hardware transfer length in bytes.
++#     Applies whenever transfers to the device bypass the kernel I/O
++#     scheduler, for example with SG_IO.  If not present, there is no
++#     specific maximum.
++#
++# @max-iov: Maximum number of scatter/gather elements
++#
++# @max-hw-iov: Maximum number of scatter/gather elements allowed by
++#     the hardware.  Applies whenever transfers to the device bypass
++#     the kernel I/O scheduler, for example with SG_IO.  If not
++#     present, the hardware limits is unknown and @max-iov is always
++#     used.
++#
++# @min-mem-alignment: Minimal required memory alignment in bytes for
++#     zero-copy I/O to succeed.  For unaligned requests, a bounce
++#     buffer will be used.
++#
++# @opt-mem-alignment: Optimal memory alignment in bytes.  This is the
++#     alignment used for any buffer allocations QEMU performs
++#     internally.
++##
++{ 'struct': 'BlockLimitsInfo',
++  'data': { 'request-alignment': 'uint32',
++            '*max-discard': 'uint64',
++            '*discard-alignment': 'uint32',
++            '*max-write-zeroes': 'uint64',
++            '*write-zeroes-alignment': 'uint32',
++            '*opt-transfer': 'uint32',
++            '*max-transfer': 'uint32',
++            '*max-hw-transfer': 'uint32',
++            'max-iov': 'int',
++            '*max-hw-iov': 'int',
++            'min-mem-alignment': 'size',
++            'opt-mem-alignment': 'size' } }
++
+ ##
+ # @BlockNodeInfo:
+ #
+@@ -304,6 +367,8 @@
+ #
+ # @snapshots: list of VM snapshots
+ #
++# @limits: block limits that are used for I/O on the node (Since 10.2)
++#
+ # @format-specific: structure supplying additional format-specific
+ #     information (since 1.7)
+ #
+@@ -315,6 +380,7 @@
+            '*cluster-size': 'int', '*encrypted': 'bool', '*compressed': 'bool',
+            '*backing-filename': 'str', '*full-backing-filename': 'str',
+            '*backing-filename-format': 'str', '*snapshots': ['SnapshotInfo'],
++           '*limits': 'BlockLimitsInfo',
+            '*format-specific': 'ImageInfoSpecific' } }
+ 
+ ##
+diff --git a/tests/qemu-iotests/184 b/tests/qemu-iotests/184
+index e4cbcd8634..6d0afe9d38 100755
+--- a/tests/qemu-iotests/184
++++ b/tests/qemu-iotests/184
+@@ -45,8 +45,9 @@ do_run_qemu()
+ 
+ run_qemu()
+ {
+-    do_run_qemu "$@" 2>&1 | _filter_testdir | _filter_qemu | _filter_qmp\
+-                          | _filter_qemu_io | _filter_generated_node_ids
++    do_run_qemu "$@" 2>&1 | _filter_testdir | _filter_qemu | _filter_qmp \
++                          | _filter_qemu_io | _filter_generated_node_ids \
++                          | _filter_img_info
+ }
+ 
+ test_throttle=$($QEMU_IMG --help|grep throttle)
+diff --git a/tests/qemu-iotests/184.out b/tests/qemu-iotests/184.out
+index ef99bb2e9a..52692b6b3b 100644
+--- a/tests/qemu-iotests/184.out
++++ b/tests/qemu-iotests/184.out
+@@ -41,12 +41,6 @@ Testing:
+             },
+             "iops_wr": 0,
+             "ro": false,
+-            "children": [
+-                {
+-                    "node-name": "disk0",
+-                    "child": "file"
+-                }
+-            ],
+             "node-name": "throttle0",
+             "backing_file_depth": 1,
+             "drv": "throttle",
+@@ -75,8 +69,6 @@ Testing:
+             },
+             "iops_wr": 0,
+             "ro": false,
+-            "children": [
+-            ],
+             "node-name": "disk0",
+             "backing_file_depth": 0,
+             "drv": "null-co",
+diff --git a/tests/qemu-iotests/common.filter b/tests/qemu-iotests/common.filter
+index 35c0fc0d20..cd8b506dba 100644
+--- a/tests/qemu-iotests/common.filter
++++ b/tests/qemu-iotests/common.filter
+@@ -230,6 +230,7 @@ _filter_img_info()
+     discard=0
+     regex_json_spec_start='^ *"format-specific": \{'
+     regex_json_child_start='^ *"children": \['
++    regex_json_limit_start='^ *"limits": \{'
+     gsed -e "s#$REMOTE_TEST_DIR#TEST_DIR#g" \
+         -e "s#$IMGPROTO:$TEST_DIR#TEST_DIR#g" \
+         -e "s#$TEST_DIR#TEST_DIR#g" \
+@@ -262,7 +263,7 @@ _filter_img_info()
+                 discard=1
+             elif [[ $line =~ "Child node '/" ]]; then
+                 discard=1
+-            elif [[ $line =~ $regex_json_spec_start ]]; then
++            elif [[ $line =~ $regex_json_spec_start || $line =~ $regex_json_limit_start ]]; then
+                 discard=2
+                 regex_json_end="^${line%%[^ ]*}\\},? *$"
+             elif [[ $line =~ $regex_json_child_start ]]; then
+-- 
+2.52.0
+

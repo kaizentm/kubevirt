@@ -1,0 +1,60 @@
+From 9719dea4ff535eee322019ef4e768adbb8eff254 Mon Sep 17 00:00:00 2001
+From: Thomas Huth <thuth@redhat.com>
+Date: Thu, 2 Oct 2025 09:09:20 +0200
+Subject: [PATCH] redhat: Add new s390-ccw-virtio-rhel9.8.0 machine type
+
+JIRA: https://issues.redhat.com/browse/RHEL-105900
+Upstream status: downstream-only
+
+Add a new machine type for RHEL 9.8.0. This machine type now has the
+"control-program identification" and the relaxed PCI translation
+features turned on.
+
+Signed-off-by: Thomas Huth <thuth@redhat.com>
+---
+ hw/s390x/s390-virtio-ccw.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/hw/s390x/s390-virtio-ccw.c b/hw/s390x/s390-virtio-ccw.c
+index 906d45c813..0939adf1ab 100644
+--- a/hw/s390x/s390-virtio-ccw.c
++++ b/hw/s390x/s390-virtio-ccw.c
+@@ -1214,8 +1214,20 @@ DEFINE_CCW_MACHINE(3, 1);
+ 
+ #endif /* disabled for RHEL */
+ 
++static void ccw_rhel_machine_9_8_0_instance_options(MachineState *machine)
++{
++}
++
++static void ccw_rhel_machine_9_8_0_class_options(MachineClass *mc)
++{
++    /* NB: remember to move this line to the *latest* RHEL 9 machine */
++    compat_props_add(mc->compat_props, hw_compat_rhel_9, hw_compat_rhel_9_len);
++}
++DEFINE_CCW_MACHINE_AS_LATEST(9, 8, 0);
++
+ static void ccw_rhel_machine_9_6_0_instance_options(MachineState *machine)
+ {
++    ccw_rhel_machine_9_8_0_instance_options(machine);
+ }
+ 
+ static void ccw_rhel_machine_9_6_0_class_options(MachineClass *mc)
+@@ -1225,14 +1237,14 @@ static void ccw_rhel_machine_9_6_0_class_options(MachineClass *mc)
+         { TYPE_S390_PCI_DEVICE, "relaxed-translation", "off", },
+     };
+ 
++    ccw_rhel_machine_9_8_0_class_options(mc);
++
+     s390mc->use_cpi = false;
+ 
+-    /* NB: remember to move this line to the *latest* RHEL 9 machine */
+-    compat_props_add(mc->compat_props, hw_compat_rhel_9, hw_compat_rhel_9_len);
+     compat_props_add(mc->compat_props, hw_compat_rhel_9_8, hw_compat_rhel_9_8_len);
+     compat_props_add(mc->compat_props, compat, G_N_ELEMENTS(compat));
+ }
+-DEFINE_CCW_MACHINE_AS_LATEST(9, 6, 0);
++DEFINE_CCW_MACHINE(9, 6, 0);
+ 
+ static void ccw_rhel_machine_9_4_0_instance_options(MachineState *machine)
+ {

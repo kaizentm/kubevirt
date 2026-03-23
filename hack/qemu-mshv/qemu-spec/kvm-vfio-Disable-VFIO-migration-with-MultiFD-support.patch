@@ -1,0 +1,47 @@
+From 54bf5f3c864433eae38436f3dd93fdac4ea56fb7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?C=C3=A9dric=20Le=20Goater?= <clg@redhat.com>
+Date: Thu, 6 Nov 2025 16:39:53 +0100
+Subject: [PATCH 3/3] vfio: Disable VFIO migration with MultiFD support
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+RH-Author: Cédric Le Goater <clg@redhat.com>
+RH-MergeRequest: 424: vfio: Disable VFIO migration with MultiFD support
+RH-Jira: RHEL-126593
+RH-Acked-by: Thomas Huth <thuth@redhat.com>
+RH-Acked-by: Jon Maloy <jmaloy@redhat.com>
+RH-Commit: [1/1] 581407a511503b1f6b6e04381f18861bad514631 (clegoate/qemu-kvm-centos)
+
+QEMU 10.0 extends VFIO migration with MultiFD support, which can be
+controlled through the 'vfio-pci' device property
+'x-migration-multifd-transfer'. By default, this property is set to
+'auto', meaning its activation depends on the availability of other
+related features. However, it should be set to 'off' in RHEL until
+more testing has been completed.
+
+Signed-off-by: Cédric Le Goater <clg@redhat.com>
+---
+ hw/vfio/pci.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/hw/vfio/pci.c b/hw/vfio/pci.c
+index 9486521a90..83ecffb535 100644
+--- a/hw/vfio/pci.c
++++ b/hw/vfio/pci.c
+@@ -3686,10 +3686,11 @@ static const Property vfio_pci_dev_properties[] = {
+                             igd_legacy_mode, ON_OFF_AUTO_AUTO),
+     DEFINE_PROP_ON_OFF_AUTO("enable-migration", VFIOPCIDevice,
+                             vbasedev.enable_migration, ON_OFF_AUTO_AUTO),
++    /* RHEL only. Disable VFIO migration with MultiFD support */
+     DEFINE_PROP("x-migration-multifd-transfer", VFIOPCIDevice,
+                 vbasedev.migration_multifd_transfer,
+                 vfio_pci_migration_multifd_transfer_prop, OnOffAuto,
+-                .set_default = true, .defval.i = ON_OFF_AUTO_AUTO),
++                .set_default = true, .defval.i = ON_OFF_AUTO_OFF),
+     DEFINE_PROP_ON_OFF_AUTO("x-migration-load-config-after-iter", VFIOPCIDevice,
+                             vbasedev.migration_load_config_after_iter,
+                             ON_OFF_AUTO_AUTO),
+-- 
+2.50.1
+
